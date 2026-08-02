@@ -10,6 +10,17 @@
 
 ---
 
+## 改訂 (2026-08-02): 方式B（Firestoreのみ・カード不要）
+Storage は Blaze（￥5,000前払い）が必要なため、当面 **写真は圧縮して data URL(Base64) として Firestore に保存**する方式Bで実装する。方式A（Storage）向けの手順は将来の移行時に使う。方式Bでのタスク差分：
+
+- **Task 0**：④Storage作成・Blazeアップグレードは**不要**（Auth と Firestore のみ）。
+- **Task 6（写真圧縮）**：`compress()` は圧縮した**data URL 文字列**を返す（長辺~1280 / JPEG ~0.72）。`toDataURL('image/jpeg', 0.72)` を使用。
+- **Task 7（Storageアップロード）**：**スキップ**（方式A移行時に実施）。代わりに photos.js に `toStored(file)` を用意し `{ url: dataURL }` を返す。
+- **Task 4 Step2 / Task 7 Step2 の Storage ルール**：**不要**。Firestore ルールのみ設定。
+- **写真の型**：`photos: [{ url }]`（B）。将来Aで `{ path, url }` に拡張。表示は常に `photo.url` を使うので**表示側タスク(Task 10)は同じ**。
+- **Task 9（追加/編集/削除）**：Storageアップロードの代わりに `App.photos.toStored(file)` で data URL を得て `photos` に入れる。削除時の Storage 削除は不要（Firestoreの記録削除だけ）。
+- **1MB制限**：1記録の写真合計が Firestore ドキュメント上限(1MB)を超えないよう圧縮。超過時は保存エラーを表示。
+
 ## 前提と方針
 - **Task 0（ユーザー作業）が完了しないと、以降の動作確認はできない。** Task 1以降のコードは書けるが、実ブラウザ検証は Firebase 設定後に行う。
 - Firebase SDK は ESモジュール。`js/app.js` を `<script type="module">` にし、Firebaseを使う層（firebase/auth/space/cloud/photos）もモジュールにする。既存の非モジュール（genres, filters, map, calendar, lightbox, sheet, records, backup）はそのまま `window.App` に載せ、実行時に `window.App.cloud` などを参照する（モジュールは classic の後に実行されるため、参照は実行時に解決される）。
