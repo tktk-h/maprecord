@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>デート記録</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="topbar">
+    <div id="view-toggle">
+      <button id="view-map" class="active"><i class="ph ph-map-trifold"></i><span>地図</span></button>
+      <button id="view-calendar"><i class="ph ph-calendar-blank"></i><span>カレンダー</span></button>
+    </div>
+    <div id="search-wrap">
+      <i class="ph ph-magnifying-glass"></i>
+      <input id="search-box" type="search" placeholder="場所名・#タグ で検索">
+    </div>
+    <button id="filter-toggle" title="絞り込み"><i class="ph ph-funnel"></i><span>絞り込み</span></button>
+    <div id="filter-panel">
+    <div id="filter-bar">
+      <select id="mode-select">
+        <option value="all">全部</option>
+        <option value="day">特定の日</option>
+        <option value="range">期間</option>
+      </select>
+      <input type="date" id="day-input" hidden>
+      <span id="range-inputs" hidden>
+        <input type="date" id="from-input"> 〜 <input type="date" id="to-input">
+      </span>
+      <span id="genre-filters"><!-- チェックボックスをJSで生成 --></span>
+      <button id="filter-clear" title="絞り込みをリセット"><i class="ph ph-x"></i>クリア</button>
+    </div>
+    <div id="backup-bar">
+      <button id="export-btn"><i class="ph ph-download-simple"></i><span>書き出し</span></button>
+      <label id="import-label"><i class="ph ph-upload-simple"></i><span>読み込み</span><input type="file" id="import-input" accept="application/json" hidden></label>
+    </div>
+    </div>
+  </header>
+
+  <main id="layout">
+    <div id="map"></div>
+    <button id="locate-btn" title="現在地で記録を追加"><i class="ph ph-crosshair"></i><span>現在地</span></button>
+    <aside id="panel">
+      <div id="sheet-grip"><span class="sheet-handle"></span></div>
+      <div id="panel-content"><p class="hint">地図をクリックして記録を追加</p></div>
+    </aside>
+    <div id="calendar-view" hidden></div>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/genres.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/filters.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/records.js"></script>
+  <script src="js/lightbox.js"></script>
+  <script src="js/sheet.js"></script>
+  <script src="js/calendar.js"></script>
+  <script src="js/backup.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+# OS / エディタ
+Thumbs.db
+desktop.ini
+.DS_Store
+.claude/
+
+# 参照用スクリーンショット（アプリ本体には不要）
+S__*.jpg
+ビーリアル.jpg
