@@ -84,23 +84,18 @@ App.map = (function () {
         }),
       });
     }
-    if (number != null) {
-      // 写真なし＋ルート表示 → 番号入りの丸ピン
-      return L.marker([r.lat, r.lng], {
-        bubblingMouseEvents: false,
-        icon: L.divIcon({
-          className: '',
-          html: `<div class="dot-pin" style="background:${color}">${number}</div>`,
-          iconSize: [26, 26],
-          iconAnchor: [13, 13],
-        }),
-      });
-    }
-    // 写真なし → ジャンル色の丸ピン
-    return L.circleMarker([r.lat, r.lng], {
-      radius: 9, color: '#fff', weight: 2,
-      fillColor: color, fillOpacity: 1,
+    // 写真なし → ジャンル色の丸ピン（divIconに統一し、ズーム時も写真ピンと同じ挙動に）
+    const inner = (number != null) ? number : '';
+    const dotBadge = (number == null && count > 1) ? `<span class="visit-count">${count}</span>` : '';
+    const size = (number != null) ? 26 : 20;
+    return L.marker([r.lat, r.lng], {
       bubblingMouseEvents: false,
+      icon: L.divIcon({
+        className: '',
+        html: `<div class="dot-pin" style="background:${color}">${inner}${dotBadge}</div>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+      }),
     });
   }
 
