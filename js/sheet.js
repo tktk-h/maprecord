@@ -12,16 +12,16 @@ App.sheet = (function () {
 
   function computeSnaps() {
     const vh = window.innerHeight;
-    // translateY(px)。小さいほどシートが上（大きく開く）
+    // シートの高さ(px)。大きいほど大きく開く
     snaps = {
-      full: Math.round(vh * 0.08),
-      half: Math.round(vh * 0.45),
-      peek: Math.round(vh * 0.78),
+      full: Math.round(vh * 0.90),
+      half: Math.round(vh * 0.50),
+      peek: Math.round(vh * 0.12),
     };
   }
   function setY(y) {
     currentY = y;
-    panel.style.setProperty('--sheet-y', y + 'px');
+    panel.style.setProperty('--sheet-h', y + 'px');
   }
   function nearest(y) {
     return [snaps.full, snaps.half, snaps.peek]
@@ -46,8 +46,9 @@ App.sheet = (function () {
   function onMove(e) {
     if (!dragging) return;
     computeSnaps();
-    let y = startY + (e.clientY - startPointerY);
-    y = Math.max(snaps.full, Math.min(snaps.peek, y));
+    // 高さベース：指を上に動かすと（clientYが減る）高くなる
+    let y = startY - (e.clientY - startPointerY);
+    y = Math.max(snaps.peek, Math.min(snaps.full, y));
     setY(y);
   }
   function onUp() {
