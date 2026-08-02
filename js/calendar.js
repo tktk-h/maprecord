@@ -52,9 +52,8 @@ App.calendar = (function () {
     const badge = recs.length > 1 ? `<span class="cal-badge">${recs.length}</span>` : '';
     const photo = recs.map((r) => (r.photos || [])[0]).find(Boolean);
     if (photo) {
-      const url = URL.createObjectURL(photo);
       return `<button type="button" class="cal-cell has-photo" data-date="${dateStr}" `
-        + `style="background-image:url(${url})">`
+        + `style="background-image:url(${photo.url})">`
         + `<span class="cal-num on-photo">${dayNum}</span>${badge}</button>`;
     }
     // 写真なしの記録 → ジャンル色で塗る

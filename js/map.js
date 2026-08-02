@@ -69,14 +69,13 @@ App.map = (function () {
     else if (count > 1) badge = `<span class="visit-count">${count}</span>`;
     if (photo) {
       // 写真つき → その写真をサムネイルにしたピン（Instagramのマップ風）
-      const url = URL.createObjectURL(photo);
       return L.marker([r.lat, r.lng], {
         bubblingMouseEvents: false,
         icon: L.divIcon({
           className: '',
           // 同じ形（インスタのマップ風）＋枠はジャンル色
           html: `<div class="photo-pin">`
-            + `<img class="pin-img" src="${url}" style="border-color:${color}">`
+            + `<img class="pin-img" src="${photo.url}" style="border-color:${color}">`
             + badge
             + `<span class="pin-tail" style="border-top-color:${color}"></span>`
             + `</div>`,

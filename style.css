@@ -307,3 +307,23 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   #locate-btn span { display: none; } /* スマホではアイコンのみの丸ボタン */
   #calendar-view { padding-top: 124px; } /* 浮かせたヘッダー（2段）ぶん空ける */
 }
+
+/* ===== ログイン/スペースのゲート ===== */
+#gate { position: fixed; inset: 0; z-index: 3000; background: var(--bg);
+  display: flex; align-items: center; justify-content: center; padding: 24px; }
+#gate[hidden] { display: none; }
+.gate-card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-md);
+  padding: 28px 24px; width: 100%; max-width: 380px; text-align: center; }
+.gate-title { font-size: 22px; font-weight: 700; margin: 0 0 8px; color: var(--text); }
+.gate-lead { color: var(--text-muted); font-size: 14px; margin: 0 0 18px; line-height: 1.6; }
+.gate-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 12px 16px; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600;
+  background: var(--surface-2); color: var(--text); margin-top: 8px; }
+.gate-btn.primary { background: var(--accent); color: #fff; }
+.gate-btn.primary:hover { background: var(--accent-strong); }
+.gate-or { color: var(--text-muted); font-size: 12px; margin: 16px 0 8px; }
+.gate-join { display: flex; gap: 8px; }
+.gate-join input { flex: 1; }
+.gate-msg { color: var(--accent-strong); font-size: 13px; min-height: 18px; margin: 10px 0 0; }
+.gate-code { font-size: 24px; font-weight: 700; letter-spacing: .12em; color: var(--accent-strong);
+  background: var(--accent-soft); border-radius: var(--radius-sm); padding: 14px; margin: 8px 0 16px; }

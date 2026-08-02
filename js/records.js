@@ -8,10 +8,8 @@ App.records = (function () {
   let searchQuery = '';         // 検索結果の見出し用
   const panel = () => document.getElementById('panel-content');
 
-  async function reload() {
-    all = await App.db.getAll();
-    render();
-  }
+  function setRecords(records) { all = records; render(); } // 購読から最新を受け取る
+  async function reload() { render(); }                      // 互換用（購読が供給）
   function setFilterState(state) { searchResults = null; filterState = state; render(); }
   function getAll() { return all; }
 
@@ -133,7 +131,7 @@ App.records = (function () {
     const rows = groups.map((g) => {
       const r = g.rep;
       const thumb = g.photo
-        ? `<span class="result-thumb" style="background-image:url(${URL.createObjectURL(g.photo)})"></span>`
+        ? `<span class="result-thumb" style="background-image:url(${g.photo.url})"></span>`
         : `<span class="result-thumb" style="background:${App.genres.color(r.genre)}"></span>`;
       const sub = g.count > 1
         ? `${App.genres.label(r.genre)} ・ ${g.count}回訪問`
@@ -218,9 +216,9 @@ App.records = (function () {
     const arr = list.slice();
     const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
     for (let k = 0; k < arr.length; k += 1) {
-      if (arr[k].order !== k) { arr[k].order = k; await App.db.put(arr[k]); }
+      if (arr[k].order !== k) { arr[k].order = k; await App.cloud.put(arr[k]); }
     }
-    await reload(); // 再読み込み → render → ルート一覧と地図が更新される
+    // 購読が最新を供給して自動で再描画される
   }
 
   // ハッシュタグで絞り込む（tag は # あり/なしどちらでも可）。一致件数を返す
@@ -273,14 +271,21 @@ App.records = (function () {
     document.getElementById('rec-form').onsubmit = async (e) => {
       e.preventDefault();
       const f = e.target;
-      const photos = Array.from(f.photos.files); // File は Blob なのでそのまま保存可
+      const files = Array.from(f.photos.files);
       const order = all.filter((r) => r.date === f.date.value).length; // その日の末尾に追加
-      await App.db.add({
-        date: f.date.value, name: f.name.value, genre: f.genre.value,
-        memo: f.memo.value, tags: parseTags(f.tags.value), order, lat, lng, photos,
-      });
-      clearPanel();
-      await reload();
+      const submitBtn = f.querySelector('button[type=submit]');
+      submitBtn.disabled = true; submitBtn.textContent = '保存中…';
+      try {
+        const photos = await App.photos.toStoredMany(files); // 圧縮 → {url}[]
+        await App.cloud.add({
+          date: f.date.value, name: f.name.value, genre: f.genre.value,
+          memo: f.memo.value, tags: parseTags(f.tags.value), order, lat, lng, photos,
+        });
+        clearPanel(); // 保存後は購読が自動反映
+      } catch (err) {
+        alert('保存に失敗しました: ' + err.message);
+        submitBtn.disabled = false; submitBtn.textContent = '保存';
+      }
     };
   }
 
@@ -301,10 +306,8 @@ App.records = (function () {
   function showDetail(record) {
     App.map.clearTempMarker(); // 追加中の目印が残っていれば消す
     if (App.sheet) App.sheet.snapTo('half'); // シートを開く
-    const photosHtml = (record.photos || []).map((blob, i) => {
-      const url = URL.createObjectURL(blob);
-      return `<img class="thumb" src="${url}" alt="" data-i="${i}">`;
-    }).join('');
+    const photosHtml = (record.photos || []).map((p, i) =>
+      `<img class="thumb" src="${p.url}" alt="" data-i="${i}">`).join('');
     const visits = visitsAt(record.lat, record.lng);
     const visitsHtml = visits.length > 1 ? `
       <div class="visits">
@@ -338,7 +341,7 @@ App.records = (function () {
       };
     });
     panel().querySelectorAll('.photos .thumb[data-i]').forEach((img) => {
-      img.onclick = () => App.lightbox.open(record.photos, Number(img.dataset.i));
+      img.onclick = () => App.lightbox.open((record.photos || []).map((p) => p.url), Number(img.dataset.i));
     });
     panel().querySelectorAll('.tag-chip').forEach((btn) => {
       btn.onclick = () => runTagSearch(btn.dataset.tag);
@@ -346,9 +349,8 @@ App.records = (function () {
     document.getElementById('edit-btn').onclick = () => showEditForm(record);
     document.getElementById('del-btn').onclick = async () => {
       if (!confirm(`「${record.name}」を削除しますか？`)) return;
-      await App.db.remove(record.id);
-      clearPanel();
-      await reload();
+      await App.cloud.remove(record.id);
+      clearPanel(); // 購読が自動反映
     };
   }
 
@@ -374,11 +376,9 @@ App.records = (function () {
     const box = document.getElementById('existing-photos');
     function renderExisting() {
       if (keep.length === 0) { box.innerHTML = '<span class="hint">写真なし</span>'; return; }
-      box.innerHTML = keep.map((blob, i) => {
-        const url = URL.createObjectURL(blob);
-        return `<div class="photo-edit"><img class="thumb" src="${url}" alt="">
-          <button type="button" class="photo-del" data-i="${i}"><i class="ph ph-x"></i></button></div>`;
-      }).join('');
+      box.innerHTML = keep.map((p, i) =>
+        `<div class="photo-edit"><img class="thumb" src="${p.url}" alt="">
+          <button type="button" class="photo-del" data-i="${i}"><i class="ph ph-x"></i></button></div>`).join('');
       box.querySelectorAll('.photo-del').forEach((btn) => {
         btn.onclick = () => { keep.splice(Number(btn.dataset.i), 1); renderExisting(); };
       });
@@ -389,16 +389,23 @@ App.records = (function () {
     document.getElementById('edit-form').onsubmit = async (e) => {
       e.preventDefault();
       const f = e.target;
-      const newPhotos = Array.from(f.photos.files);
-      const updated = {
-        id: record.id, date: f.date.value, name: f.name.value, genre: f.genre.value,
-        memo: f.memo.value, tags: parseTags(f.tags.value), order: record.order,
-        lat: record.lat, lng: record.lng,
-        photos: keep.concat(newPhotos), // 残した既存写真＋追加分
-      };
-      await App.db.put(updated);
-      await reload();
-      showDetail(updated);
+      const btn = f.querySelector('button[type=submit]');
+      btn.disabled = true; btn.textContent = '更新中…';
+      try {
+        const newFiles = Array.from(f.photos.files);
+        const uploaded = newFiles.length ? await App.photos.toStoredMany(newFiles) : [];
+        const updated = {
+          id: record.id, date: f.date.value, name: f.name.value, genre: f.genre.value,
+          memo: f.memo.value, tags: parseTags(f.tags.value), order: record.order,
+          lat: record.lat, lng: record.lng,
+          photos: keep.concat(uploaded), // 残した既存写真＋追加分
+        };
+        await App.cloud.put(updated);
+        showDetail(updated);
+      } catch (err) {
+        alert('更新に失敗しました: ' + err.message);
+        btn.disabled = false; btn.textContent = '更新';
+      }
     };
   }
 
@@ -470,7 +477,7 @@ App.records = (function () {
     reload();
   }
 
-  return { init, reload, render, getAll, setFilterState, applyUiFilter, focusDay,
+  return { init, reload, setRecords, render, getAll, setFilterState, applyUiFilter, focusDay,
            searchTag, clearTag, searchByName, clearSearch,
            showDetail, showEditForm, showAddForm, _clearPanel: clearPanel };
 })();

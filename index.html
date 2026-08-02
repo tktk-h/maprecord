@@ -9,6 +9,31 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div id="gate" hidden>
+    <div class="gate-card">
+      <h1 class="gate-title">デート記録</h1>
+      <div id="gate-login" hidden>
+        <p class="gate-lead">二人の思い出を地図に残そう</p>
+        <button id="gate-google" class="gate-btn primary"><i class="ph ph-google-logo"></i>Googleでログイン</button>
+      </div>
+      <div id="gate-space" hidden>
+        <p class="gate-lead">スペースを作るか、招待コードで参加してください</p>
+        <button id="gate-create" class="gate-btn primary">新しくスペースを作る</button>
+        <div class="gate-or">または</div>
+        <div class="gate-join">
+          <input id="gate-code" type="text" placeholder="招待コード（例 ABCD-2345）">
+          <button id="gate-join-btn" class="gate-btn">参加する</button>
+        </div>
+        <p id="gate-msg" class="gate-msg"></p>
+      </div>
+      <div id="gate-invite" hidden>
+        <p class="gate-lead">スペースを作成しました。相手にこのコードを渡してください：</p>
+        <div id="gate-invite-code" class="gate-code"></div>
+        <button id="gate-start" class="gate-btn primary">はじめる</button>
+      </div>
+    </div>
+  </div>
+
   <header id="topbar">
     <div id="view-toggle">
       <button id="view-map" class="active"><i class="ph ph-map-trifold"></i><span>地図</span></button>
@@ -36,6 +61,8 @@
     <div id="backup-bar">
       <button id="export-btn"><i class="ph ph-download-simple"></i><span>書き出し</span></button>
       <label id="import-label"><i class="ph ph-upload-simple"></i><span>読み込み</span><input type="file" id="import-input" accept="application/json" hidden></label>
+      <button id="show-invite-btn"><i class="ph ph-user-plus"></i><span>招待コード</span></button>
+      <button id="logout-btn"><i class="ph ph-sign-out"></i><span>ログアウト</span></button>
     </div>
     </div>
   </header>
@@ -52,7 +79,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/genres.js"></script>
-  <script src="js/db.js"></script>
   <script src="js/filters.js"></script>
   <script src="js/map.js"></script>
   <script src="js/records.js"></script>
@@ -60,6 +86,6 @@
   <script src="js/sheet.js"></script>
   <script src="js/calendar.js"></script>
   <script src="js/backup.js"></script>
-  <script src="js/app.js"></script>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

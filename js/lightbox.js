@@ -52,9 +52,9 @@ App.lightbox = (function () {
   function next() { if (urls.length) { idx = (idx + 1) % urls.length; show(); } }
   function prev() { if (urls.length) { idx = (idx - 1 + urls.length) % urls.length; show(); } }
 
-  function open(photos, startIndex) {
+  function open(urlList, startIndex) {
     close(); // 前回ぶんを掃除
-    urls = (photos || []).map((b) => URL.createObjectURL(b));
+    urls = (urlList || []).slice(); // url 文字列の配列
     if (!urls.length) return;
     idx = Math.min(Math.max(startIndex || 0, 0), urls.length - 1);
     ensureOverlay().hidden = false;
@@ -64,7 +64,6 @@ App.lightbox = (function () {
   function close() {
     if (overlay) overlay.hidden = true;
     document.removeEventListener('keydown', keyHandler);
-    urls.forEach((u) => URL.revokeObjectURL(u));
     urls = [];
   }
 
