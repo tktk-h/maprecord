@@ -91,8 +91,8 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 #locate-btn:disabled { opacity: .55; cursor: default; }
 
 /* ===== カレンダー ===== */
-#calendar-view { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain; background: var(--bg); padding: 80px 16px 24px; }
+#calendar-view { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain; touch-action: pan-y; background: var(--bg); padding: 80px 16px 24px; }
 .cal-month { max-width: 560px; margin: 0 auto 32px; }
 .cal-title { margin: 8px 4px 12px; font-size: 15px; font-weight: 600; letter-spacing: .02em; color: var(--text); }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; }
@@ -117,10 +117,11 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 #panel { width: 340px; background: var(--surface); border-left: 1px solid var(--border);
   display: flex; flex-direction: column; min-height: 0; }
 #sheet-grip { display: none; }
-#panel-content { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain; padding: 20px; }
+#panel-content { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  touch-action: pan-y; padding: 20px; }
 .hint { color: var(--text-muted); }
-#panel h2 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+#panel h2 { font-size: 18px; font-weight: 600; margin: 0 0 4px; overflow-wrap: anywhere; }
 
 /* フォーム */
 #rec-form label, #edit-form label { display: block; margin: 16px 0 6px; font-size: 13px;
@@ -173,7 +174,8 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .thumb { width: 92px; height: 92px; object-fit: cover; border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
 .photos .thumb[data-i] { cursor: zoom-in; transition: transform .1s; }
 .photos .thumb[data-i]:hover { transform: scale(1.03); }
-.memo { white-space: normal; line-height: 1.7; color: var(--text); }
+.memo { white-space: normal; line-height: 1.7; color: var(--text);
+  overflow-wrap: anywhere; word-break: break-word; }
 
 /* ===== ライトボックス ===== */
 #lightbox { position: fixed; inset: 0; z-index: 2000; background: rgba(28,24,20,.94);
