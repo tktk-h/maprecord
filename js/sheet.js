@@ -12,9 +12,12 @@ App.sheet = (function () {
 
   function computeSnaps() {
     const vh = window.innerHeight;
+    // 浮かせたヘッダー（検索バー等）の高さぶんは空ける
+    const header = document.getElementById('topbar');
+    const headerH = header ? Math.ceil(header.getBoundingClientRect().height) : 110;
     // シートの高さ(px)。大きいほど大きく開く
     snaps = {
-      full: Math.round(vh * 0.90),
+      full: Math.round(vh - headerH - 12), // full でもヘッダーと重ならない
       half: Math.round(vh * 0.50),
       peek: Math.round(vh * 0.12),
     };
