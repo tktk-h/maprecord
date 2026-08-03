@@ -161,6 +161,11 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   border: 1px solid var(--accent); color: var(--accent-strong); background: var(--accent-soft);
   border-radius: var(--radius-sm); }
 .revisit-btn:hover { background: var(--accent); color: #fff; }
+.gmaps-btn { display: inline-flex; align-items: center; gap: 7px; margin: 4px 0 2px;
+  padding: 10px 14px; border-radius: var(--radius-sm); background: var(--surface-2);
+  color: var(--accent-strong); font-size: 14px; font-weight: 600; text-decoration: none; }
+.gmaps-btn .ph { font-size: 18px; }
+.gmaps-btn:active { transform: scale(.98); }
 .meta { color: var(--text-muted); font-size: 13px; margin: 2px 0 12px; }
 
 /* 検索候補リスト（Googleマップ風） */
