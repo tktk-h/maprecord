@@ -3,6 +3,7 @@ App.map = (function () {
   let map, layer;
   let tempMarker = null; // 追加フォームを開いている間だけ出す目印
   let pickMarker = null; // 「位置を修正」中だけ出すドラッグ可能マーカー
+  let candidateMarkers = []; // 場所検索の候補ピン（records の layer とは別に管理）
   let onMapClick = null; // (lat, lng) => void  ... Task 4 で設定
 
   const VIEW_KEY = 'date-recorder-view';
@@ -90,6 +91,27 @@ App.map = (function () {
     if (pickMarker) { map.removeLayer(pickMarker); pickMarker = null; }
   }
 
+  // 場所検索の候補を番号付きピンで地図に出す。points=[{name,lat,lng}], onPick=(index)=>void
+  function showSearchCandidates(points, onPick) {
+    clearSearchCandidates();
+    (points || []).forEach((p, i) => {
+      const m = L.marker([p.lat, p.lng], {
+        zIndexOffset: 800,
+        icon: L.divIcon({ className: '', html: `<div class="cand-pin">${i + 1}</div>`,
+          iconSize: [28, 28], iconAnchor: [14, 14] }),
+      });
+      m.bindTooltip(p.name || '');
+      m.on('click', () => onPick(i));
+      m.addTo(map);
+      candidateMarkers.push(m);
+    });
+    if (candidateMarkers.length) fitTo(points); // 全候補が見えるように
+  }
+  function clearSearchCandidates() {
+    candidateMarkers.forEach((m) => map.removeLayer(m));
+    candidateMarkers = [];
+  }
+
   // 1件ぶんのマーカーを作る。number=順番バッジ／count>1=訪問回数バッジ
   function markerFor(r, number, count) {
     const color = App.genres.color(r.genre);
@@ -151,5 +173,6 @@ App.map = (function () {
   return { init, setClickHandler, clearPins, renderPins, flyTo, fitTo, refresh,
            showTempMarker, clearTempMarker,
            getViewbox, startPickLocation, getPickedLatLng, stopPickLocation,
+           showSearchCandidates, clearSearchCandidates,
            _getMap: () => map, _getLayer: () => layer };
 })();

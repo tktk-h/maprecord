@@ -289,9 +289,15 @@ App.records = (function () {
       return;
     }
     const esc = (s) => (s || '').replace(/</g, '&lt;');
+    // 候補を選ぶ：その地点へ寄り、追加フォームを場所名入りで開く（リスト行・地図ピン共通）
+    const pick = (i) => {
+      const p = list[i];
+      App.map.flyTo(p.lat, p.lng);
+      showAddForm(p.lat, p.lng, { name: p.name }); // 内部で候補ピンはクリアされる
+    };
     results.innerHTML = `<ul class="result-list">${list.map((p, i) => `
       <li><button type="button" class="result-row ps-pick" data-i="${i}">
-        <span class="result-thumb icon"><i class="ph ph-map-pin"></i></span>
+        <span class="result-thumb icon">${i + 1}</span>
         <span class="result-text">
           <span class="result-name">${esc(p.name)}</span>
           <span class="result-sub">${esc(p.address)}</span>
@@ -299,18 +305,16 @@ App.records = (function () {
         <i class="ph ph-caret-right result-caret"></i>
       </button></li>`).join('')}</ul>`;
     results.querySelectorAll('.ps-pick').forEach((b) => {
-      b.onclick = () => {
-        const p = list[Number(b.dataset.i)];
-        App.map.flyTo(p.lat, p.lng);
-        showAddForm(p.lat, p.lng, { name: p.name });
-      };
+      b.onclick = () => pick(Number(b.dataset.i));
     });
+    App.map.showSearchCandidates(list, pick); // 地図にも番号付き候補ピンを出す
   }
 
   // 追加フォーム表示（地図クリック時／同じ場所への再訪時）
   // prefill: { name, genre } を渡すと場所名・ジャンルを引き継ぐ（日付は今日・メモ/写真は空）
   function showAddForm(lat, lng, prefill) {
     searchResults = null; // 追加を始めたら検索結果モードは終了
+    App.map.clearSearchCandidates(); // 場所検索の候補ピンを片付ける
     prefill = prefill || {};
     const today = new Date().toISOString().slice(0, 10);
     const nameVal = (prefill.name || '').replace(/"/g, '&quot;');
@@ -354,6 +358,7 @@ App.records = (function () {
 
   function clearPanel() {
     App.map.clearTempMarker(); // 追加地点の目印を消す
+    App.map.clearSearchCandidates(); // 場所検索の候補ピンを片付ける
     routeEditMode = false;     // ルート編集モードを解除
     panel().innerHTML = '<p class="hint">地図をクリックして記録を追加</p>';
   }
