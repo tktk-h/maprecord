@@ -237,6 +237,11 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   100% { box-shadow: 0 0 0 0 rgba(183,110,100,0); }
 }
 .temp-pin.picking { cursor: grab; box-shadow: 0 0 0 4px rgba(183,110,100,.35); }
+/* 縮小時にピンがまとまる「クラスタ」ピン（件数表示） */
+.cluster-pin { width: 100%; height: 100%; border-radius: 50%;
+  background: var(--accent); color: #fff; border: 2px solid #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px; box-shadow: var(--shadow-md); }
 
 /* ===== ルート（番号ピン） ===== */
 .pin-order { position: absolute; top: -6px; left: -6px; width: 20px; height: 20px;

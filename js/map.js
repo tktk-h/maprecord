@@ -1,6 +1,6 @@
 window.App = window.App || {};
 App.map = (function () {
-  let map, layer;
+  let map, clusterLayer, routeLayer;
   let tempMarker = null; // 追加フォームを開いている間だけ出す目印
   let pickMarker = null; // 「位置を修正」中だけ出すドラッグ可能マーカー
   let onMapClick = null; // (lat, lng) => void  ... Task 4 で設定
@@ -32,13 +32,24 @@ App.map = (function () {
       updateWhenZooming: false, // ズーム操作中は要求を出さず、落ち着いてからまとめて読み込む
       attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
     }).addTo(map);
-    layer = L.layerGroup().addTo(map);
+    // 通常のピンはクラスタ（縮小で近いピンがまとまる）。ルート線＋番号ピンはまとめず別レイヤに。
+    clusterLayer = L.markerClusterGroup({
+      maxClusterRadius: 60,       // この画面px以内の近いピンをひとつにまとめる
+      showCoverageOnHover: false, // まとまり範囲のハイライトは出さない
+      spiderfyOnMaxZoom: true,    // 最大ズームで重なりを扇状に展開
+      removeOutsideVisibleBounds: true,
+      chunkedLoading: true,
+      iconCreateFunction: clusterIcon,
+    });
+    routeLayer = L.layerGroup();
+    map.addLayer(clusterLayer);
+    routeLayer.addTo(map);
     map.on('click', (e) => { if (onMapClick) onMapClick(e.latlng.lat, e.latlng.lng); });
     map.on('moveend', saveView); // 表示中の位置・ズームを毎回保存
   }
 
   function setClickHandler(fn) { onMapClick = fn; }
-  function clearPins() { layer.clearLayers(); }
+  function clearPins() { clusterLayer.clearLayers(); routeLayer.clearLayers(); }
   function flyTo(lat, lng) { map.setView([lat, lng], 16); }
   function refresh() { if (map) map.invalidateSize(); } // 非表示から戻ったとき再描画
 
@@ -122,27 +133,40 @@ App.map = (function () {
     });
   }
 
+  // まとまり（クラスタ）の見た目：件数入りの丸。件数が多いほど少し大きく。
+  function clusterIcon(cluster) {
+    const n = cluster.getChildCount();
+    const size = n < 10 ? 36 : (n < 100 ? 44 : 52);
+    return L.divIcon({
+      className: '',
+      html: `<div class="cluster-pin">${n}</div>`,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+    });
+  }
+
   // records: [{id, lat, lng, name, genre, photos, ...}], onClick: (record)=>void
   // opts.numbered=true で順番バッジ＋ルート線を描く（records は表示順に並んでいる前提）
   function renderPins(records, onClick, opts) {
     clearPins();
     const numbered = !!(opts && opts.numbered);
     const countAt = opts && opts.countAt;
+    const target = numbered ? routeLayer : clusterLayer; // ルート表示中はまとめない
     if (numbered && records.length > 1) {
       L.polyline(records.map((r) => [r.lat, r.lng]), {
         color: '#b76e64', weight: 3, opacity: 0.9, dashArray: '2 9', lineCap: 'round',
-      }).addTo(layer);
+      }).addTo(routeLayer);
     }
     records.forEach((r, i) => {
       const marker = markerFor(r, numbered ? i + 1 : null, countAt ? countAt(r) : 1);
       marker.bindTooltip(r.name || '(名称未設定)');
       marker.on('click', () => onClick(r));
-      marker.addTo(layer);
+      marker.addTo(target);
     });
   }
 
   return { init, setClickHandler, clearPins, renderPins, flyTo, fitTo, refresh,
            showTempMarker, clearTempMarker,
            startPickLocation, getPickedLatLng, stopPickLocation,
-           _getMap: () => map, _getLayer: () => layer };
+           _getMap: () => map, _getLayer: () => clusterLayer };
 })();
