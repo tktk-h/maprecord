@@ -15,23 +15,42 @@ App.geocode = (function () {
     }).filter((x) => Number.isFinite(x.lat) && Number.isFinite(x.lng)).slice(0, limit);
   }
 
-  // query を検索。opts.viewbox=[west,south,east,north] があれば近場を優先。返り値は parseResults の形。
-  async function search(query, opts) {
-    const q = (query || '').trim();
-    if (!q) return [];
+  // 1回分のリクエスト。bounded=true なら viewbox 内に限定する。
+  async function request(q, viewbox, bounded) {
     const params = new URLSearchParams({
       format: 'jsonv2', q, limit: String(LIMIT),
       'accept-language': 'ja', addressdetails: '1',
     });
-    if (opts && opts.viewbox && opts.viewbox.length === 4) {
-      params.set('viewbox', opts.viewbox.join(',')); // [west,south,east,north]（両隅で範囲を示す）
-      params.set('bounded', '0');                     // 範囲外も出すが近場を優先
+    if (viewbox && viewbox.length === 4) {
+      params.set('viewbox', viewbox.join(',')); // [west,south,east,north]（両隅で範囲を示す）
+      params.set('bounded', bounded ? '1' : '0');
     }
     const res = await fetch(`${ENDPOINT}?${params.toString()}`, {
       headers: { Accept: 'application/json' },
     });
     if (!res.ok) throw new Error('geocode HTTP ' + res.status);
     return parseResults(await res.json(), LIMIT);
+  }
+
+  // viewbox の中心に近い順に並べ替える（近い候補を上に）
+  function sortByCenter(list, viewbox) {
+    const cx = (viewbox[0] + viewbox[2]) / 2;
+    const cy = (viewbox[1] + viewbox[3]) / 2;
+    return list.slice().sort((a, b) =>
+      ((a.lng - cx) ** 2 + (a.lat - cy) ** 2) - ((b.lng - cx) ** 2 + (b.lat - cy) ** 2));
+  }
+
+  // query を検索。opts.viewbox=[west,south,east,north] があれば「今見えている範囲内」を優先。
+  // まず範囲内に限定して探し（近い順に整列）、無ければ全国にフォールバックする。
+  async function search(query, opts) {
+    const q = (query || '').trim();
+    if (!q) return [];
+    const viewbox = opts && opts.viewbox;
+    if (viewbox && viewbox.length === 4) {
+      const local = await request(q, viewbox, true); // 範囲内に限定
+      if (local.length) return sortByCenter(local, viewbox);
+    }
+    return request(q, viewbox, false); // 範囲外も含めて（全国）
   }
 
   function _selfTest() {

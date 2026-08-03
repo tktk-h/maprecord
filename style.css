@@ -336,9 +336,11 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   #sheet-grip:active { cursor: grabbing; }
   #panel-content { padding: 4px 20px 24px; }
 
-  #locate-btn { top: 14px; right: 14px; left: auto; bottom: auto; padding: 11px; gap: 0; }
+  /* フローティング操作ボタンは右下に縦積み（上段の絞り込み・下段の検索バーと重ねない）。
+     z-index を下シート(20)より下にして、シートを上げたら隠れるようにする。 */
+  #locate-btn { right: 14px; bottom: calc(12dvh + 14px); top: auto; left: auto; padding: 11px; gap: 0; z-index: 10; }
   #locate-btn span { display: none; } /* スマホではアイコンのみの丸ボタン */
-  #place-search-btn { top: 62px; right: 14px; left: auto; bottom: auto; padding: 11px; gap: 0; } /* 現在地ボタンの真下に縦積み（ヘッダーの絞り込みと重ねない） */
+  #place-search-btn { right: 14px; bottom: calc(12dvh + 62px); top: auto; left: auto; padding: 11px; gap: 0; z-index: 10; }
   #place-search-btn span { display: none; } /* スマホではアイコンのみの丸ボタン */
   #calendar-view { padding-top: 124px; } /* 浮かせたヘッダー（2段）ぶん空ける */
 }
