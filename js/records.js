@@ -152,7 +152,7 @@ App.records = (function () {
     </div>`;
     panel().querySelectorAll('.result-row').forEach((b) => {
       b.onclick = () => {
-        const rec = all.find((x) => x.id === Number(b.dataset.id));
+        const rec = all.find((x) => String(x.id) === b.dataset.id);
         if (rec) { App.map.flyTo(rec.lat, rec.lng); showDetail(rec); }
       };
     });
@@ -197,8 +197,8 @@ App.records = (function () {
     };
     panel().querySelectorAll('.route-name').forEach((b) => {
       b.onclick = () => {
-        const rec = all.find((x) => x.id === Number(b.dataset.id));
-        if (rec) showDetail(rec);
+        const rec = all.find((x) => String(x.id) === b.dataset.id);
+        if (rec) { App.map.flyTo(rec.lat, rec.lng); showDetail(rec); } // その場所へ飛ぶ
       };
     });
     panel().querySelectorAll('.route-up').forEach((b) => {
@@ -336,7 +336,7 @@ App.records = (function () {
       showAddForm(record.lat, record.lng, { name: record.name, genre: record.genre });
     panel().querySelectorAll('.visit-chip').forEach((b) => {
       b.onclick = () => {
-        const rec = all.find((x) => x.id === Number(b.dataset.id));
+        const rec = all.find((x) => String(x.id) === b.dataset.id);
         if (rec) showDetail(rec);
       };
     });
