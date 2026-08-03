@@ -34,7 +34,7 @@ App.map = (function () {
     }).addTo(map);
     // 通常のピンはクラスタ（縮小で近いピンがまとまる）。ルート線＋番号ピンはまとめず別レイヤに。
     clusterLayer = L.markerClusterGroup({
-      maxClusterRadius: 60,       // この画面px以内の近いピンをひとつにまとめる
+      maxClusterRadius: 35,       // この画面px以内の近いピンだけまとめる（小さいほどまとまりにくい）
       showCoverageOnHover: false, // まとまり範囲のハイライトは出さない
       spiderfyOnMaxZoom: true,    // 最大ズームで重なりを扇状に展開
       removeOutsideVisibleBounds: true,
