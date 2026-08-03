@@ -2,6 +2,7 @@ window.App = window.App || {};
 App.map = (function () {
   let map, layer;
   let tempMarker = null; // 追加フォームを開いている間だけ出す目印
+  let pickMarker = null; // 「位置を修正」中だけ出すドラッグ可能マーカー
   let onMapClick = null; // (lat, lng) => void  ... Task 4 で設定
 
   const VIEW_KEY = 'date-recorder-view';
@@ -60,6 +61,33 @@ App.map = (function () {
   }
   function clearTempMarker() {
     if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
+  }
+
+  // 現在の地図表示範囲 [west, south, east, north]（ジオコーディングの近場バイアス用）
+  function getViewbox() {
+    if (!map) return null;
+    const b = map.getBounds();
+    return [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+  }
+
+  // 位置修正：対象地点へ寄せ、ドラッグ可能なマーカーを1つ出す
+  function startPickLocation(lat, lng) {
+    stopPickLocation();
+    map.setView([lat, lng], Math.max(map.getZoom(), 16));
+    pickMarker = L.marker([lat, lng], {
+      draggable: true, autoPan: true, zIndexOffset: 1200,
+      icon: L.divIcon({ className: '', html: '<div class="temp-pin picking"></div>',
+        iconSize: [24, 24], iconAnchor: [12, 12] }),
+    }).addTo(map);
+  }
+  // 現在のドラッグ位置 { lat, lng }（未開始なら null）
+  function getPickedLatLng() {
+    if (!pickMarker) return null;
+    const ll = pickMarker.getLatLng();
+    return { lat: ll.lat, lng: ll.lng };
+  }
+  function stopPickLocation() {
+    if (pickMarker) { map.removeLayer(pickMarker); pickMarker = null; }
   }
 
   // 1件ぶんのマーカーを作る。number=順番バッジ／count>1=訪問回数バッジ
@@ -122,5 +150,6 @@ App.map = (function () {
 
   return { init, setClickHandler, clearPins, renderPins, flyTo, fitTo, refresh,
            showTempMarker, clearTempMarker,
+           getViewbox, startPickLocation, getPickedLatLng, stopPickLocation,
            _getMap: () => map, _getLayer: () => layer };
 })();
