@@ -327,7 +327,7 @@ App.records = (function () {
         `<button type="button" class="tag-chip" data-tag="${t}">#${t}</button>`).join('')
         || '<span class="hint">タグなし</span>'}</div>
       <button type="button" id="revisit-btn" class="revisit-btn"><i class="ph ph-plus"></i>同じ場所にもう一度記録</button>
-      <a class="gmaps-btn" href="https://www.google.com/maps/search/?api=1&query=${record.lat},${record.lng}" target="_blank" rel="noopener"><i class="ph ph-map-trifold"></i>Googleマップで開く</a>
+      <a class="gmaps-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(record.name || '')}" target="_blank" rel="noopener"><i class="ph ph-map-trifold"></i>Googleマップで開く</a>
       <div class="form-actions">
         <button type="button" id="edit-btn"><i class="ph ph-pencil-simple"></i>編集</button>
         <button type="button" id="del-btn"><i class="ph ph-trash"></i>削除</button>
