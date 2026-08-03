@@ -244,77 +244,10 @@ App.records = (function () {
     ).join('');
   }
 
-  // 「場所を検索して追加」：下シートに検索フォームを出す（Aの入口）
-  function showPlaceSearch() {
-    searchResults = null;
-    App.map.clearTempMarker();
-    panel().innerHTML = `
-      <button type="button" id="ps-back" class="back-btn"><i class="ph ph-arrow-left"></i>戻る</button>
-      <h2>場所を検索して追加</h2>
-      <form id="ps-form" class="ps-form">
-        <input type="text" id="ps-input" placeholder="店名・地名（例：渋谷 スターバックス）" autocomplete="off">
-        <button type="submit" id="ps-go" title="検索"><i class="ph ph-magnifying-glass"></i></button>
-      </form>
-      <div id="ps-results"><p class="hint">場所名を入力して検索してください</p></div>`;
-    if (App.sheet) App.sheet.snapTo('half');
-    document.getElementById('ps-back').onclick = clearPanel;
-    const form = document.getElementById('ps-form');
-    const input = document.getElementById('ps-input');
-    const results = document.getElementById('ps-results');
-    const goBtn = document.getElementById('ps-go');
-    input.focus();
-    form.onsubmit = async (e) => {
-      e.preventDefault();
-      const q = input.value.trim();
-      if (!q) return;
-      goBtn.disabled = true;
-      results.innerHTML = '<p class="hint">検索中…</p>';
-      try {
-        const list = await App.geocode.search(q, { viewbox: App.map.getViewbox() });
-        renderPlaceResults(list);
-      } catch (err) {
-        results.innerHTML = '<p class="hint">検索に失敗しました。通信環境を確認してください。</p>';
-      } finally {
-        goBtn.disabled = false;
-      }
-    };
-  }
-
-  // 検索候補（最大5件）を下シートに描画。タップで追加フォームへ。
-  function renderPlaceResults(list) {
-    const results = document.getElementById('ps-results');
-    if (!results) return;
-    if (!list.length) {
-      results.innerHTML = '<p class="hint">見つかりませんでした。別のキーワードでお試しください。</p>';
-      return;
-    }
-    const esc = (s) => (s || '').replace(/</g, '&lt;');
-    // 候補を選ぶ：その地点へ寄り、追加フォームを場所名入りで開く（リスト行・地図ピン共通）
-    const pick = (i) => {
-      const p = list[i];
-      App.map.flyTo(p.lat, p.lng);
-      showAddForm(p.lat, p.lng, { name: p.name }); // 内部で候補ピンはクリアされる
-    };
-    results.innerHTML = `<ul class="result-list">${list.map((p, i) => `
-      <li><button type="button" class="result-row ps-pick" data-i="${i}">
-        <span class="result-thumb icon">${i + 1}</span>
-        <span class="result-text">
-          <span class="result-name">${esc(p.name)}</span>
-          <span class="result-sub">${esc(p.address)}</span>
-        </span>
-        <i class="ph ph-caret-right result-caret"></i>
-      </button></li>`).join('')}</ul>`;
-    results.querySelectorAll('.ps-pick').forEach((b) => {
-      b.onclick = () => pick(Number(b.dataset.i));
-    });
-    App.map.showSearchCandidates(list, pick); // 地図にも番号付き候補ピンを出す
-  }
-
   // 追加フォーム表示（地図クリック時／同じ場所への再訪時）
   // prefill: { name, genre } を渡すと場所名・ジャンルを引き継ぐ（日付は今日・メモ/写真は空）
   function showAddForm(lat, lng, prefill) {
     searchResults = null; // 追加を始めたら検索結果モードは終了
-    App.map.clearSearchCandidates(); // 場所検索の候補ピンを片付ける
     prefill = prefill || {};
     const today = new Date().toISOString().slice(0, 10);
     const nameVal = (prefill.name || '').replace(/"/g, '&quot;');
@@ -358,7 +291,6 @@ App.records = (function () {
 
   function clearPanel() {
     App.map.clearTempMarker(); // 追加地点の目印を消す
-    App.map.clearSearchCandidates(); // 場所検索の候補ピンを片付ける
     routeEditMode = false;     // ルート編集モードを解除
     panel().innerHTML = '<p class="hint">地図をクリックして記録を追加</p>';
   }
@@ -563,5 +495,5 @@ App.records = (function () {
 
   return { init, reload, setRecords, render, getAll, setFilterState, applyUiFilter, focusDay,
            searchTag, clearTag, searchByName, clearSearch,
-           showDetail, showEditForm, showAddForm, showPlaceSearch, _clearPanel: clearPanel };
+           showDetail, showEditForm, showAddForm, _clearPanel: clearPanel };
 })();

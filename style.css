@@ -89,27 +89,6 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 #locate-btn .ph { font-size: 18px; }
 #locate-btn:active { transform: scale(.96); }
 #locate-btn:disabled { opacity: .55; cursor: default; }
-/* 場所を検索して追加ボタン（現在地ボタンの上に重ねて配置） */
-#place-search-btn { position: absolute; left: 16px; bottom: 74px; z-index: 500;
-  display: inline-flex; align-items: center; gap: 7px;
-  border-radius: var(--radius-pill); padding: 11px 16px;
-  background: var(--surface); color: var(--accent-strong); font-size: 14px; font-weight: 600;
-  box-shadow: var(--shadow-md); transition: transform .1s; }
-#place-search-btn .ph { font-size: 18px; }
-#place-search-btn:active { transform: scale(.96); }
-#place-search-btn[hidden] { display: none; }
-/* 場所検索フォーム */
-.ps-form { display: flex; gap: 8px; margin: 10px 0 4px; }
-.ps-form input { flex: 1 1 auto; }
-.ps-form button { flex: 0 0 auto; padding: 0 14px; border-radius: var(--radius-sm); }
-/* 候補のサムネ（番号バッジ＝地図上の候補ピンと対応） */
-.result-thumb.icon { display: flex; align-items: center; justify-content: center;
-  background: var(--accent-soft); color: var(--accent-strong); font-size: 18px; font-weight: 700; }
-.result-thumb.icon .ph { font-size: 20px; }
-/* 地図上の場所検索候補ピン（番号付き） */
-.cand-pin { width: 28px; height: 28px; border-radius: 50%; background: var(--accent);
-  color: #fff; border: 2px solid #fff; box-shadow: var(--shadow-md);
-  display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; }
 
 /* ===== カレンダー ===== */
 #calendar-view { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
@@ -336,12 +315,8 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   #sheet-grip:active { cursor: grabbing; }
   #panel-content { padding: 4px 20px 24px; }
 
-  /* フローティング操作ボタンは右下に縦積み（上段の絞り込み・下段の検索バーと重ねない）。
-     z-index を下シート(20)より下にして、シートを上げたら隠れるようにする。 */
-  #locate-btn { right: 14px; bottom: calc(12dvh + 14px); top: auto; left: auto; padding: 11px; gap: 0; z-index: 10; }
+  #locate-btn { top: 14px; right: 14px; left: auto; bottom: auto; padding: 11px; gap: 0; }
   #locate-btn span { display: none; } /* スマホではアイコンのみの丸ボタン */
-  #place-search-btn { right: 14px; bottom: calc(12dvh + 62px); top: auto; left: auto; padding: 11px; gap: 0; z-index: 10; }
-  #place-search-btn span { display: none; } /* スマホではアイコンのみの丸ボタン */
   #calendar-view { padding-top: 124px; } /* 浮かせたヘッダー（2段）ぶん空ける */
 }
 
