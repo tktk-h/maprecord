@@ -16,6 +16,7 @@ function wireUI() {
     mapBtn.classList.add('active');
     calBtn.classList.remove('active');
     document.getElementById('locate-btn').hidden = false;
+    document.getElementById('place-search-btn').hidden = false;
     App.map.refresh();
   }
   function showCalendar() {
@@ -26,6 +27,7 @@ function wireUI() {
     calBtn.classList.add('active');
     mapBtn.classList.remove('active');
     document.getElementById('locate-btn').hidden = true;
+    document.getElementById('place-search-btn').hidden = true;
   }
   mapBtn.addEventListener('click', showMap);
   calBtn.addEventListener('click', showCalendar);
@@ -53,6 +55,11 @@ function wireUI() {
       },
       { enableHighAccuracy: true, timeout: 10000 },
     );
+  });
+
+  // 場所を検索して追加
+  document.getElementById('place-search-btn').addEventListener('click', () => {
+    App.records.showPlaceSearch();
   });
 
   // カレンダーで日付タップ → その日で絞り込み＆地図へ

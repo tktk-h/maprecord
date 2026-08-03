@@ -89,6 +89,23 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 #locate-btn .ph { font-size: 18px; }
 #locate-btn:active { transform: scale(.96); }
 #locate-btn:disabled { opacity: .55; cursor: default; }
+/* 場所を検索して追加ボタン（現在地ボタンの上に重ねて配置） */
+#place-search-btn { position: absolute; left: 16px; bottom: 74px; z-index: 500;
+  display: inline-flex; align-items: center; gap: 7px;
+  border-radius: var(--radius-pill); padding: 11px 16px;
+  background: var(--surface); color: var(--accent-strong); font-size: 14px; font-weight: 600;
+  box-shadow: var(--shadow-md); transition: transform .1s; }
+#place-search-btn .ph { font-size: 18px; }
+#place-search-btn:active { transform: scale(.96); }
+#place-search-btn[hidden] { display: none; }
+/* 場所検索フォーム */
+.ps-form { display: flex; gap: 8px; margin: 10px 0 4px; }
+.ps-form input { flex: 1 1 auto; }
+.ps-form button { flex: 0 0 auto; padding: 0 14px; border-radius: var(--radius-sm); }
+/* 候補のアイコンサムネ（写真がない場所検索用） */
+.result-thumb.icon { display: flex; align-items: center; justify-content: center;
+  background: var(--surface-2); color: var(--accent-strong); }
+.result-thumb.icon .ph { font-size: 20px; }
 
 /* ===== カレンダー ===== */
 #calendar-view { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;
@@ -306,6 +323,8 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 
   #locate-btn { top: 14px; right: 14px; left: auto; bottom: auto; padding: 11px; gap: 0; }
   #locate-btn span { display: none; } /* スマホではアイコンのみの丸ボタン */
+  #place-search-btn { top: 14px; right: 64px; left: auto; bottom: auto; padding: 11px; gap: 0; }
+  #place-search-btn span { display: none; } /* スマホではアイコンのみの丸ボタン */
   #calendar-view { padding-top: 124px; } /* 浮かせたヘッダー（2段）ぶん空ける */
 }
 
