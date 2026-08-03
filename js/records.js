@@ -431,6 +431,9 @@ App.records = (function () {
         <label>今の写真（×で削除）</label>
         <div id="existing-photos" class="photos"></div>
         <label>写真を追加<input type="file" name="photos" accept="image/*" multiple></label>
+        <label>場所の位置</label>
+        <button type="button" id="fix-loc-btn" class="fix-loc-btn"><i class="ph ph-map-pin"></i>位置を修正</button>
+        <p id="fix-loc-hint" class="hint" hidden>ピンをドラッグして正しい位置へ。「更新」で保存されます。</p>
         <div class="form-actions">
           <button type="submit">更新</button>
           <button type="button" id="cancel-btn">キャンセル</button>
@@ -449,7 +452,16 @@ App.records = (function () {
     }
     renderExisting();
 
-    document.getElementById('cancel-btn').onclick = () => showDetail(record);
+    document.getElementById('fix-loc-btn').onclick = () => {
+      App.map.startPickLocation(record.lat, record.lng);
+      const btn = document.getElementById('fix-loc-btn');
+      btn.classList.add('active');
+      btn.innerHTML = '<i class="ph ph-map-pin"></i>位置修正中（ドラッグ）';
+      document.getElementById('fix-loc-hint').hidden = false;
+      if (App.sheet) App.sheet.snapTo('peek'); // 地図を広く見せる
+    };
+
+    document.getElementById('cancel-btn').onclick = () => { App.map.stopPickLocation(); showDetail(record); };
     document.getElementById('edit-form').onsubmit = async (e) => {
       e.preventDefault();
       const f = e.target;
@@ -458,12 +470,15 @@ App.records = (function () {
       try {
         const newFiles = Array.from(f.photos.files);
         const uploaded = newFiles.length ? await App.photos.toStoredMany(newFiles) : [];
+        const picked = App.map.getPickedLatLng(); // 「位置を修正」していれば新座標
         const updated = {
           id: record.id, date: f.date.value, name: f.name.value, genre: f.genre.value,
           memo: f.memo.value, tags: parseTags(f.tags.value), order: record.order,
-          lat: record.lat, lng: record.lng,
+          lat: picked ? picked.lat : record.lat,
+          lng: picked ? picked.lng : record.lng,
           photos: keep.concat(uploaded), // 残した既存写真＋追加分
         };
+        App.map.stopPickLocation();
         await App.cloud.put(updated);
         showDetail(updated);
       } catch (err) {

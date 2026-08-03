@@ -166,6 +166,11 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   color: var(--accent-strong); font-size: 14px; font-weight: 600; text-decoration: none; }
 .gmaps-btn .ph { font-size: 18px; }
 .gmaps-btn:active { transform: scale(.98); }
+.fix-loc-btn { display: inline-flex; align-items: center; gap: 7px; margin: 2px 0 2px;
+  padding: 10px 14px; border-radius: var(--radius-sm); background: var(--surface-2);
+  color: var(--accent-strong); font-size: 14px; font-weight: 600; }
+.fix-loc-btn.active { background: var(--accent); color: #fff; }
+.fix-loc-btn .ph { font-size: 18px; }
 .meta { color: var(--text-muted); font-size: 13px; margin: 2px 0 12px; }
 
 /* 検索候補リスト（Googleマップ風） */
@@ -248,6 +253,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   70%  { box-shadow: 0 0 0 15px rgba(183,110,100,0); }
   100% { box-shadow: 0 0 0 0 rgba(183,110,100,0); }
 }
+.temp-pin.picking { cursor: grab; box-shadow: 0 0 0 4px rgba(183,110,100,.35); }
 
 /* ===== ルート（番号ピン） ===== */
 .pin-order { position: absolute; top: -6px; left: -6px; width: 20px; height: 20px;
