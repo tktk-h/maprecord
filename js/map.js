@@ -27,6 +27,8 @@ App.map = (function () {
     L.control.zoom({ position: 'bottomleft' }).addTo(map); // 浮かせたピルと重ならないよう左下へ
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       maxZoom: 20, subdomains: 'abcd',
+      keepBuffer: 6,            // 画面外タイルを多めに保持（パン/ズームでの空白を減らす）
+      updateWhenZooming: false, // ズーム操作中は要求を出さず、落ち着いてからまとめて読み込む
       attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
     }).addTo(map);
     layer = L.layerGroup().addTo(map);

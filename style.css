@@ -77,7 +77,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 
 /* ===== レイアウト ===== */
 #layout { flex: 1; display: flex; min-height: 0; position: relative; }
-#map { flex: 1; min-height: 0; }
+#map { flex: 1; min-height: 0; background: #eae7e1; } /* 陸地に近い下地色：タイル読込前の空白を目立たせない */
 #map[hidden], #panel[hidden] { display: none; }
 
 /* 現在地ボタン */
