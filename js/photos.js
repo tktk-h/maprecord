@@ -40,6 +40,14 @@ App.photos = (function () {
     return out;
   }
 
+  // 方式B：写真は data URL で記録に埋め込むため Firestore の1記録=1MB上限に注意。
+  // 他フィールドの余白を残し、写真の合計は約0.9MBまでを安全枠とする。
+  const PHOTO_BUDGET = 900000; // bytes（data URL は ASCII なので概ね「文字数=バイト数」）
+  function bytesOf(photos) {
+    return (photos || []).reduce((sum, p) => sum + ((p && p.url) ? p.url.length : 0), 0);
+  }
+  function withinLimit(photos) { return bytesOf(photos) <= PHOTO_BUDGET; }
+
   function _selfTest() {
     const eq = (n, got, want) => console.log((JSON.stringify(got) === JSON.stringify(want) ? 'PASS' : 'FAIL') + ' ' + n, JSON.stringify(got));
     eq('landscape', fitSize(4000, 3000, 1280), { w: 1280, h: 960 });
@@ -48,6 +56,6 @@ App.photos = (function () {
     eq('square', fitSize(2000, 2000, 1280), { w: 1280, h: 1280 });
   }
 
-  return { fitSize, compressToDataURL, toStored, toStoredMany, _selfTest };
+  return { fitSize, compressToDataURL, toStored, toStoredMany, bytesOf, withinLimit, _selfTest };
 })();
 export const photos = App.photos;

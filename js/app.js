@@ -81,10 +81,6 @@ function wireUI() {
 
   // バックアップ（書き出しのみ。クラウド版は読み込み復元なし）
   document.getElementById('export-btn').addEventListener('click', () => App.backup.exportJson());
-  document.getElementById('import-input').addEventListener('change', (e) => {
-    App.backup.importJson();
-    e.target.value = '';
-  });
 
   // 設定：ログアウト・招待コード再表示
   document.getElementById('logout-btn').addEventListener('click', () => auth.logout());

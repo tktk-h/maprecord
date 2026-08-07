@@ -23,6 +23,11 @@ App.records = (function () {
   function tagsToInput(tags) {
     return (tags || []).map((t) => '#' + t).join(' ');
   }
+  // 表示・属性用エスケープ（ユーザー入力の名前/メモ/タグに < > & " が入っても壊れないように）
+  function esc(s) {
+    return (s == null ? '' : String(s))
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
 
   // ルートの並び順（order 昇順、無ければ登録順=id）
   function byOrder(a, b) {
@@ -139,7 +144,7 @@ App.records = (function () {
       return `<li><button type="button" class="result-row" data-id="${r.id}">
         ${thumb}
         <span class="result-text">
-          <span class="result-name">${r.name || '(名称未設定)'}</span>
+          <span class="result-name">${esc(r.name) || '(名称未設定)'}</span>
           <span class="result-sub">${sub}</span>
         </span>
         <i class="ph ph-caret-right result-caret"></i>
@@ -176,7 +181,7 @@ App.records = (function () {
       return `<li class="flow-row">
         <span class="flow-no">${i + 1}</span>
         <button type="button" class="route-name" data-id="${r.id}">
-          <span class="flow-name">${r.name || '(名称未設定)'}</span>
+          <span class="flow-name">${esc(r.name) || '(名称未設定)'}</span>
           <span class="flow-genre">${App.genres.label(r.genre)}</span>
         </button>
         ${move}
@@ -250,7 +255,7 @@ App.records = (function () {
     searchResults = null; // 追加を始めたら検索結果モードは終了
     prefill = prefill || {};
     const today = new Date().toISOString().slice(0, 10);
-    const nameVal = (prefill.name || '').replace(/"/g, '&quot;');
+    const nameVal = esc(prefill.name);
     panel().innerHTML = `
       <h2>記録を追加</h2>
       <form id="rec-form">
@@ -277,6 +282,11 @@ App.records = (function () {
       submitBtn.disabled = true; submitBtn.textContent = '保存中…';
       try {
         const photos = await App.photos.toStoredMany(files); // 圧縮 → {url}[]
+        if (!App.photos.withinLimit(photos)) {
+          alert('写真の合計サイズが大きすぎて保存できません。枚数を減らすか、写真を分けて登録してください。');
+          submitBtn.disabled = false; submitBtn.textContent = '保存';
+          return;
+        }
         await App.cloud.add({
           date: f.date.value, name: f.name.value, genre: f.genre.value,
           memo: f.memo.value, tags: parseTags(f.tags.value), order, lat, lng, photos,
@@ -318,13 +328,13 @@ App.records = (function () {
       </div>` : '';
     panel().innerHTML = `
       <button type="button" id="detail-back" class="back-btn"><i class="ph ph-arrow-left"></i>戻る</button>
-      <h2>${record.name}</h2>
+      <h2>${esc(record.name)}</h2>
       <p class="meta">${App.genres.label(record.genre)} ・ ${record.date}</p>
       ${visitsHtml}
       <div class="photos">${photosHtml || '<span class="hint">写真なし</span>'}</div>
-      <p class="memo">${(record.memo || '').replace(/\n/g, '<br>') || '<span class="hint">メモなし</span>'}</p>
+      <p class="memo">${esc(record.memo).replace(/\n/g, '<br>') || '<span class="hint">メモなし</span>'}</p>
       <div class="tags">${(record.tags || []).map((t) =>
-        `<button type="button" class="tag-chip" data-tag="${t}">#${t}</button>`).join('')
+        `<button type="button" class="tag-chip" data-tag="${esc(t)}">#${esc(t)}</button>`).join('')
         || '<span class="hint">タグなし</span>'}</div>
       <button type="button" id="revisit-btn" class="revisit-btn"><i class="ph ph-plus"></i>同じ場所にもう一度記録</button>
       <a class="gmaps-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(record.name || '')}" target="_blank" rel="noopener"><i class="ph ph-map-trifold"></i>Googleマップで開く</a>
@@ -361,10 +371,10 @@ App.records = (function () {
       <h2>記録を編集</h2>
       <form id="edit-form">
         <label>日付<input type="date" name="date" value="${record.date}" required></label>
-        <label>場所名<input type="text" name="name" value="${record.name}" required></label>
+        <label>場所名<input type="text" name="name" value="${esc(record.name)}" required></label>
         <label>ジャンル<select name="genre">${genreOptions(record.genre)}</select></label>
-        <label>メモ・感想<textarea name="memo" rows="4">${record.memo || ''}</textarea></label>
-        <label>ハッシュタグ<input type="text" name="tags" value="${tagsToInput(record.tags)}" placeholder="#カフェ #記念日"></label>
+        <label>メモ・感想<textarea name="memo" rows="4">${esc(record.memo)}</textarea></label>
+        <label>ハッシュタグ<input type="text" name="tags" value="${esc(tagsToInput(record.tags))}" placeholder="#カフェ #記念日"></label>
         <label>今の写真（<i class="ph ph-map-pin"></i>でピンの写真に・×で削除）</label>
         <div id="existing-photos" class="photos"></div>
         <label>写真を追加<input type="file" name="photos" accept="image/*" multiple></label>
@@ -421,12 +431,18 @@ App.records = (function () {
         const newFiles = Array.from(f.photos.files);
         const uploaded = newFiles.length ? await App.photos.toStoredMany(newFiles) : [];
         const picked = App.map.getPickedLatLng(); // 「位置を修正」していれば新座標
+        const photos = keep.concat(uploaded); // 残した既存写真＋追加分
+        if (!App.photos.withinLimit(photos)) {
+          alert('写真の合計サイズが大きすぎて保存できません。枚数を減らすか、写真を分けて登録してください。');
+          btn.disabled = false; btn.textContent = '更新';
+          return;
+        }
         const updated = {
           id: record.id, date: f.date.value, name: f.name.value, genre: f.genre.value,
           memo: f.memo.value, tags: parseTags(f.tags.value), order: record.order,
           lat: picked ? picked.lat : record.lat,
           lng: picked ? picked.lng : record.lng,
-          photos: keep.concat(uploaded), // 残した既存写真＋追加分
+          photos,
         };
         App.map.stopPickLocation();
         await App.cloud.put(updated);

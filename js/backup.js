@@ -11,8 +11,5 @@ App.backup = (function () {
     a.click();
     URL.revokeObjectURL(a.href);
   }
-  function importJson() {
-    alert('クラウド版では読み込み復元は行いません（控え用の書き出しのみ）。');
-  }
-  return { exportJson, importJson };
+  return { exportJson };
 })();
