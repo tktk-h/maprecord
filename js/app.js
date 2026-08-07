@@ -96,6 +96,9 @@ function wireUI() {
 
 function startApp(sp) {
   cloud.setSpace(sp.id);
+  // アプリを開いた記録（最終アクセス）を残す。失敗しても本体には影響させない。
+  const u = auth.user();
+  if (u) space.touchLastSeen(sp.id, u.uid, u.displayName || u.email || '').catch(() => {});
   if (!started) {
     App.map.init();
     App.records.init();

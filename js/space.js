@@ -51,6 +51,14 @@ App.space = (function () {
     return { id: spaceId, ...fresh.data() };
   }
 
+  // アプリを開いたことを記録：スペースに「メンバーごとの最終アクセス日時と名前」を書く。
+  // 失敗しても致命的ではないので呼び出し側で握りつぶす想定。
+  async function touchLastSeen(spaceId, uid, name) {
+    await updateDoc(doc(fb.db, SPACES, spaceId), {
+      ['lastSeen.' + uid]: { at: Date.now(), name: name || '' },
+    });
+  }
+
   function _selfTest() {
     const eq = (n, got, want) => console.log((got === want ? 'PASS' : 'FAIL') + ' ' + n, got);
     const c = genInviteCode();
@@ -61,6 +69,6 @@ App.space = (function () {
     eq('match', normalizeCode('abcd-2345') === normalizeCode('ABCD2345'), true);
   }
 
-  return { genInviteCode, normalizeCode, findMySpace, createSpace, joinSpace, _selfTest };
+  return { genInviteCode, normalizeCode, findMySpace, createSpace, joinSpace, touchLastSeen, _selfTest };
 })();
 export const space = App.space;
