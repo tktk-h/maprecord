@@ -365,7 +365,7 @@ App.records = (function () {
         <label>ジャンル<select name="genre">${genreOptions(record.genre)}</select></label>
         <label>メモ・感想<textarea name="memo" rows="4">${record.memo || ''}</textarea></label>
         <label>ハッシュタグ<input type="text" name="tags" value="${tagsToInput(record.tags)}" placeholder="#カフェ #記念日"></label>
-        <label>今の写真（×で削除）</label>
+        <label>今の写真（<i class="ph ph-map-pin"></i>でピンの写真に・×で削除）</label>
         <div id="existing-photos" class="photos"></div>
         <label>写真を追加<input type="file" name="photos" accept="image/*" multiple></label>
         <label>場所の位置</label>
@@ -380,9 +380,22 @@ App.records = (function () {
     const box = document.getElementById('existing-photos');
     function renderExisting() {
       if (keep.length === 0) { box.innerHTML = '<span class="hint">写真なし</span>'; return; }
+      // 先頭(keep[0])の写真がピンに使われる。各写真の📍でその写真を先頭に持ってくる。
       box.innerHTML = keep.map((p, i) =>
-        `<div class="photo-edit"><img class="thumb" src="${p.url}" alt="">
-          <button type="button" class="photo-del" data-i="${i}"><i class="ph ph-x"></i></button></div>`).join('');
+        `<div class="photo-edit${i === 0 ? ' is-cover' : ''}">
+          <img class="thumb" src="${p.url}" alt="">
+          ${i === 0
+            ? '<span class="cover-badge"><i class="ph ph-map-pin"></i>ピン</span>'
+            : `<button type="button" class="photo-cover" data-i="${i}" title="ピンの写真にする"><i class="ph ph-map-pin"></i></button>`}
+          <button type="button" class="photo-del" data-i="${i}"><i class="ph ph-x"></i></button>
+        </div>`).join('');
+      box.querySelectorAll('.photo-cover').forEach((btn) => {
+        btn.onclick = () => {
+          const [chosen] = keep.splice(Number(btn.dataset.i), 1);
+          keep.unshift(chosen); // 選んだ写真を先頭＝ピンの写真にする
+          renderExisting();
+        };
+      });
       box.querySelectorAll('.photo-del').forEach((btn) => {
         btn.onclick = () => { keep.splice(Number(btn.dataset.i), 1); renderExisting(); };
       });

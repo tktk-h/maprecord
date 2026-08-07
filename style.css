@@ -295,6 +295,16 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   display: flex; align-items: center; justify-content: center;
   border-radius: 50%; background: rgba(28,24,20,.62); color: #fff; font-size: 13px; padding: 0; }
 .photo-del:hover { background: rgba(28,24,20,.82); }
+/* ピンの写真の選択（先頭＝ピン。左上に📍ボタン／現在のピン写真はバッジ＋枠） */
+.photo-cover { position: absolute; top: 4px; left: 4px; width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: rgba(28,24,20,.62); color: #fff; font-size: 12px; padding: 0; }
+.photo-cover:hover { background: var(--accent); }
+.cover-badge { position: absolute; top: 4px; left: 4px; display: inline-flex; align-items: center; gap: 3px;
+  background: var(--accent); color: #fff; font-size: 10px; font-weight: 700;
+  padding: 2px 6px; border-radius: var(--radius-pill); }
+.cover-badge .ph { font-size: 11px; }
+.photo-edit.is-cover .thumb { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* ===== スマホ最適化（末尾に置いて上書き） ===== */
 @media (max-width: 700px) {
