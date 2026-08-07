@@ -26,11 +26,12 @@ App.map = (function () {
     const v = loadView();
     map = L.map('map', { zoomControl: false }).setView([v.lat, v.lng], v.zoom);
     L.control.zoom({ position: 'bottomleft' }).addTo(map); // 浮かせたピルと重ならないよう左下へ
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      maxZoom: 20, subdomains: 'abcd',
+    // 地理院タイル（淡色地図）：日本語・日本フォントで表記される国産タイル。無料・キー不要・国内専用。
+    L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png', {
+      maxZoom: 18,              // 地理院淡色は z18 まで
       keepBuffer: 6,            // 画面外タイルを多めに保持（パン/ズームでの空白を減らす）
       updateWhenZooming: false, // ズーム操作中は要求を出さず、落ち着いてからまとめて読み込む
-      attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+      attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a>'
     }).addTo(map);
     layer = L.layerGroup().addTo(map);
     map.on('click', (e) => { if (onMapClick) onMapClick(e.latlng.lat, e.latlng.lng); });
