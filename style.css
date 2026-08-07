@@ -330,6 +330,21 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   #calendar-view { padding-top: 124px; } /* 浮かせたヘッダー（2段）ぶん空ける */
 }
 
+/* ===== 起動スプラッシュ（待機画面） ===== */
+#splash { position: fixed; inset: 0; z-index: 4000; background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity .35s ease; }
+#splash[hidden] { display: none; }
+.splash-inner { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.splash-logo { width: 72px; height: 72px; border-radius: 22px; background: var(--accent);
+  color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-md); }
+.splash-logo .ph { font-size: 40px; }
+.splash-title { font-size: 20px; font-weight: 700; color: var(--text); margin: 0; letter-spacing: .02em; }
+.splash-spinner { width: 28px; height: 28px; border-radius: 50%;
+  border: 3px solid var(--accent-soft); border-top-color: var(--accent);
+  animation: splash-spin .8s linear infinite; }
+@keyframes splash-spin { to { transform: rotate(360deg); } }
+
 /* ===== ログイン/スペースのゲート ===== */
 #gate { position: fixed; inset: 0; z-index: 3000; background: var(--bg);
   display: flex; align-items: center; justify-content: center; padding: 24px; }

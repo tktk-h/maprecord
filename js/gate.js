@@ -7,13 +7,22 @@ App.gate = (function () {
   const $ = (id) => document.getElementById(id);
   const show = (id, on) => { $(id).hidden = !on; };
 
+  // 起動スプラッシュを消す（次の画面＝ログイン/スペース/本体 が決まったタイミングで呼ぶ）
+  function hideSplash() {
+    const el = $('splash');
+    if (!el || el.hidden) return;
+    el.style.opacity = '0';
+    setTimeout(() => { el.hidden = true; }, 350); // フェードしてから非表示
+  }
+
   function showGate(which) {
+    hideSplash();
     show('gate', true);
     show('gate-login', which === 'login');
     show('gate-space', which === 'space');
     show('gate-invite', which === 'invite');
   }
-  function hideGate() { show('gate', false); }
+  function hideGate() { hideSplash(); show('gate', false); }
 
   async function afterLogin(user) {
     try {
