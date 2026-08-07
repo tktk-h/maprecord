@@ -7,3 +7,8 @@ desktop.ini
 # 参照用スクリーンショット（アプリ本体には不要）
 S__*.jpg
 ビーリアル.jpg
+
+# Firebase サービスアカウント鍵（絶対にコミットしない）
+serviceAccountKey.json
+*serviceaccount*.json
+node_modules/
