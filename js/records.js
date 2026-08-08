@@ -89,6 +89,51 @@ App.records = (function () {
     return v ? v.photos[0] : null;
   }
 
+  // 名前一致を座標でまとめ、訪問回数を付けて返す（純粋・テスト可能）
+  // records=全記録配列, q=検索語, limit=安全上限
+  function matchRecords(records, q, limit) {
+    if (!q) return [];
+    const key = (r) => r.lat + ',' + r.lng;
+    const counts = {};
+    records.forEach((r) => { const k = key(r); counts[k] = (counts[k] || 0) + 1; });
+    const seen = {};
+    const out = [];
+    records
+      .filter((r) => r.name && r.name.includes(q))
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)) // 新しい順を代表に
+      .forEach((r) => {
+        const k = key(r);
+        if (seen[k]) return;
+        seen[k] = true;
+        out.push({ rep: r, count: counts[k] || 1 });
+      });
+    return out.slice(0, limit || 8);
+  }
+
+  // ドロップダウン用：内部の全記録から候補を作る
+  function suggestRecords(q, limit) {
+    return matchRecords(all, q, limit).map((g) => Object.assign({}, g, {
+      photo: firstPhotoAt(g.rep.lat, g.rep.lng),
+    }));
+  }
+
+  function _selfTest() {
+    const recs = [
+      { id: 1, name: 'マクドナルド渋谷', lat: 1, lng: 1, date: '2026-07-01' },
+      { id: 2, name: 'マクドナルド渋谷', lat: 1, lng: 1, date: '2026-08-01' },
+      { id: 3, name: 'マクドナルド新宿', lat: 2, lng: 2, date: '2026-07-15' },
+      { id: 4, name: 'スターバックス',   lat: 3, lng: 3, date: '2026-07-20' },
+    ];
+    const eq = (name, got, want) => console.log((got === want ? 'PASS' : 'FAIL') + ' ' + name, got);
+    const mac = matchRecords(recs, 'マクドナルド', 8);
+    eq('match-groups', mac.length, 2);
+    eq('match-count', mac[0].count, 2);
+    eq('match-rep-newest', mac[0].rep.id, 2);
+    eq('match-none', matchRecords(recs, 'ラーメン', 8).length, 0);
+    eq('match-empty', matchRecords(recs, '', 8).length, 0);
+    eq('match-limit', matchRecords(recs, 'マ', 1).length, 1);
+  }
+
   // 場所名で検索。同じ場所（座標）はまとめる。
   // 0=なし / 1=その場所へ移動して詳細 / 2以上=候補ピン＋リスト表示
   function searchByName(q) {
@@ -299,7 +344,7 @@ App.records = (function () {
   }
 
   // 店(POI)カード：Places の情報を Googleマップ風に下シートへ。「記録に追加」で追加フォームへ。
-  async function showPlaceCard(placeId) {
+  async function showPlaceCard(placeId, opts) {
     searchResults = null;
     activeTag = null;
     App.map.clearTempMarker();
@@ -319,6 +364,8 @@ App.records = (function () {
       document.getElementById('pc-back').onclick = clearPanel;
       return;
     }
+
+    if (opts && opts.fly) App.map.flyTo(p.lat, p.lng); // 検索から開いた時はその場所へ寄せる
 
     const photos = p.photoUrls.length
       ? `<div class="pc-photos">${p.photoUrls.map((u, i) => `<img class="pc-photo" src="${u}" data-i="${i}" alt="">`).join('')}</div>`
@@ -587,5 +634,6 @@ App.records = (function () {
 
   return { init, reload, setRecords, render, getAll, setFilterState, applyUiFilter, focusDay,
            searchTag, clearTag, searchByName, clearSearch,
-           showDetail, showEditForm, showAddForm, showPlaceCard, _clearPanel: clearPanel };
+           showDetail, showEditForm, showAddForm, showPlaceCard, suggestRecords,
+           _clearPanel: clearPanel, _selfTest };
 })();
