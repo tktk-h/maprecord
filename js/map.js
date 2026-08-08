@@ -9,6 +9,7 @@ App.map = (function () {
   let tempMarker = null;       // 追加フォーム中の目印
   let pickMarker = null;       // 位置修正のドラッグ用
   let onMapClick = null;       // (lat, lng) => void
+  let onPlaceClick = null;     // (placeId) => void  ... 店(POI)タップ時
 
   const VIEW_KEY = 'date-recorder-view';
 
@@ -46,14 +47,22 @@ App.map = (function () {
       disableDefaultUI: true,
       zoomControl: true,
       zoomControlOptions: { position: google.maps.ControlPosition.LEFT_BOTTOM },
-      clickableIcons: false,      // GoogleのPOIクリックで情報ウィンドウを出さない
+      clickableIcons: true,       // 店(POI)をタップ可能に（placeIdで分岐）
       gestureHandling: 'greedy',  // スマホ1本指でも地図が動く
     });
-    map.addListener('click', (e) => { if (onMapClick && e.latLng) onMapClick(e.latLng.lat(), e.latLng.lng()); });
+    map.addListener('click', (e) => {
+      if (e.placeId) {                 // 店・施設(POI)をタップ
+        if (e.stop) e.stop();          // Google標準の情報ウィンドウを抑制
+        if (onPlaceClick) onPlaceClick(e.placeId);
+        return;
+      }
+      if (onMapClick && e.latLng) onMapClick(e.latLng.lat(), e.latLng.lng()); // 空きタップ＝記録追加
+    });
     map.addListener('idle', saveView); // 表示位置・ズームを保存
   }
 
   function setClickHandler(fn) { onMapClick = fn; }
+  function setPlaceClickHandler(fn) { onPlaceClick = fn; }
 
   function clearPins() {
     markers.forEach((m) => { m.map = null; });
@@ -172,7 +181,7 @@ App.map = (function () {
     });
   }
 
-  return { init, setClickHandler, clearPins, renderPins, flyTo, fitTo, refresh,
+  return { init, setClickHandler, setPlaceClickHandler, clearPins, renderPins, flyTo, fitTo, refresh,
            showTempMarker, clearTempMarker,
            startPickLocation, getPickedLatLng, stopPickLocation,
            _getMap: () => map };
