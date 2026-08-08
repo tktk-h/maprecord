@@ -349,7 +349,10 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   #sheet-grip { display: flex; justify-content: center; align-items: center;
     flex: 0 0 auto; padding: 12px 0 8px; cursor: grab; touch-action: none; }
   #sheet-grip:active { cursor: grabbing; }
-  #panel-content { padding: 4px 20px 24px; }
+  /* full 未満はネイティブスクロールを止めて、スワイプでシート自体を動かす。
+     full（一番上）のときだけ中身をスクロールできる（Googleマップ風）。 */
+  #panel-content { padding: 4px 20px 24px; touch-action: none; }
+  #panel.at-full #panel-content { touch-action: pan-y; }
 
   #locate-btn { top: 14px; right: 14px; left: auto; bottom: auto; padding: 11px; gap: 0; }
   #locate-btn span { display: none; } /* スマホではアイコンのみの丸ボタン */

@@ -8,6 +8,8 @@ App.sheet = (function () {
   let startPointerY = 0;
   let startY = 0;
   let closing = false; // 閉じアニメ中フラグ（途中で開き直したらキャンセル）
+  let mode = null;     // ドラッグ中の意図: 'sheet'（シート上下）/ 'scroll'（中身スクロール）
+  let downOnGrip = false; // つまみ（グリップ）から始まったドラッグか
 
   const isMobile = () => window.matchMedia('(max-width: 700px)').matches;
 
@@ -54,7 +56,22 @@ App.sheet = (function () {
       panel.style.transform = 'translateY(0)'; // 閉じ途中なら引き戻す
       setY(target);
     }
+    updateAtFull();
   }
+
+  // 地図タップなどで、開いているシートを最小（peek）まで下げる
+  function collapse() {
+    if (!panel || panel.hidden || !isMobile()) return;
+    computeSnaps();
+    if (currentY <= snaps.peek + 1) return; // すでに最小
+    panel.style.transition = '';
+    panel.style.transform = 'translateY(0)';
+    setY(snaps.peek);
+    updateAtFull();
+  }
+
+  function atFull() { return currentY >= snaps.full - 1; }
+  function updateAtFull() { if (panel) panel.classList.toggle('at-full', atFull()); }
 
   function onHideEnd(e) {
     if (e.propertyName !== 'transform') return;
@@ -71,27 +88,52 @@ App.sheet = (function () {
     panel.style.transform = 'translateY(100%)';
   }
 
+  // シート全体（つまみ＋中身）でドラッグを受ける。中身のスクロールとの両立は
+  // onMove で意図（mode）を判定して切り替える（Googleマップ風）。
   function onDown(e) {
     if (!isMobile()) return;
     dragging = true;
+    mode = null;
     startPointerY = e.clientY;
     startY = currentY;
-    panel.style.transition = 'none';
-    if (grip.setPointerCapture) grip.setPointerCapture(e.pointerId);
+    downOnGrip = !!(grip && (e.target === grip || grip.contains(e.target)));
+    // transition はドラッグ確定時に切る（タップを壊さないため、ここでは触らない）
   }
   function onMove(e) {
     if (!dragging) return;
+    const total = e.clientY - startPointerY; // 下方向+ / 上方向-
+    if (mode === null) {
+      if (Math.abs(total) < 6) return;       // 閾値未満はタップ判定を残す
+      computeSnaps();
+      if (!atFull() || downOnGrip) {
+        // full 未満、またはつまみ操作 → 常にシートを上下
+        mode = 'sheet';
+      } else {
+        // full のとき：中身が最上部で下げようとした → シートを下げる
+        // それ以外（上スクロール／途中位置）は中身のネイティブスクロールに任せる
+        const content = document.getElementById('panel-content');
+        if (total > 0 && content && content.scrollTop <= 0) mode = 'sheet';
+        else { mode = 'scroll'; dragging = false; return; }
+      }
+      panel.style.transition = 'none';
+      try { if (panel.setPointerCapture) panel.setPointerCapture(e.pointerId); } catch (_) { /* noop */ }
+    }
+    if (mode !== 'sheet') return;
     computeSnaps();
-    // 高さベース：指を上に動かすと（clientYが減る）高くなる
-    let y = startY - (e.clientY - startPointerY);
+    let y = startY - total;                   // 指を上に動かすと高くなる
     y = Math.max(snaps.peek, Math.min(snaps.full, y));
     setY(y);
+    if (e.cancelable) e.preventDefault();
   }
   function onUp() {
-    if (!dragging) return;
+    if (!dragging) { mode = null; return; }
     dragging = false;
-    panel.style.transition = '';
-    setY(nearest(currentY));
+    if (mode === 'sheet') {
+      panel.style.transition = '';
+      setY(nearest(currentY));
+    }
+    updateAtFull();
+    mode = null;
   }
 
   function init() {
@@ -99,11 +141,12 @@ App.sheet = (function () {
     grip = document.getElementById('sheet-grip');
     computeSnaps();
     setY(snaps.peek); // 最初は小さく（地図を広く見せる）
-    grip.addEventListener('pointerdown', onDown);
+    panel.addEventListener('pointerdown', onDown); // つまみ＋中身のどちらからでもドラッグ
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
-    window.addEventListener('resize', () => { computeSnaps(); setY(nearest(currentY)); });
+    window.addEventListener('pointercancel', onUp);
+    window.addEventListener('resize', () => { computeSnaps(); setY(nearest(currentY)); updateAtFull(); });
   }
 
-  return { init, snapTo, hide };
+  return { init, snapTo, hide, collapse };
 })();

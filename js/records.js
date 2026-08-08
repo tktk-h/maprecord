@@ -577,6 +577,7 @@ App.records = (function () {
   function init() {
     App.map.setLongPressHandler(showAddForm); // 長押しで記録追加
     App.map.setPlaceClickHandler(showPlaceCard);
+    App.map.setClickHandler(() => { if (App.sheet) App.sheet.collapse(); }); // 地図タップでシートを下げる
     buildGenreFilters();
     ['mode-select', 'day-input', 'from-input', 'to-input'].forEach((id) =>
       document.getElementById(id).addEventListener('change', applyUiFilter));
