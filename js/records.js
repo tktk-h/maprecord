@@ -363,7 +363,7 @@ App.records = (function () {
   function clearPanel() {
     App.map.clearTempMarker(); // 追加地点の目印を消す
     routeEditMode = false;     // ルート編集モードを解除
-    panel().innerHTML = '<p class="hint">地図をクリックして記録を追加</p>';
+    panel().innerHTML = '<p class="hint">地図を長押しして記録を追加</p>';
   }
 
   // 詳細から戻る：検索結果／ルート／初期表示 のいずれかへ
@@ -575,7 +575,7 @@ App.records = (function () {
   }
 
   function init() {
-    App.map.setClickHandler(showAddForm);
+    App.map.setLongPressHandler(showAddForm); // 長押しで記録追加
     App.map.setPlaceClickHandler(showPlaceCard);
     buildGenreFilters();
     ['mode-select', 'day-input', 'from-input', 'to-input'].forEach((id) =>

@@ -8,8 +8,9 @@ App.map = (function () {
   let routeLine = null;        // ルートの点線（numbered 表示時）
   let tempMarker = null;       // 追加フォーム中の目印
   let pickMarker = null;       // 位置修正のドラッグ用
-  let onMapClick = null;       // (lat, lng) => void
+  let onMapClick = null;       // (lat, lng) => void  ... 空きタップ（現在は未使用）
   let onPlaceClick = null;     // (placeId) => void  ... 店(POI)タップ時
+  let onLongPress = null;      // (lat, lng) => void  ... 長押し（記録追加）
 
   const VIEW_KEY = 'date-recorder-view';
 
@@ -56,13 +57,16 @@ App.map = (function () {
         if (onPlaceClick) onPlaceClick(e.placeId);
         return;
       }
-      if (onMapClick && e.latLng) onMapClick(e.latLng.lat(), e.latLng.lng()); // 空きタップ＝記録追加
+      if (onMapClick && e.latLng) onMapClick(e.latLng.lat(), e.latLng.lng()); // 空きタップ（現在は未使用）
     });
+    // 長押し（スマホ）／右クリック（PC）＝その地点に記録を追加
+    map.addListener('contextmenu', (e) => { if (onLongPress && e.latLng) onLongPress(e.latLng.lat(), e.latLng.lng()); });
     map.addListener('idle', saveView); // 表示位置・ズームを保存
   }
 
   function setClickHandler(fn) { onMapClick = fn; }
   function setPlaceClickHandler(fn) { onPlaceClick = fn; }
+  function setLongPressHandler(fn) { onLongPress = fn; }
 
   function clearPins() {
     markers.forEach((m) => { m.map = null; });
@@ -181,7 +185,7 @@ App.map = (function () {
     });
   }
 
-  return { init, setClickHandler, setPlaceClickHandler, clearPins, renderPins, flyTo, fitTo, refresh,
+  return { init, setClickHandler, setPlaceClickHandler, setLongPressHandler, clearPins, renderPins, flyTo, fitTo, refresh,
            showTempMarker, clearTempMarker,
            startPickLocation, getPickedLatLng, stopPickLocation,
            _getMap: () => map };
