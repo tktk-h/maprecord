@@ -60,7 +60,8 @@
     </div>
     <div id="search-wrap">
       <i class="ph ph-magnifying-glass"></i>
-      <input id="search-box" type="search" placeholder="場所名・#タグ で検索">
+      <input id="search-box" type="search" placeholder="場所名・#タグ で検索" autocomplete="off">
+      <div id="search-suggest" hidden></div>
     </div>
     <button id="filter-toggle" title="絞り込み"><i class="ph ph-funnel"></i><span>絞り込み</span></button>
     <div id="filter-panel">
@@ -105,6 +106,7 @@
   <script src="js/sheet.js"></script>
   <script src="js/calendar.js"></script>
   <script src="js/backup.js"></script>
+  <script src="js/search.js"></script>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>
