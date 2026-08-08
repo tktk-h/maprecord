@@ -90,13 +90,13 @@ function wireUI() {
   });
 }
 
-function startApp(sp) {
+async function startApp(sp) {
   cloud.setSpace(sp.id);
   // アプリを開いた記録（最終アクセス）を残す。失敗しても本体には影響させない。
   const u = auth.user();
   if (u) space.touchLastSeen(sp.id, u.uid, u.displayName || u.email || '').catch(() => {});
   if (!started) {
-    App.map.init();
+    await App.map.init(); // Google Maps ライブラリの読み込み完了を待つ
     App.records.init();
     App.sheet.init();
     wireUI();
@@ -106,5 +106,5 @@ function startApp(sp) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  gate.init((sp) => startApp(sp));
+  gate.init((sp) => { startApp(sp).catch((e) => console.error('startApp failed', e)); });
 });
