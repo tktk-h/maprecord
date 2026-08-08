@@ -1,9 +1,14 @@
 window.App = window.App || {};
 App.map = (function () {
-  let map, layer;
-  let tempMarker = null; // 追加フォームを開いている間だけ出す目印
-  let pickMarker = null; // 「位置を修正」中だけ出すドラッグ可能マーカー
-  let onMapClick = null; // (lat, lng) => void  ... Task 4 で設定
+  const MAP_ID = '<<GMAPS_MAP_ID>>'; // ★Task 4 でユーザー提供の Map ID に置換
+
+  let map;
+  let AdvancedMarkerElement;   // marker ライブラリのクラス（init で読み込む）
+  let markers = [];            // renderPins で出したマーカー
+  let routeLine = null;        // ルートの点線（numbered 表示時）
+  let tempMarker = null;       // 追加フォーム中の目印
+  let pickMarker = null;       // 位置修正のドラッグ用
+  let onMapClick = null;       // (lat, lng) => void
 
   const VIEW_KEY = 'date-recorder-view';
 
@@ -19,130 +24,156 @@ App.map = (function () {
 
   function saveView() {
     const c = map.getCenter();
-    localStorage.setItem(VIEW_KEY, JSON.stringify({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }));
+    if (!c) return;
+    localStorage.setItem(VIEW_KEY, JSON.stringify({ lat: c.lat(), lng: c.lng(), zoom: map.getZoom() }));
   }
 
-  function init() {
+  // html文字列 → 最初の要素ノード
+  function el(html) {
+    const d = document.createElement('div');
+    d.innerHTML = html;
+    return d.firstElementChild;
+  }
+
+  async function init() {
     const v = loadView();
-    map = L.map('map', { zoomControl: false }).setView([v.lat, v.lng], v.zoom);
-    L.control.zoom({ position: 'bottomleft' }).addTo(map); // 浮かせたピルと重ならないよう左下へ
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      maxZoom: 20, subdomains: 'abcd',
-      keepBuffer: 6,            // 画面外タイルを多めに保持（パン/ズームでの空白を減らす）
-      updateWhenZooming: false, // ズーム操作中は要求を出さず、落ち着いてからまとめて読み込む
-      attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
-    }).addTo(map);
-    layer = L.layerGroup().addTo(map);
-    map.on('click', (e) => { if (onMapClick) onMapClick(e.latlng.lat, e.latlng.lng); });
-    map.on('moveend', saveView); // 表示中の位置・ズームを毎回保存
+    const { Map } = await google.maps.importLibrary('maps');
+    ({ AdvancedMarkerElement } = await google.maps.importLibrary('marker'));
+    map = new Map(document.getElementById('map'), {
+      center: { lat: v.lat, lng: v.lng },
+      zoom: v.zoom,
+      mapId: MAP_ID,
+      disableDefaultUI: true,
+      zoomControl: true,
+      zoomControlOptions: { position: google.maps.ControlPosition.LEFT_BOTTOM },
+      clickableIcons: false,      // GoogleのPOIクリックで情報ウィンドウを出さない
+      gestureHandling: 'greedy',  // スマホ1本指でも地図が動く
+    });
+    map.addListener('click', (e) => { if (onMapClick && e.latLng) onMapClick(e.latLng.lat(), e.latLng.lng()); });
+    map.addListener('idle', saveView); // 表示位置・ズームを保存
   }
 
   function setClickHandler(fn) { onMapClick = fn; }
-  function clearPins() { layer.clearLayers(); }
-  function flyTo(lat, lng) { map.setView([lat, lng], 16); }
-  function refresh() { if (map) map.invalidateSize(); } // 非表示から戻ったとき再描画
+
+  function clearPins() {
+    markers.forEach((m) => { m.map = null; });
+    markers = [];
+    if (routeLine) { routeLine.setMap(null); routeLine = null; }
+  }
+
+  function flyTo(lat, lng) { map.panTo({ lat, lng }); map.setZoom(16); }
+
+  // 非表示→表示の復帰時に再描画を促す（位置は変えない）
+  function refresh() {
+    if (!map) return;
+    const c = map.getCenter();
+    if (c) map.setCenter(c);
+  }
 
   // 複数地点が全部見えるように地図を合わせる（検索結果など）
   function fitTo(records) {
-    if (!records || !records.length) return;
-    const bounds = L.latLngBounds(records.map((r) => [r.lat, r.lng]));
-    map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 });
+    if (!records || !records.length || !map) return;
+    const bounds = new google.maps.LatLngBounds();
+    records.forEach((r) => bounds.extend({ lat: r.lat, lng: r.lng }));
+    map.fitBounds(bounds, 60); // padding 60px
+    google.maps.event.addListenerOnce(map, 'idle', () => {
+      if (map.getZoom() > 16) map.setZoom(16); // 1点のとき寄りすぎ防止
+    });
+  }
+
+  // AdvancedMarker を作る。centered=true の content は中心を座標に合わせる（既定は下端中央アンカー）
+  function makeMarker(lat, lng, content, opts) {
+    opts = opts || {};
+    if (opts.centered) content.style.transform = 'translateY(50%)';
+    return new AdvancedMarkerElement({
+      map,
+      position: { lat, lng },
+      content,
+      zIndex: opts.zIndex,
+      gmpDraggable: !!opts.draggable,
+    });
   }
 
   // 追加しようとしている地点の目印（保存前の仮マーカー）
   function showTempMarker(lat, lng) {
     clearTempMarker();
-    tempMarker = L.marker([lat, lng], {
-      interactive: false,
-      zIndexOffset: 1000,
-      icon: L.divIcon({ className: '', html: '<div class="temp-pin"></div>',
-        iconSize: [22, 22], iconAnchor: [11, 11] }),
-    }).addTo(map);
+    tempMarker = makeMarker(lat, lng, el('<div class="temp-pin"></div>'), { zIndex: 1000, centered: true });
   }
   function clearTempMarker() {
-    if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
+    if (tempMarker) { tempMarker.map = null; tempMarker = null; }
   }
 
   // 位置修正：対象地点へ寄せ、ドラッグ可能なマーカーを1つ出す
   function startPickLocation(lat, lng) {
     stopPickLocation();
-    map.setView([lat, lng], Math.max(map.getZoom(), 16));
-    pickMarker = L.marker([lat, lng], {
-      draggable: true, autoPan: true, zIndexOffset: 1200,
-      icon: L.divIcon({ className: '', html: '<div class="temp-pin picking"></div>',
-        iconSize: [24, 24], iconAnchor: [12, 12] }),
-    }).addTo(map);
+    map.panTo({ lat, lng });
+    if (map.getZoom() < 16) map.setZoom(16);
+    pickMarker = makeMarker(lat, lng, el('<div class="temp-pin picking"></div>'),
+      { zIndex: 1200, centered: true, draggable: true });
   }
   // 現在のドラッグ位置 { lat, lng }（未開始なら null）
   function getPickedLatLng() {
     if (!pickMarker) return null;
-    const ll = pickMarker.getLatLng();
-    return { lat: ll.lat, lng: ll.lng };
+    const p = pickMarker.position;
+    if (!p) return null;
+    const lat = typeof p.lat === 'function' ? p.lat() : p.lat;
+    const lng = typeof p.lng === 'function' ? p.lng() : p.lng;
+    return { lat, lng };
   }
   function stopPickLocation() {
-    if (pickMarker) { map.removeLayer(pickMarker); pickMarker = null; }
+    if (pickMarker) { pickMarker.map = null; pickMarker = null; }
   }
 
-  // 1件ぶんのマーカーを作る。number=順番バッジ／count>1=訪問回数バッジ
-  function markerFor(r, number, count) {
+  // 1件ぶんの content 要素を作る。number=順番バッジ／count>1=訪問回数バッジ。
+  // 戻り値 { content, centered }（写真ピンは下端＝しっぽが座標なので centered=false）
+  function markerContent(r, number, count) {
     const color = App.genres.color(r.genre);
     const photo = (r.photos || [])[0];
     let badge = '';
     if (number != null) badge = `<span class="pin-order">${number}</span>`;
     else if (count > 1) badge = `<span class="visit-count">${count}</span>`;
     if (photo) {
-      // 写真つき → その写真をサムネイルにしたピン（Instagramのマップ風）
-      return L.marker([r.lat, r.lng], {
-        bubblingMouseEvents: false,
-        icon: L.divIcon({
-          className: '',
-          // 同じ形（インスタのマップ風）＋枠はジャンル色
-          html: `<div class="photo-pin">`
-            + `<img class="pin-img" src="${photo.url}" style="border-color:${color}">`
-            + badge
-            + `<span class="pin-tail" style="border-top-color:${color}"></span>`
-            + `</div>`,
-          iconSize: [62, 74],
-          iconAnchor: [31, 74], // しっぽの先端が場所を指す
-        }),
-      });
+      const c = el(`<div class="photo-pin">`
+        + `<img class="pin-img" src="${photo.url}" style="border-color:${color}">`
+        + badge
+        + `<span class="pin-tail" style="border-top-color:${color}"></span>`
+        + `</div>`);
+      return { content: c, centered: false };
     }
-    // 写真なし → ジャンル色の丸ピン（divIconに統一し、ズーム時も写真ピンと同じ挙動に）
     const inner = (number != null) ? number : '';
     const dotBadge = (number == null && count > 1) ? `<span class="visit-count">${count}</span>` : '';
-    const size = (number != null) ? 26 : 20;
-    return L.marker([r.lat, r.lng], {
-      bubblingMouseEvents: false,
-      icon: L.divIcon({
-        className: '',
-        html: `<div class="dot-pin" style="background:${color}">${inner}${dotBadge}</div>`,
-        iconSize: [size, size],
-        iconAnchor: [size / 2, size / 2],
-      }),
-    });
+    const c = el(`<div class="dot-pin" style="background:${color}">${inner}${dotBadge}</div>`);
+    return { content: c, centered: true };
   }
 
   // records: [{id, lat, lng, name, genre, photos, ...}], onClick: (record)=>void
-  // opts.numbered=true で順番バッジ＋ルート線を描く（records は表示順に並んでいる前提）
+  // opts.numbered=true で順番バッジ＋ルート点線を描く（records は表示順に並んでいる前提）
   function renderPins(records, onClick, opts) {
     clearPins();
     const numbered = !!(opts && opts.numbered);
     const countAt = opts && opts.countAt;
     if (numbered && records.length > 1) {
-      L.polyline(records.map((r) => [r.lat, r.lng]), {
-        color: '#b76e64', weight: 3, opacity: 0.9, dashArray: '2 9', lineCap: 'round',
-      }).addTo(layer);
+      routeLine = new google.maps.Polyline({
+        path: records.map((r) => ({ lat: r.lat, lng: r.lng })),
+        strokeOpacity: 0, // 破線にするため実線は透明にして icons で点を打つ
+        icons: [{
+          icon: { path: 'M 0,-1 0,1', strokeOpacity: 0.9, strokeColor: '#b76e64', strokeWeight: 3, scale: 2 },
+          offset: '0', repeat: '12px',
+        }],
+        map,
+      });
     }
     records.forEach((r, i) => {
-      const marker = markerFor(r, numbered ? i + 1 : null, countAt ? countAt(r) : 1);
-      marker.bindTooltip(r.name || '(名称未設定)');
-      marker.on('click', () => onClick(r));
-      marker.addTo(layer);
+      const { content, centered } = markerContent(r, numbered ? i + 1 : null, countAt ? countAt(r) : 1);
+      content.title = r.name || '(名称未設定)'; // ホバーで名前（Leaflet の tooltip 代替）
+      const m = makeMarker(r.lat, r.lng, content, { centered });
+      m.addListener('click', () => onClick(r));
+      markers.push(m);
     });
   }
 
   return { init, setClickHandler, clearPins, renderPins, flyTo, fitTo, refresh,
            showTempMarker, clearTempMarker,
            startPickLocation, getPickedLatLng, stopPickLocation,
-           _getMap: () => map, _getLayer: () => layer };
+           _getMap: () => map };
 })();
