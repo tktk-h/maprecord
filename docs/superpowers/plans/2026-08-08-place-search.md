@@ -715,15 +715,18 @@ git commit -m "refactor(app): move search wiring into App.search, init it"
       document.querySelector('.ss-row[data-kind=place]').click();
       eq('place-click-card', calls.showPlaceCard, [['p1', { fly: true }]]);
       // 4) updateSuggestions が bias を渡す
-      await App.search.updateSuggestions('マクドナルド');
+      // 注意: updateSuggestions は内部で searchPlaces(pending) を待つので、
+      //       await する前に resolver を発火させる必要がある（マイクロタスクで待つ）。
+      const pMac = App.search.updateSuggestions('マクドナルド');
+      for (let i = 0; i < 20 && resolvers.length === 0; i++) await Promise.resolve();
       resolvers.forEach((r) => r()); resolvers = [];
-      await new Promise((r) => setTimeout(r, 10));
+      await pMac;
       eq('bias-passed', calls.searchPlacesBias[0], { __bounds: true });
       // 5) レース：古い応答は捨てる（2連続でq変更、古い方を後から解決）
       calls.searchPlacesBias = [];
       const pA = App.search.updateSuggestions('渋谷');   // seq n
       const pB = App.search.updateSuggestions('新宿');   // seq n+1
-      // 古い順(pA=index0)を後で解決しても表示は最新(pB)のはず。解決順を逆に:
+      for (let i = 0; i < 20 && resolvers.length < 2; i++) await Promise.resolve();
       const rs = resolvers.slice(); resolvers = [];
       if (rs[1]) rs[1]();  // 最新を先に
       if (rs[0]) rs[0]();  // 古いを後に（捨てられる）
