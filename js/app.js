@@ -61,24 +61,6 @@ function wireUI() {
     showMap();
   });
 
-  // 検索
-  const search = document.getElementById('search-box');
-  search.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter') return;
-    const q = search.value.trim();
-    if (!q) { App.records.clearSearch(); return; }
-    if (q.startsWith('#')) {
-      const count = App.records.searchTag(q);
-      if (count === 0) alert('そのハッシュタグの記録は見つかりませんでした');
-      return;
-    }
-    const n = App.records.searchByName(q);
-    if (n === 0) alert('その名前の記録は見つかりませんでした');
-  });
-  search.addEventListener('input', () => {
-    if (search.value.trim() === '') App.records.clearSearch();
-  });
-
   // バックアップ（書き出しのみ。クラウド版は読み込み復元なし）
   document.getElementById('export-btn').addEventListener('click', () => App.backup.exportJson());
 
@@ -102,6 +84,7 @@ async function startApp(sp) {
     await App.map.init(); // Google Maps ライブラリの読み込み完了を待つ
     App.records.init();
     App.sheet.init();
+    App.search.init();
     wireUI();
     started = true;
   }
