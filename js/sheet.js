@@ -10,6 +10,11 @@ App.sheet = (function () {
   let closing = false; // 閉じアニメ中フラグ（途中で開き直したらキャンセル）
   let mode = null;     // ドラッグ中の意図: 'sheet'（シート上下）/ 'scroll'（中身スクロール）
   let downOnGrip = false; // つまみ（グリップ）から始まったドラッグか
+  let vY = 0;          // ドラッグ速度（px/ms、上げ方向を+）
+  let lastT = 0, lastPY = 0; // 速度計算用の直前サンプル
+
+  const FLICK_V = 0.4; // これ以上の速さは弾き（フリック）＝方向へ1段進める
+  const COMMIT = 40;   // これだけ動かせば次の段へ確定（軽く動かすだけでOK）
 
   const isMobile = () => window.matchMedia('(max-width: 700px)').matches;
 
@@ -32,6 +37,14 @@ App.sheet = (function () {
   function nearest(y) {
     return [snaps.full, snaps.half, snaps.peek]
       .reduce((a, b) => (Math.abs(b - y) < Math.abs(a - y) ? b : a));
+  }
+  // 段（peek→half→full の昇順）で、y に一番近い段から dir 方向へ1段ぶん動いた高さ
+  function stepFrom(y, dir) {
+    const list = [snaps.peek, snaps.half, snaps.full];
+    let bi = 0, bd = Infinity;
+    list.forEach((v, i) => { const d = Math.abs(v - y); if (d < bd) { bd = d; bi = i; } });
+    let i = Math.max(0, Math.min(list.length - 1, bi + dir));
+    return list[i];
   }
 
   function snapTo(name) {
@@ -96,6 +109,7 @@ App.sheet = (function () {
     mode = null;
     startPointerY = e.clientY;
     startY = currentY;
+    vY = 0; lastT = performance.now(); lastPY = e.clientY;
     downOnGrip = !!(grip && (e.target === grip || grip.contains(e.target)));
     // transition はドラッグ確定時に切る（タップを壊さないため、ここでは触らない）
   }
@@ -120,6 +134,10 @@ App.sheet = (function () {
     }
     if (mode !== 'sheet') return;
     computeSnaps();
+    // 速度を更新（上げ方向を+）。フリック判定に使う。
+    const now = performance.now();
+    const dt = now - lastT;
+    if (dt > 0) { vY = -(e.clientY - lastPY) / dt; lastT = now; lastPY = e.clientY; }
     let y = startY - total;                   // 指を上に動かすと高くなる
     y = Math.max(snaps.peek, Math.min(snaps.full, y));
     setY(y);
@@ -130,10 +148,19 @@ App.sheet = (function () {
     dragging = false;
     if (mode === 'sheet') {
       panel.style.transition = '';
-      setY(nearest(currentY));
+      const moved = currentY - startY;        // + は上げ方向
+      const dir = (vY !== 0 ? (vY > 0 ? 1 : -1) : (moved > 0 ? 1 : -1));
+      let target = nearest(currentY);         // 基本は今の位置に一番近い段
+      // 少しでも動かした／フリックしたら、開始段から方向へ1段は進める
+      if (Math.abs(vY) > FLICK_V || Math.abs(moved) >= COMMIT) {
+        const stepped = stepFrom(startY, dir);
+        target = dir > 0 ? Math.max(target, stepped) : Math.min(target, stepped);
+      }
+      setY(target);
     }
     updateAtFull();
     mode = null;
+    vY = 0;
   }
 
   function init() {
