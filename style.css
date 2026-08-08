@@ -149,6 +149,26 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   color: var(--accent-strong); font-size: 14px; font-weight: 600; text-decoration: none; }
 .gmaps-btn .ph { font-size: 18px; }
 .gmaps-btn:active { transform: scale(.98); }
+
+/* 店(POI)カード */
+.pc-photos { display: flex; gap: 6px; overflow-x: auto; margin: 4px 0 10px;
+  -webkit-overflow-scrolling: touch; }
+.pc-photo { height: 110px; width: auto; border-radius: var(--radius-sm);
+  object-fit: cover; flex: 0 0 auto; cursor: pointer; }
+.pc-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+  margin: 2px 0 12px; font-size: 13px; }
+.pc-rating { display: inline-flex; align-items: center; gap: 4px; color: var(--text); font-weight: 600; }
+.pc-rating .ph { color: #e8a33d; }
+.pc-count { color: var(--text-muted); font-weight: 400; }
+.pc-open { color: #2e7d5b; font-weight: 600; }
+.pc-closed { color: #b5675f; font-weight: 600; }
+.pc-hours { color: var(--text-muted); }
+.pc-actions { display: flex; gap: 8px; margin: 0 0 12px; }
+.pc-act { flex: 1; display: inline-flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 10px 6px; border-radius: var(--radius-sm); background: var(--surface-2);
+  color: var(--accent-strong); font-size: 12px; font-weight: 600; text-decoration: none; }
+.pc-act .ph { font-size: 18px; }
+.pc-act:active { transform: scale(.97); }
 .fix-loc-btn { display: inline-flex; align-items: center; gap: 7px; margin: 2px 0 2px;
   padding: 10px 14px; border-radius: var(--radius-sm); background: var(--surface-2);
   color: var(--accent-strong); font-size: 14px; font-weight: 600; }
