@@ -11,6 +11,8 @@ App.map = (function () {
   let onMapClick = null;       // (lat, lng) => void  ... 空きタップ（現在は未使用）
   let onPlaceClick = null;     // (placeId) => void  ... 店(POI)タップ時
   let onLongPress = null;      // (lat, lng) => void  ... 長押し（記録追加）
+  let overlayProjection = null; // 画面ピクセル→緯度経度の変換用（長押し判定）
+  let suppressClickUntil = 0;   // 長押し直後のクリックを無視する時刻
 
   const VIEW_KEY = 'date-recorder-view';
 
@@ -52,6 +54,7 @@ App.map = (function () {
       gestureHandling: 'greedy',  // スマホ1本指でも地図が動く
     });
     map.addListener('click', (e) => {
+      if (Date.now() < suppressClickUntil) return; // 長押し直後のクリックは無視
       if (e.placeId) {                 // 店・施設(POI)をタップ
         if (e.stop) e.stop();          // Google標準の情報ウィンドウを抑制
         if (onPlaceClick) onPlaceClick(e.placeId);
@@ -59,9 +62,51 @@ App.map = (function () {
       }
       if (onMapClick && e.latLng) onMapClick(e.latLng.lat(), e.latLng.lng()); // 空きタップ（現在は未使用）
     });
-    // 長押し（スマホ）／右クリック（PC）＝その地点に記録を追加
+    // 右クリック（PC）＝その地点に記録を追加。スマホの長押しは setupLongPress で独自検知。
     map.addListener('contextmenu', (e) => { if (onLongPress && e.latLng) onLongPress(e.latLng.lat(), e.latLng.lng()); });
     map.addListener('idle', saveView); // 表示位置・ズームを保存
+    setupLongPress();
+  }
+
+  // 長押し検出（Google標準の contextmenu がスマホで出ない端末向けの独自実装）
+  function setupLongPress() {
+    // 座標変換用のオーバーレイ（画面ピクセル→緯度経度）
+    const overlay = new google.maps.OverlayView();
+    overlay.onAdd = function () {};
+    overlay.onRemove = function () {};
+    overlay.draw = function () { overlayProjection = this.getProjection(); };
+    overlay.setMap(map);
+
+    const div = document.getElementById('map');
+    const LONG_MS = 500;   // この時間押し続けたら長押し
+    const MOVE_TOL = 12;   // これ以上動いたらパン扱いでキャンセル
+    let timer = null;
+    let startX = 0;
+    let startY = 0;
+    const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+
+    div.addEventListener('pointerdown', (ev) => {
+      if (ev.pointerType === 'mouse' && ev.button !== 0) return; // 右クリック等は無視
+      startX = ev.clientX; startY = ev.clientY;
+      cancel();
+      timer = setTimeout(() => {
+        timer = null;
+        if (!onLongPress || !overlayProjection) return;
+        const rect = div.getBoundingClientRect();
+        const pt = new google.maps.Point(startX - rect.left, startY - rect.top);
+        const ll = overlayProjection.fromContainerPixelToLatLng(pt);
+        if (!ll) return;
+        suppressClickUntil = Date.now() + 700; // 直後のクリック（POIカード等）を抑制
+        onLongPress(ll.lat(), ll.lng());
+      }, LONG_MS);
+    });
+    div.addEventListener('pointermove', (ev) => {
+      if (!timer) return;
+      if (Math.abs(ev.clientX - startX) > MOVE_TOL || Math.abs(ev.clientY - startY) > MOVE_TOL) cancel();
+    });
+    div.addEventListener('pointerup', cancel);
+    div.addEventListener('pointercancel', cancel);
+    div.addEventListener('pointerleave', cancel);
   }
 
   function setClickHandler(fn) { onMapClick = fn; }
