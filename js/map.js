@@ -1,6 +1,6 @@
 window.App = window.App || {};
 App.map = (function () {
-  const MAP_ID = '<<GMAPS_MAP_ID>>'; // ★Task 4 でユーザー提供の Map ID に置換
+  const MAP_ID = '453a543cb81d00c3bbdfb47d'; // Google Maps の Map ID（ベクター）
 
   let map;
   let AdvancedMarkerElement;   // marker ライブラリのクラス（init で読み込む）
