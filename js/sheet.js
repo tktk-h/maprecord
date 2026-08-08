@@ -7,6 +7,7 @@ App.sheet = (function () {
   let dragging = false;
   let startPointerY = 0;
   let startY = 0;
+  let closing = false; // 閉じアニメ中フラグ（途中で開き直したらキャンセル）
 
   const isMobile = () => window.matchMedia('(max-width: 700px)').matches;
 
@@ -33,12 +34,42 @@ App.sheet = (function () {
 
   function snapTo(name) {
     if (!panel) return;
-    panel.hidden = false; // 何か表示するときはシートを出す
     computeSnaps();
-    panel.style.transition = '';
-    setY(snaps[name] != null ? snaps[name] : snaps.half);
+    const target = snaps[name] != null ? snaps[name] : snaps.half;
+    closing = false;                       // 閉じ動作が進行中なら取り消す
+    const wasHidden = panel.hidden;
+    panel.hidden = false;                  // 何か表示するときはシートを出す
+    if (isMobile() && wasHidden) {
+      // 隠れていた状態から：目標の高さにしたうえで、いったん画面下へ逃がし
+      // → translateY(0) へ戻すことで「下からせり上がる」アニメにする。
+      // 高さ(var)ではなく transform を動かすので端末を問わず確実に動く。
+      panel.style.transition = 'none';
+      setY(target);
+      panel.style.transform = 'translateY(100%)';
+      panel.getBoundingClientRect();       // 強制リフローで開始位置を確定
+      panel.style.transition = '';
+      panel.style.transform = 'translateY(0)';
+    } else {
+      panel.style.transition = '';
+      panel.style.transform = 'translateY(0)'; // 閉じ途中なら引き戻す
+      setY(target);
+    }
   }
-  function hide() { if (panel) panel.hidden = true; } // シートを隠す（選択解除）
+
+  function onHideEnd(e) {
+    if (e.propertyName !== 'transform') return;
+    panel.removeEventListener('transitionend', onHideEnd);
+    if (closing) { panel.hidden = true; panel.style.transform = ''; closing = false; }
+  }
+  function hide() { // シートを隠す（選択解除）
+    if (!panel || panel.hidden) return;
+    if (!isMobile()) { panel.hidden = true; return; } // デスクトップは即時
+    // 下へスライドして隠す → 終わってから hidden にする（下に戻るアニメ）
+    closing = true;
+    panel.style.transition = '';
+    panel.addEventListener('transitionend', onHideEnd);
+    panel.style.transform = 'translateY(100%)';
+  }
 
   function onDown(e) {
     if (!isMobile()) return;
