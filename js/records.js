@@ -299,6 +299,67 @@ App.records = (function () {
     };
   }
 
+  // 店(POI)カード：Places の情報を Googleマップ風に下シートへ。「記録に追加」で追加フォームへ。
+  async function showPlaceCard(placeId) {
+    searchResults = null;
+    activeTag = null;
+    App.map.clearTempMarker();
+    panel().innerHTML = `
+      <button type="button" id="pc-back" class="back-btn"><i class="ph ph-arrow-left"></i>戻る</button>
+      <p class="hint">読み込み中…</p>`;
+    if (App.sheet) App.sheet.snapTo('half');
+    document.getElementById('pc-back').onclick = clearPanel;
+
+    let p;
+    try {
+      p = await App.places.fetchPlace(placeId);
+    } catch (err) {
+      panel().innerHTML = `
+        <button type="button" id="pc-back" class="back-btn"><i class="ph ph-arrow-left"></i>戻る</button>
+        <p class="hint">店の情報を取得できませんでした。</p>`;
+      document.getElementById('pc-back').onclick = clearPanel;
+      return;
+    }
+
+    const photos = p.photoUrls.length
+      ? `<div class="pc-photos">${p.photoUrls.map((u, i) => `<img class="pc-photo" src="${u}" data-i="${i}" alt="">`).join('')}</div>`
+      : '';
+    const rating = (p.rating != null)
+      ? `<div class="pc-rating"><i class="ph ph-star"></i>${p.rating}${p.ratingCount != null ? `<span class="pc-count">（${p.ratingCount}）</span>` : ''}</div>`
+      : '';
+    let openHtml = '';
+    if (p.openNow === true) openHtml = '<span class="pc-open">営業中</span>';
+    else if (p.openNow === false) openHtml = '<span class="pc-closed">営業時間外</span>';
+    const hours = p.hoursToday ? `<span class="pc-hours">${esc(p.hoursToday)}</span>` : '';
+    const mapsUrl = p.googleMapsURI || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.name)}`;
+    const dirUrl = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}`;
+    const actions = [
+      p.phone ? `<a class="pc-act" href="tel:${p.phone.replace(/[^0-9+]/g, '')}"><i class="ph ph-phone"></i>電話</a>` : '',
+      `<a class="pc-act" href="${dirUrl}" target="_blank" rel="noopener"><i class="ph ph-arrow-bend-up-right"></i>経路</a>`,
+      `<a class="pc-act" href="${mapsUrl}" target="_blank" rel="noopener"><i class="ph ph-map-trifold"></i>マップ</a>`,
+    ].filter(Boolean).join('');
+
+    panel().innerHTML = `
+      <button type="button" id="pc-back" class="back-btn"><i class="ph ph-arrow-left"></i>戻る</button>
+      ${photos}
+      <h2>${esc(p.name)}</h2>
+      <p class="meta">${App.genres.label(p.genre)}</p>
+      <div class="pc-sub">${rating}${openHtml}${hours}</div>
+      <div class="pc-actions">${actions}</div>
+      <button type="button" id="pc-add" class="revisit-btn"><i class="ph ph-plus"></i>この店を記録に追加</button>
+      ${p.website ? `<a class="gmaps-btn" href="${p.website}" target="_blank" rel="noopener"><i class="ph ph-globe"></i>公式サイト</a>` : ''}
+      <p class="memo">${esc(p.address) || ''}</p>`;
+
+    document.getElementById('pc-back').onclick = clearPanel;
+    panel().querySelectorAll('.pc-photo').forEach((img) => {
+      img.onclick = () => App.lightbox.open(p.photoUrls, Number(img.dataset.i));
+    });
+    document.getElementById('pc-add').onclick = () => {
+      App.map.flyTo(p.lat, p.lng);
+      showAddForm(p.lat, p.lng, { name: p.name, genre: p.genre });
+    };
+  }
+
   function clearPanel() {
     App.map.clearTempMarker(); // 追加地点の目印を消す
     routeEditMode = false;     // ルート編集モードを解除
@@ -515,6 +576,7 @@ App.records = (function () {
 
   function init() {
     App.map.setClickHandler(showAddForm);
+    App.map.setPlaceClickHandler(showPlaceCard);
     buildGenreFilters();
     ['mode-select', 'day-input', 'from-input', 'to-input'].forEach((id) =>
       document.getElementById(id).addEventListener('change', applyUiFilter));
@@ -524,5 +586,5 @@ App.records = (function () {
 
   return { init, reload, setRecords, render, getAll, setFilterState, applyUiFilter, focusDay,
            searchTag, clearTag, searchByName, clearSearch,
-           showDetail, showEditForm, showAddForm, _clearPanel: clearPanel };
+           showDetail, showEditForm, showAddForm, showPlaceCard, _clearPanel: clearPanel };
 })();
