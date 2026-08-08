@@ -33,10 +33,12 @@ App.sheet = (function () {
 
   function snapTo(name) {
     if (!panel) return;
+    panel.hidden = false; // 何か表示するときはシートを出す
     computeSnaps();
     panel.style.transition = '';
     setY(snaps[name] != null ? snaps[name] : snaps.half);
   }
+  function hide() { if (panel) panel.hidden = true; } // シートを隠す（選択解除）
 
   function onDown(e) {
     if (!isMobile()) return;
@@ -72,5 +74,5 @@ App.sheet = (function () {
     window.addEventListener('resize', () => { computeSnaps(); setY(nearest(currentY)); });
   }
 
-  return { init, snapTo };
+  return { init, snapTo, hide };
 })();

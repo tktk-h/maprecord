@@ -125,9 +125,8 @@ App.records = (function () {
   function clearSearch() {
     searchResults = null;
     activeTag = null;
-    clearPanel(); // 詳細や候補リストが出ていても、まっさらな初期表示へ
+    clearPanel(); // 詳細や候補リストが出ていても、まっさらな初期表示へ（シートも隠れる）
     render();
-    if (App.sheet) App.sheet.snapTo('peek'); // 下シートも下げる
   }
 
   // 検索候補リスト（下シート・場所ごとにまとめ、回数を表示）
@@ -361,9 +360,11 @@ App.records = (function () {
   }
 
   function clearPanel() {
-    App.map.clearTempMarker(); // 追加地点の目印を消す
-    routeEditMode = false;     // ルート編集モードを解除
+    App.map.clearTempMarker();       // 追加地点の目印を消す
+    App.map.stopPickLocation();      // 位置修正中のドラッグマーカーも片付ける
+    routeEditMode = false;           // ルート編集モードを解除
     panel().innerHTML = '<p class="hint">地図を長押しして記録を追加</p>';
+    if (App.sheet) App.sheet.hide(); // 何も選んでいないときはシートを隠す
   }
 
   // 詳細から戻る：検索結果／ルート／初期表示 のいずれかへ
@@ -569,9 +570,8 @@ App.records = (function () {
     document.querySelectorAll('#genre-filters input').forEach((cb) => { cb.checked = true; });
     const box = document.getElementById('search-box');
     if (box) box.value = '';
-    clearPanel();
+    clearPanel(); // シートも隠れる
     applyUiFilter();
-    if (App.sheet) App.sheet.snapTo('peek');
   }
 
   function init() {

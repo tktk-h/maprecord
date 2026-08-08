@@ -12,7 +12,7 @@ function wireUI() {
   function showMap() {
     document.getElementById('calendar-view').hidden = true;
     document.getElementById('map').hidden = false;
-    document.getElementById('panel').hidden = false;
+    // パネル（下シート）は選択したときだけ出す。ここでは表示状態を触らない。
     mapBtn.classList.add('active');
     calBtn.classList.remove('active');
     document.getElementById('locate-btn').hidden = false;
@@ -81,6 +81,9 @@ function wireUI() {
 
   // バックアップ（書き出しのみ。クラウド版は読み込み復元なし）
   document.getElementById('export-btn').addEventListener('click', () => App.backup.exportJson());
+
+  // シートの×ボタン：閉じる（選択解除）
+  document.getElementById('sheet-close').addEventListener('click', () => App.records._clearPanel());
 
   // 設定：ログアウト・招待コード再表示
   document.getElementById('logout-btn').addEventListener('click', () => auth.logout());
