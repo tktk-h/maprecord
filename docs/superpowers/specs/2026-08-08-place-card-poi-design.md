@@ -122,6 +122,19 @@ Google Maps 化で使えるようになった **Places API** を活用し、地�
 - 既存機能（記録ピンのタップ→詳細、検索、カレンダー、位置修正など）に影響がない
 - Places API 未有効/キー未許可の場合の挙動（カードが出ない/エラー）を切り分けられる
 
+## 将来の検索機能を見据えた設計メモ（フェーズ2「名前で検索して追加」）
+
+本スペックには検索は含めないが、**あとで最小追加で足せる形**にしておく：
+
+- **`js/places.js` を「Placesの単一入口」にする**。将来ここに `autocomplete(query)` / `textSearch(query)` を足すだけで検索が組める。UI は Google 固有型に依存せず、`fetchPlace` と同じ正規化オブジェクト（`{name, address, rating, ..., lat, lng, genre}`）に揃える。
+- **`showPlaceCard(placeId)` を再利用可能に保つ**。検索結果を選んだら placeId が得られるので、そのまま同じ店カード → 「記録に追加」に流せる（検索専用の詳細UIを作らずに済む）。
+- 検索の入口UI（ボタン/入力欄）は将来の別スペックで決める（前回 Nominatim で作った `#place-search-btn` の配置知見も流用可）。
+- コスト：Autocomplete はセッション課金だが二人利用は無料枠内の想定。
+
+## Googleマップで開くボタン（明記）
+
+店カードのアクション行に **「Googleマップで開く」ボタンを必ず含める**（`googleMapsURI` があればそれ、無ければ `https://www.google.com/maps/search/?api=1&query={name}`。新規タブ `target="_blank" rel="noopener"`）。記録詳細側の既存「Googleマップで開く」（登録名で検索）とは別に、店カードにも用意する。
+
 ## リスク / 留意
 
 - **Places API の有効化・キー許可が前提**。未設定だと店カードが取得できない（コンソールエラー）。
