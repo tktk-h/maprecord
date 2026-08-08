@@ -34,8 +34,6 @@ App.search = (function () {
   let box, wrap, dropdown;
   let sessionToken = null;   // 1検索セッションのトークン
   let seq = 0;               // 場所検索の応答レース対策
-  let lastPlaces = [];       // 直近の場所候補
-  let lastRecords = [];      // 直近の記録候補
 
   const MIN_PLACE_LEN = 2;   // 場所APIは2文字以上
   const REC_LIMIT = 8;
@@ -49,8 +47,6 @@ App.search = (function () {
   // 記録候補＋場所候補を1リストに描画（記録が上）
   function render(recs, places, opts) {
     opts = opts || {};
-    lastRecords = recs || [];
-    lastPlaces = places || [];
     const recRows = (recs || []).map((g) => {
       const r = g.rep;
       const thumb = g.photo
@@ -72,10 +68,9 @@ App.search = (function () {
         <span class="ss-sub">${esc(p.secondaryText)}</span></span></button>`).join('');
     let html = recRows + placeRows;
     if (!html) {
-      html = opts.loadingPlaces
-        ? ''
-        : '<div class="ss-empty">該当なし</div>';
-      if (opts.placesError && recRows === '') html = '<div class="ss-empty">場所候補を取得できませんでした</div>';
+      if (opts.loadingPlaces) html = '<div class="ss-empty">検索中…</div>';   // 点滅防止：閉じずに待つ
+      else if (opts.placesError) html = '<div class="ss-empty">場所候補を取得できませんでした</div>';
+      else html = '<div class="ss-empty">該当なし</div>';
     } else if (opts.placesError) {
       html += '<div class="ss-note">場所候補を取得できませんでした</div>';
     }
@@ -104,10 +99,10 @@ App.search = (function () {
 
   // 通常語の候補更新（記録＝即時、場所＝非同期）
   async function updateSuggestions(q) {
+    const mySeq = ++seq;                 // どの入力変化でも進める（保留中の非同期応答を無効化）
     const recs = App.records.suggestRecords(q, REC_LIMIT);
     if (q.length < MIN_PLACE_LEN) { render(recs, [], {}); return; }
     render(recs, [], { loadingPlaces: true });
-    const mySeq = ++seq;
     try {
       if (!sessionToken) sessionToken = await App.places.newSessionToken();
       const bias = App.map.getBounds();
@@ -122,8 +117,8 @@ App.search = (function () {
 
   const onInput = debounce(function () {
     const c = classifyQuery(box.value);
-    if (c.kind === 'empty') { close(); App.records.clearSearch(); return; }
-    if (c.kind === 'tag') { close(); return; }
+    if (c.kind === 'empty') { seq++; close(); App.records.clearSearch(); return; } // 保留中の非同期を無効化
+    if (c.kind === 'tag') { seq++; close(); return; }
     updateSuggestions(c.q);
   }, 250);
 
@@ -156,8 +151,8 @@ App.search = (function () {
     if (!box || !wrap || !dropdown) return;
     box.addEventListener('input', onInput);
     box.addEventListener('keydown', onKeydown);
-    box.addEventListener('focus', () => { sessionToken = null; });
     document.addEventListener('pointerdown', onDocPointer);
+    // セッショントークンは遅延生成し、場所選択時にのみ破棄（focus 毎に作り直すと課金セッションが分断される）
   }
 
   return { init, classifyQuery, debounce, render, updateSuggestions, _selfTest };
