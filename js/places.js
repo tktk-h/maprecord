@@ -59,5 +59,49 @@ App.places = (function () {
     };
   }
 
-  return { fetchPlace, genreFromTypes };
+  // 生の suggestions（Google）→ 正規化。google 非依存でテスト可能。
+  function _normalizePredictions(suggestions) {
+    return (suggestions || [])
+      .map((s) => s && s.placePrediction)
+      .filter(Boolean)
+      .map((p) => ({
+        placeId: p.placeId,
+        mainText: (p.mainText && p.mainText.text) || (p.text && p.text.text) || '',
+        secondaryText: (p.secondaryText && p.secondaryText.text) || '',
+      }))
+      .filter((x) => x.placeId && x.mainText);
+  }
+
+  function _selfTest() {
+    const raw = [
+      { placePrediction: { placeId: 'a', mainText: { text: 'スカイツリー' }, secondaryText: { text: '東京都墨田区' } } },
+      { placePrediction: { placeId: 'b', mainText: { text: 'マクドナルド 渋谷' }, secondaryText: { text: '東京都渋谷区' } } },
+      { placePrediction: { placeId: '', mainText: { text: '欠番' } } },
+      { queryPrediction: { text: { text: 'クエリ候補' } } },
+    ];
+    const out = _normalizePredictions(raw);
+    const eq = (name, got, want) => console.log((got === want ? 'PASS' : 'FAIL') + ' ' + name, got);
+    eq('normalize-count', out.length, 2);
+    eq('normalize-main', out[0].mainText, 'スカイツリー');
+    eq('normalize-sub', out[0].secondaryText, '東京都墨田区');
+    eq('normalize-drops-empty-id', out.every((x) => x.placeId), true);
+  }
+
+  async function newSessionToken() {
+    const { AutocompleteSessionToken } = await google.maps.importLibrary('places');
+    return new AutocompleteSessionToken();
+  }
+
+  // query → 正規化候補[]。opts.bias=LatLngBounds|null, opts.token=session token
+  async function searchPlaces(query, opts) {
+    opts = opts || {};
+    const { AutocompleteSuggestion } = await google.maps.importLibrary('places');
+    const req = { input: query, language: 'ja', region: 'JP' };
+    if (opts.token) req.sessionToken = opts.token;
+    if (opts.bias) req.locationBias = opts.bias;
+    const { suggestions } = await AutocompleteSuggestion.fetchAutocompleteSuggestions(req);
+    return _normalizePredictions(suggestions);
+  }
+
+  return { fetchPlace, genreFromTypes, searchPlaces, newSessionToken, _normalizePredictions, _selfTest };
 })();
