@@ -121,6 +121,8 @@ App.map = (function () {
 
   function flyTo(lat, lng) { map.panTo({ lat, lng }); map.setZoom(16); }
 
+  function getBounds() { return (map && map.getBounds) ? map.getBounds() : null; }
+
   // 非表示→表示の復帰時に再描画を促す（位置は変えない）
   function refresh() {
     if (!map) return;
@@ -230,7 +232,7 @@ App.map = (function () {
     });
   }
 
-  return { init, setClickHandler, setPlaceClickHandler, setLongPressHandler, clearPins, renderPins, flyTo, fitTo, refresh,
+  return { init, setClickHandler, setPlaceClickHandler, setLongPressHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
            showTempMarker, clearTempMarker,
            startPickLocation, getPickedLatLng, stopPickLocation,
            _getMap: () => map };
