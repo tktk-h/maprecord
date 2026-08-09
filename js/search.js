@@ -144,6 +144,7 @@ App.search = (function () {
   function onKeydown(e) {
     if (e.key === 'Escape') { close(); box.blur(); return; }
     if (e.key !== 'Enter') return;
+    box.blur(); // Enter でソフトキーボードを下げる
     const c = classifyQuery(box.value);
     if (c.kind === 'tag') {
       const count = App.records.searchTag(c.q);
