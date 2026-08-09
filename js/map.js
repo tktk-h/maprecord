@@ -5,6 +5,7 @@ App.map = (function () {
   let map;
   let AdvancedMarkerElement;   // marker ライブラリのクラス（init で読み込む）
   let markers = [];            // renderPins で出したマーカー
+  let searchMarkers = [];      // 場所検索の結果ピン（記録ピン markers とは別レイヤー）
   let routeLine = null;        // ルートの点線（numbered 表示時）
   let tempMarker = null;       // 追加フォーム中の目印
   let pickMarker = null;       // 位置修正のドラッグ用
@@ -117,6 +118,23 @@ App.map = (function () {
     markers.forEach((m) => { m.map = null; });
     markers = [];
     if (routeLine) { routeLine.setMap(null); routeLine = null; }
+  }
+
+  function clearPlaceResults() {
+    searchMarkers.forEach((m) => { m.map = null; });
+    searchMarkers = [];
+  }
+
+  // places=[{placeId,name,lat,lng,genre}] を検索ピンとして表示。タップで onSelect(placeId)
+  function renderPlaceResults(places, onSelect) {
+    clearPlaceResults();
+    (places || []).forEach((p) => {
+      const content = el('<div class="search-pin"></div>');
+      if (p.name) content.title = p.name;
+      const m = makeMarker(p.lat, p.lng, content, { zIndex: 1100, centered: true });
+      m.addListener('click', () => { if (onSelect) onSelect(p.placeId); });
+      searchMarkers.push(m);
+    });
   }
 
   function flyTo(lat, lng) { map.panTo({ lat, lng }); map.setZoom(16); }
@@ -233,6 +251,7 @@ App.map = (function () {
   }
 
   return { init, setClickHandler, setPlaceClickHandler, setLongPressHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
+           renderPlaceResults, clearPlaceResults,
            showTempMarker, clearTempMarker,
            startPickLocation, getPickedLatLng, stopPickLocation,
            _getMap: () => map };

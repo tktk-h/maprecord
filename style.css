@@ -141,6 +141,10 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .ss-empty, .ss-note { padding: 12px 14px; color: var(--text-muted); font-size: 13px; }
 .ss-note { border-top: 1px solid var(--border); }
 
+/* 場所検索の結果ピン（Google 風の赤丸） */
+.search-pin { width: 20px; height: 20px; border-radius: 50%;
+  background: #ea4335; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(45,38,30,.5); }
+
 /* ===== パネル / ボトムシート ===== */
 #panel { width: 340px; background: var(--surface); border-left: 1px solid var(--border);
   display: flex; flex-direction: column; min-height: 0; position: relative; }
