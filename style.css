@@ -309,7 +309,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .pin-order { position: absolute; top: -6px; left: -6px; width: 20px; height: 20px;
   border-radius: 50%; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700;
   display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm); }
-.dot-pin { position: relative; width: 100%; height: 100%; border-radius: 50%; color: #fff;
+.dot-pin { position: relative; width: 26px; height: 26px; border-radius: 50%; color: #fff;
   font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center;
   border: 2px solid #fff; box-shadow: var(--shadow-md); }
 /* 訪問回数バッジ（2回以上行った場所） */
