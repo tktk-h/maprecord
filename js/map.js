@@ -123,15 +123,37 @@ App.map = (function () {
     if (routeLine) { routeLine.setMap(null); routeLine = null; }
   }
 
+  const SAME_SPOT_TOL = 0.0003; // ≈30m：記録と検索結果が同じ場所か判定する許容誤差
+  function markerLatLng(m) {
+    const p = m.position; if (!p) return null;
+    const lat = typeof p.lat === 'function' ? p.lat() : p.lat;
+    const lng = typeof p.lng === 'function' ? p.lng() : p.lng;
+    return { lat, lng };
+  }
+  function sameSpot(a, b) {
+    return !!(a && b && Math.abs(a.lat - b.lat) < SAME_SPOT_TOL && Math.abs(a.lng - b.lng) < SAME_SPOT_TOL);
+  }
+
   function clearPlaceResults() {
     searchMarkers.forEach((m) => { m.map = null; });
     searchMarkers = [];
+    markers.forEach((m) => { if (m.map !== map) m.map = map; }); // 隠していた記録ピンを戻す
   }
 
   // places=[{placeId,name,lat,lng,genre}] を検索ピンとして表示。タップで onSelect(placeId)
-  function renderPlaceResults(places, onSelect) {
+  // opts.hideRecords=true：検索結果に一致しない記録ピンを隠す（一致する記録ピンは残し、赤ピンは出さない）
+  function renderPlaceResults(places, onSelect, opts) {
+    opts = opts || {};
     clearPlaceResults();
-    (places || []).forEach((p) => {
+    places = places || [];
+    if (opts.hideRecords) {
+      markers.forEach((m) => {
+        const c = markerLatLng(m);
+        m.map = places.some((p) => sameSpot(p, c)) ? map : null;
+      });
+    }
+    places.forEach((p) => {
+      if (opts.hideRecords && markers.some((m) => sameSpot(p, markerLatLng(m)))) return; // 記録ピンがある場所は赤ピンを出さない
       const content = el('<div class="search-pin"></div>');
       if (p.name) content.title = p.name;
       const m = makeMarker(p.lat, p.lng, content, { zIndex: 1100, centered: true });
@@ -257,5 +279,5 @@ App.map = (function () {
            renderPlaceResults, clearPlaceResults,
            showTempMarker, clearTempMarker,
            startPickLocation, getPickedLatLng, stopPickLocation,
-           _getMap: () => map };
+           _getMap: () => map, _sameSpot: sameSpot };
 })();

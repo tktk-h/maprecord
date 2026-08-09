@@ -142,7 +142,8 @@ App.search = (function () {
       return;
     }
     lastPlaceQuery = q;                   // このエリアを再検索用に保持
-    App.map.renderPlaceResults(results, (id) => App.records.showPlaceCard(id, { fly: true }));
+    // 検索中は記録の写真ピンを隠す（検索結果と同じ場所の記録ピンは残す）
+    App.map.renderPlaceResults(results, (id) => App.records.showPlaceCard(id, { fly: true }), { hideRecords: true });
     if (opts.fit !== false) App.map.fitTo(results); // 「このエリアを再検索」では地図を動かさない（現在の範囲を保つ）
   }
 
