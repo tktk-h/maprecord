@@ -125,7 +125,8 @@ App.search = (function () {
   }
 
   // Enter：テキスト検索を実行し、結果をマップにピン表示（0件は記録名検索へ）
-  async function runPlaceSearch(q) {
+  async function runPlaceSearch(q, opts) {
+    opts = opts || {};
     const mySeq = ++seq;                 // 連続 Enter のレース対策（古い応答を無効化）
     hideResearch();
     App.records.clearSearch();           // 記録検索リスト・シート・場所ピンを一旦リセット
@@ -142,7 +143,7 @@ App.search = (function () {
     }
     lastPlaceQuery = q;                   // このエリアを再検索用に保持
     App.map.renderPlaceResults(results, (id) => App.records.showPlaceCard(id, { fly: true }));
-    App.map.fitTo(results);
+    if (opts.fit !== false) App.map.fitTo(results); // 「このエリアを再検索」では地図を動かさない（現在の範囲を保つ）
   }
 
   const onInput = debounce(function () {
@@ -185,7 +186,7 @@ App.search = (function () {
     document.addEventListener('pointerdown', onDocPointer);
     if (researchBtn) researchBtn.addEventListener('click', () => {
       hideResearch();
-      if (lastPlaceQuery) runPlaceSearch(lastPlaceQuery);
+      if (lastPlaceQuery) runPlaceSearch(lastPlaceQuery, { fit: false }); // 現在の表示範囲のまま再検索
     });
     if (App.map.setUserPanHandler) App.map.setUserPanHandler(() => { if (lastPlaceQuery) showResearch(); });
     // セッショントークンは遅延生成し、場所選択時にのみ破棄（focus 毎に作り直すと課金セッションが分断される）

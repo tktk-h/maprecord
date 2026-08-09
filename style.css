@@ -399,6 +399,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   #locate-btn { top: 14px; right: 14px; left: auto; bottom: auto; padding: 11px; gap: 0; }
   #locate-btn span { display: none; } /* スマホではアイコンのみの丸ボタン */
   #calendar-view { padding-top: 124px; } /* 浮かせたヘッダー（2段）ぶん空ける */
+  #research-btn { top: 116px; } /* 2段ヘッダー（検索欄は2段目・bottom≈102）の下に出す */
 }
 
 /* ===== 起動スプラッシュ（待機画面） ===== */
