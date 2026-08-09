@@ -133,15 +133,19 @@ App.places = (function () {
   }
 
   // query → 座標付き候補[]（最大10）。opts.bias=LatLngBounds|null
+  // bias があるときは近い順（DISTANCE）で並べる（チェーン店で近くの店舗を優先）。
   async function searchText(query, opts) {
     opts = opts || {};
-    const { Place } = await google.maps.importLibrary('places');
+    const { Place, SearchByTextRankPreference } = await google.maps.importLibrary('places');
     const req = {
       textQuery: query,
       fields: ['id', 'displayName', 'location', 'types'],
       language: 'ja', region: 'JP', maxResultCount: 10,
     };
-    if (opts.bias) req.locationBias = opts.bias;
+    if (opts.bias) {
+      req.locationBias = opts.bias;
+      req.rankPreference = SearchByTextRankPreference.DISTANCE;
+    }
     const { places } = await Place.searchByText(req);
     return _normalizeTextResults(places);
   }

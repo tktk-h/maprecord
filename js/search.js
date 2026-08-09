@@ -9,14 +9,16 @@ App.search = (function () {
     return { kind: 'text', q };
   }
 
-  // 連打を間引く
+  // 連打を間引く（.cancel() で保留中の発火を打ち切れる）
   function debounce(fn, ms) {
     let t = null;
-    return function () {
+    const wrapped = function () {
       const args = arguments, self = this;
       clearTimeout(t);
       t = setTimeout(function () { fn.apply(self, args); }, ms);
     };
+    wrapped.cancel = function () { clearTimeout(t); t = null; };
+    return wrapped;
   }
 
   function _selfTest() {
@@ -145,6 +147,7 @@ App.search = (function () {
     if (e.key === 'Escape') { close(); box.blur(); return; }
     if (e.key !== 'Enter') return;
     box.blur(); // Enter でソフトキーボードを下げる
+    onInput.cancel(); // 保留中のオートコンプリート（デバウンス）を打ち切り、検索結果を横取りさせない
     const c = classifyQuery(box.value);
     if (c.kind === 'tag') {
       const count = App.records.searchTag(c.q);
