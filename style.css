@@ -142,8 +142,8 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .ss-note { border-top: 1px solid var(--border); }
 
 /* 場所検索の結果ピン（Google 風の赤丸） */
-.search-pin { width: 20px; height: 20px; border-radius: 50%;
-  background: #ea4335; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(45,38,30,.5); }
+.search-pin { width: 14px; height: 14px; border-radius: 50%;
+  background: #ea4335; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(45,38,30,.5); }
 
 /* 「このエリアを再検索」ボタン（上部中央のフローティングピル） */
 #research-btn { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); z-index: 55;

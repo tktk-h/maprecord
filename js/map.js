@@ -140,6 +140,9 @@ App.map = (function () {
     markers.forEach((m) => { if (m.map !== map) m.map = map; }); // 隠していた記録ピンを戻す
   }
 
+  // 記録ピンを即座に全部隠す（検索の通信待ち中に一瞬表示されるのを防ぐ）
+  function hideRecordPins() { markers.forEach((m) => { m.map = null; }); }
+
   // places=[{placeId,name,lat,lng,genre}] を検索ピンとして表示。タップで onSelect(placeId)
   // opts.hideRecords=true：検索結果に一致しない記録ピンを隠す（一致する記録ピンは残し、赤ピンは出さない）
   function renderPlaceResults(places, onSelect, opts) {
@@ -276,7 +279,7 @@ App.map = (function () {
   }
 
   return { init, setClickHandler, setPlaceClickHandler, setLongPressHandler, setUserPanHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
-           renderPlaceResults, clearPlaceResults,
+           renderPlaceResults, clearPlaceResults, hideRecordPins,
            showTempMarker, clearTempMarker,
            startPickLocation, getPickedLatLng, stopPickLocation,
            _getMap: () => map, _sameSpot: sameSpot };

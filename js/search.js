@@ -130,6 +130,7 @@ App.search = (function () {
     const mySeq = ++seq;                 // 連続 Enter のレース対策（古い応答を無効化）
     hideResearch();
     App.records.clearSearch();           // 記録検索リスト・シート・場所ピンを一旦リセット
+    App.map.hideRecordPins();            // 通信待ちの間に記録ピンが一瞬出るのを防ぐ（await より前に隠す）
     let results = [];
     try {
       results = await App.places.searchText(q, { bias: App.map.getBounds() });
@@ -138,7 +139,7 @@ App.search = (function () {
     if (!results.length) {
       lastPlaceQuery = null;
       const n = App.records.searchByName(q);
-      if (n === 0) alert('該当する場所・記録が見つかりませんでした');
+      if (n === 0) { App.map.clearPlaceResults(); alert('該当する場所・記録が見つかりませんでした'); } // 記録ピンを戻す
       return;
     }
     lastPlaceQuery = q;                   // このエリアを再検索用に保持
