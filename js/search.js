@@ -33,9 +33,10 @@ App.search = (function () {
     setTimeout(() => eq('debounce-once', calls, 1), 60);
   }
 
-  let box, wrap, dropdown;
+  let box, wrap, dropdown, researchBtn;
   let sessionToken = null;   // 1検索セッションのトークン
   let seq = 0;               // 場所検索の応答レース対策
+  let lastPlaceQuery = null;   // 「このエリアを再検索」で使う直前の検索語
 
   const MIN_PLACE_LEN = 2;   // 場所APIは2文字以上
   const REC_LIMIT = 8;
@@ -45,6 +46,9 @@ App.search = (function () {
 
   function open() { dropdown.hidden = false; dropdown.classList.add('open'); }
   function close() { dropdown.classList.remove('open'); dropdown.hidden = true; }
+
+  function showResearch() { if (researchBtn) researchBtn.hidden = false; }
+  function hideResearch() { if (researchBtn) researchBtn.hidden = true; }
 
   // 記録候補＋場所候補を1リストに描画（記録が上）
   function render(recs, places, opts) {
@@ -92,6 +96,7 @@ App.search = (function () {
     close();
     if (kind === 'rec') {
       App.map.clearPlaceResults();           // 記録を選んだら場所ピンは消す
+      lastPlaceQuery = null; hideResearch();
       const rec = App.records.getAll().find((x) => String(x.id) === btn.dataset.id);
       if (rec) { App.map.flyTo(rec.lat, rec.lng); App.records.showDetail(rec); }
     } else if (kind === 'place') {
@@ -121,6 +126,7 @@ App.search = (function () {
   // Enter：テキスト検索を実行し、結果をマップにピン表示（0件は記録名検索へ）
   async function runPlaceSearch(q) {
     const mySeq = ++seq;                 // 連続 Enter のレース対策（古い応答を無効化）
+    hideResearch();
     App.records.clearSearch();           // 記録検索リスト・シート・場所ピンを一旦リセット
     let results = [];
     try {
@@ -128,17 +134,19 @@ App.search = (function () {
     } catch (e) { console.error('place text search failed', e); results = []; }
     if (mySeq !== seq) return;           // 途中で新しい検索が始まっていたら破棄
     if (!results.length) {
+      lastPlaceQuery = null;
       const n = App.records.searchByName(q);
       if (n === 0) alert('該当する場所・記録が見つかりませんでした');
       return;
     }
+    lastPlaceQuery = q;                   // このエリアを再検索用に保持
     App.map.renderPlaceResults(results, (id) => App.records.showPlaceCard(id, { fly: true }));
     App.map.fitTo(results);
   }
 
   const onInput = debounce(function () {
     const c = classifyQuery(box.value);
-    if (c.kind === 'empty') { seq++; close(); App.records.clearSearch(); return; } // 保留中の非同期を無効化
+    if (c.kind === 'empty') { seq++; close(); App.records.clearSearch(); lastPlaceQuery = null; hideResearch(); return; }
     if (c.kind === 'tag') { seq++; close(); return; }
     updateSuggestions(c.q);
   }, 250);
@@ -155,7 +163,7 @@ App.search = (function () {
       close();
       return;
     }
-    if (c.kind === 'empty') { seq++; App.records.clearSearch(); close(); return; }
+    if (c.kind === 'empty') { seq++; App.records.clearSearch(); close(); lastPlaceQuery = null; hideResearch(); return; }
     close();
     runPlaceSearch(c.q); // 内部で seq を進めてレース対策
 
@@ -169,10 +177,16 @@ App.search = (function () {
     box = document.getElementById('search-box');
     wrap = document.getElementById('search-wrap');
     dropdown = document.getElementById('search-suggest');
+    researchBtn = document.getElementById('research-btn');
     if (!box || !wrap || !dropdown) return;
     box.addEventListener('input', onInput);
     box.addEventListener('keydown', onKeydown);
     document.addEventListener('pointerdown', onDocPointer);
+    if (researchBtn) researchBtn.addEventListener('click', () => {
+      hideResearch();
+      if (lastPlaceQuery) runPlaceSearch(lastPlaceQuery);
+    });
+    if (App.map.setUserPanHandler) App.map.setUserPanHandler(() => { if (lastPlaceQuery) showResearch(); });
     // セッショントークンは遅延生成し、場所選択時にのみ破棄（focus 毎に作り直すと課金セッションが分断される）
   }
 
