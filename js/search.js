@@ -89,10 +89,11 @@ App.search = (function () {
     const kind = btn.dataset.kind;
     close();
     if (kind === 'rec') {
+      App.map.clearPlaceResults();           // 記録を選んだら場所ピンは消す
       const rec = App.records.getAll().find((x) => String(x.id) === btn.dataset.id);
       if (rec) { App.map.flyTo(rec.lat, rec.lng); App.records.showDetail(rec); }
     } else if (kind === 'place') {
-      App.records.showPlaceCard(btn.dataset.id, { fly: true });
+      App.records.showPlaceCard(btn.dataset.id, { fly: true, pin: true }); // 単一ピン付き
       sessionToken = null;
     }
   }
@@ -115,6 +116,22 @@ App.search = (function () {
     }
   }
 
+  // Enter：テキスト検索を実行し、結果をマップにピン表示（0件は記録名検索へ）
+  async function runPlaceSearch(q) {
+    App.map.clearPlaceResults();
+    let results = [];
+    try {
+      results = await App.places.searchText(q, { bias: App.map.getBounds() });
+    } catch (e) { results = []; }
+    if (!results.length) {
+      const n = App.records.searchByName(q);
+      if (n === 0) alert('該当する場所・記録が見つかりませんでした');
+      return;
+    }
+    App.map.renderPlaceResults(results, (id) => App.records.showPlaceCard(id, { fly: true }));
+    App.map.fitTo(results);
+  }
+
   const onInput = debounce(function () {
     const c = classifyQuery(box.value);
     if (c.kind === 'empty') { seq++; close(); App.records.clearSearch(); return; } // 保留中の非同期を無効化
@@ -132,12 +149,10 @@ App.search = (function () {
       close();
       return;
     }
-    if (c.kind === 'empty') { App.records.clearSearch(); close(); return; }
-    const first = dropdown.querySelector('.ss-row');
-    if (first && !dropdown.hidden) { activateRow(first); return; }
-    const n = App.records.searchByName(c.q);
-    if (n === 0) alert('その名前の記録は見つかりませんでした');
+    if (c.kind === 'empty') { seq++; App.records.clearSearch(); close(); return; }
+    seq++;              // 保留中のオートコンプリート応答を無効化
     close();
+    runPlaceSearch(c.q);
   }
 
   function onDocPointer(e) {
@@ -155,5 +170,5 @@ App.search = (function () {
     // セッショントークンは遅延生成し、場所選択時にのみ破棄（focus 毎に作り直すと課金セッションが分断される）
   }
 
-  return { init, classifyQuery, debounce, render, updateSuggestions, _selfTest };
+  return { init, classifyQuery, debounce, render, updateSuggestions, runPlaceSearch, _selfTest };
 })();
