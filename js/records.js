@@ -591,11 +591,21 @@ App.records = (function () {
     };
   }
 
+  // 絞り込みが効いているか（モードが全部以外、またはジャンルを一部外している）
+  function isFiltering() {
+    const mode = document.getElementById('mode-select').value;
+    const boxes = document.querySelectorAll('#genre-filters input');
+    const checked = document.querySelectorAll('#genre-filters input:checked');
+    return mode !== 'all' || checked.length < boxes.length;
+  }
+
   function applyUiFilter() {
     // mode に応じて日付入力の表示切替
     const mode = document.getElementById('mode-select').value;
     document.getElementById('day-input').hidden = mode !== 'day';
     document.getElementById('range-inputs').hidden = mode !== 'range';
+    const clr = document.getElementById('filter-clear-top');
+    if (clr) clr.hidden = !isFiltering(); // 絞り込み中だけ×を出す
     setFilterState(readFilterState());
   }
 
@@ -622,6 +632,8 @@ App.records = (function () {
     document.querySelectorAll('#genre-filters input').forEach((cb) => { cb.checked = true; });
     const box = document.getElementById('search-box');
     if (box) box.value = '';
+    const sc = document.getElementById('search-clear');
+    if (sc) sc.hidden = true; // 検索バーの×も消す
     clearPanel(); // シートも隠れる
     applyUiFilter();
   }
@@ -634,6 +646,8 @@ App.records = (function () {
     ['mode-select', 'day-input', 'from-input', 'to-input'].forEach((id) =>
       document.getElementById(id).addEventListener('change', applyUiFilter));
     document.getElementById('filter-clear').addEventListener('click', resetFilters);
+    const clrTop = document.getElementById('filter-clear-top');
+    if (clrTop) clrTop.addEventListener('click', resetFilters); // 絞り込みボタン右の×
     reload();
   }
 

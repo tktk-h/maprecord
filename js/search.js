@@ -191,6 +191,18 @@ App.search = (function () {
       if (lastPlaceQuery) runPlaceSearch(lastPlaceQuery, { fit: false }); // 現在の表示範囲のまま再検索
     });
     if (App.map.setUserPanHandler) App.map.setUserPanHandler(() => { if (lastPlaceQuery) showResearch(); });
+    // 検索バーの×（クリア）：入力があるときだけ表示し、押すと元の状態へ
+    const searchClear = document.getElementById('search-clear');
+    if (searchClear) {
+      box.addEventListener('input', () => { searchClear.hidden = !box.value; });
+      searchClear.addEventListener('click', () => {
+        box.value = '';
+        searchClear.hidden = true;
+        close();
+        lastPlaceQuery = null; hideResearch();
+        App.records.clearSearch(); // 検索・場所ピンを解除
+      });
+    }
     // セッショントークンは遅延生成し、場所選択時にのみ破棄（focus 毎に作り直すと課金セッションが分断される）
   }
 

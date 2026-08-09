@@ -53,8 +53,15 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 #search-wrap { position: relative; display: flex; align-items: center; flex: 1 1 200px; max-width: 360px;
   background: var(--surface); border-radius: var(--radius-pill); box-shadow: var(--shadow-md); }
 #search-wrap .ph { position: absolute; left: 14px; color: var(--text-muted); font-size: 18px; pointer-events: none; }
-#search-box { padding: 11px 14px 11px 40px; background: transparent;
+#search-box { padding: 11px 38px 11px 40px; background: transparent;
   border: none; color: var(--text); border-radius: var(--radius-pill); }
+#search-box::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; } /* ネイティブの×を隠す */
+/* 検索バーの×（クリア）：右端 */
+#search-clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; color: var(--text-muted); font-size: 15px; }
+#search-clear:hover { background: var(--surface-2); color: var(--text); }
+#search-clear[hidden] { display: none; }
 #search-box::placeholder { color: var(--text-muted); }
 #search-box:focus { box-shadow: none; }
 #search-wrap:focus-within { box-shadow: var(--shadow-md), var(--ring); }
@@ -74,6 +81,12 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 
 /* 絞り込み・現在地の高さを 地図/カレンダー 切替に合わせる */
 #filter-toggle, #locate-btn { min-height: 41px; }
+/* 絞り込みの×（絞り込み中のみ・絞り込みボタンの右） */
+#filter-clear-top { display: inline-flex; align-items: center; justify-content: center;
+  width: 41px; min-height: 41px; border-radius: var(--radius-pill);
+  background: var(--surface); color: var(--text-muted); box-shadow: var(--shadow-md); font-size: 15px; }
+#filter-clear-top:hover { color: var(--accent-strong); }
+#filter-clear-top[hidden] { display: none; }
 
 /* ===== レイアウト ===== */
 #layout { flex: 1; display: flex; min-height: 0; position: relative; }
