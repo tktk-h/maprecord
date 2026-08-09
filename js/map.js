@@ -12,6 +12,7 @@ App.map = (function () {
   let onMapClick = null;       // (lat, lng) => void  ... 空きタップ（現在は未使用）
   let onPlaceClick = null;     // (placeId) => void  ... 店(POI)タップ時
   let onLongPress = null;      // (lat, lng) => void  ... 長押し（記録追加）
+  let onUserPan = null;         // ユーザーが地図をドラッグしたとき
   let overlayProjection = null; // 画面ピクセル→緯度経度の変換用（長押し判定）
   let suppressClickUntil = 0;   // 長押し直後のクリックを無視する時刻
 
@@ -66,6 +67,7 @@ App.map = (function () {
     // 右クリック（PC）＝その地点に記録を追加。スマホの長押しは setupLongPress で独自検知。
     map.addListener('contextmenu', (e) => { if (onLongPress && e.latLng) onLongPress(e.latLng.lat(), e.latLng.lng()); });
     map.addListener('idle', saveView); // 表示位置・ズームを保存
+    map.addListener('dragend', () => { if (onUserPan) onUserPan(); }); // ユーザー操作のみ（flyTo/fitTo では発火しない）
     setupLongPress();
   }
 
@@ -113,6 +115,7 @@ App.map = (function () {
   function setClickHandler(fn) { onMapClick = fn; }
   function setPlaceClickHandler(fn) { onPlaceClick = fn; }
   function setLongPressHandler(fn) { onLongPress = fn; }
+  function setUserPanHandler(fn) { onUserPan = fn; }
 
   function clearPins() {
     markers.forEach((m) => { m.map = null; });
@@ -250,7 +253,7 @@ App.map = (function () {
     });
   }
 
-  return { init, setClickHandler, setPlaceClickHandler, setLongPressHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
+  return { init, setClickHandler, setPlaceClickHandler, setLongPressHandler, setUserPanHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
            renderPlaceResults, clearPlaceResults,
            showTempMarker, clearTempMarker,
            startPickLocation, getPickedLatLng, stopPickLocation,
