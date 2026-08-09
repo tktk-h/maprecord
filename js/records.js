@@ -170,7 +170,7 @@ App.records = (function () {
   function clearSearch() {
     searchResults = null;
     activeTag = null;
-    if (App.map.clearPlaceResults) App.map.clearPlaceResults();
+    App.map.clearPlaceResults();
     clearPanel(); // 詳細や候補リストが出ていても、まっさらな初期表示へ（シートも隠れる）
     render();
   }
@@ -614,6 +614,7 @@ App.records = (function () {
   function resetFilters() {
     activeTag = null;
     searchResults = null;
+    App.map.clearPlaceResults(); // 場所検索のピンも消す
     document.getElementById('mode-select').value = 'all';
     document.getElementById('day-input').value = '';
     document.getElementById('from-input').value = '';

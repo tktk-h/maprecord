@@ -118,11 +118,13 @@ App.search = (function () {
 
   // Enter：テキスト検索を実行し、結果をマップにピン表示（0件は記録名検索へ）
   async function runPlaceSearch(q) {
-    App.map.clearPlaceResults();
+    const mySeq = ++seq;                 // 連続 Enter のレース対策（古い応答を無効化）
+    App.records.clearSearch();           // 記録検索リスト・シート・場所ピンを一旦リセット
     let results = [];
     try {
       results = await App.places.searchText(q, { bias: App.map.getBounds() });
-    } catch (e) { results = []; }
+    } catch (e) { console.error('place text search failed', e); results = []; }
+    if (mySeq !== seq) return;           // 途中で新しい検索が始まっていたら破棄
     if (!results.length) {
       const n = App.records.searchByName(q);
       if (n === 0) alert('該当する場所・記録が見つかりませんでした');
@@ -150,9 +152,9 @@ App.search = (function () {
       return;
     }
     if (c.kind === 'empty') { seq++; App.records.clearSearch(); close(); return; }
-    seq++;              // 保留中のオートコンプリート応答を無効化
     close();
-    runPlaceSearch(c.q);
+    runPlaceSearch(c.q); // 内部で seq を進めてレース対策
+
   }
 
   function onDocPointer(e) {
