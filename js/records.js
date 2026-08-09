@@ -170,6 +170,7 @@ App.records = (function () {
   function clearSearch() {
     searchResults = null;
     activeTag = null;
+    if (App.map.clearPlaceResults) App.map.clearPlaceResults();
     clearPanel(); // 詳細や候補リストが出ていても、まっさらな初期表示へ（シートも隠れる）
     render();
   }
@@ -366,6 +367,9 @@ App.records = (function () {
     }
 
     if (opts && opts.fly) App.map.flyTo(p.lat, p.lng); // 検索から開いた時はその場所へ寄せる
+    if (opts && opts.pin) App.map.renderPlaceResults(
+      [{ placeId, name: p.name, lat: p.lat, lng: p.lng, genre: p.genre }],
+      (id) => showPlaceCard(id, { fly: true }));
 
     const photos = p.photoUrls.length
       ? `<div class="pc-photos">${p.photoUrls.map((u, i) => `<img class="pc-photo" src="${u}" data-i="${i}" alt="">`).join('')}</div>`
