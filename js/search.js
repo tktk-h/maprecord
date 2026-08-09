@@ -100,6 +100,7 @@ App.search = (function () {
       const rec = App.records.getAll().find((x) => String(x.id) === btn.dataset.id);
       if (rec) { App.map.flyTo(rec.lat, rec.lng); App.records.showDetail(rec); }
     } else if (kind === 'place') {
+      lastPlaceQuery = null; hideResearch(); // 単一の場所を選んだら「このエリアを再検索」は出さない
       App.records.showPlaceCard(btn.dataset.id, { fly: true, pin: true }); // 単一ピン付き
       sessionToken = null;
     }
