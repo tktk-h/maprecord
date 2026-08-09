@@ -103,5 +103,49 @@ App.places = (function () {
     return _normalizePredictions(suggestions);
   }
 
-  return { fetchPlace, genreFromTypes, searchPlaces, newSessionToken, _normalizePredictions, _selfTest };
+  // Place.searchByText の結果 → 正規化（google 非依存でテスト可能）
+  function _normalizeTextResults(places) {
+    return (places || []).map((p) => {
+      const loc = p && p.location;
+      const lat = loc ? (typeof loc.lat === 'function' ? loc.lat() : loc.lat) : null;
+      const lng = loc ? (typeof loc.lng === 'function' ? loc.lng() : loc.lng) : null;
+      const name = (p && (typeof p.displayName === 'string'
+        ? p.displayName : (p.displayName && p.displayName.text))) || '';
+      return { placeId: p && p.id, name, lat, lng, genre: genreFromTypes(p && p.types) };
+    }).filter((x) => x.placeId && x.lat != null && x.lng != null);
+  }
+
+  function _selfTestText() {
+    const raw = [
+      { id: 'a', displayName: 'スカイツリー', location: { lat: 35.7, lng: 139.8 }, types: ['tourist_attraction'] },
+      { id: 'b', displayName: { text: 'マック渋谷' }, location: { lat: () => 35.6, lng: () => 139.7 }, types: ['restaurant'] },
+      { id: 'c', displayName: '座標なし', types: ['store'] },
+    ];
+    const out = _normalizeTextResults(raw);
+    const eq = (n, g, w) => console.log((g === w ? 'PASS' : 'FAIL') + ' ' + n, g);
+    eq('text-count', out.length, 2);
+    eq('text-name-str', out[0].name, 'スカイツリー');
+    eq('text-name-obj', out[1].name, 'マック渋谷');
+    eq('text-latfn', out[1].lat, 35.6);
+    eq('text-genre-sightsee', out[0].genre, 'sightsee');
+    eq('text-genre-food', out[1].genre, 'food');
+    eq('text-drop-noloc', out.every((x) => x.lat != null), true);
+  }
+
+  // query → 座標付き候補[]（最大10）。opts.bias=LatLngBounds|null
+  async function searchText(query, opts) {
+    opts = opts || {};
+    const { Place } = await google.maps.importLibrary('places');
+    const req = {
+      textQuery: query,
+      fields: ['id', 'displayName', 'location', 'types'],
+      language: 'ja', region: 'JP', maxResultCount: 10,
+    };
+    if (opts.bias) req.locationBias = opts.bias;
+    const { places } = await Place.searchByText(req);
+    return _normalizeTextResults(places);
+  }
+
+  return { fetchPlace, genreFromTypes, searchPlaces, searchText, newSessionToken,
+           _normalizePredictions, _normalizeTextResults, _selfTest, _selfTestText };
 })();
