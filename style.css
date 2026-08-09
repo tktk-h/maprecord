@@ -145,6 +145,16 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .search-pin { width: 20px; height: 20px; border-radius: 50%;
   background: #ea4335; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(45,38,30,.5); }
 
+/* 「このエリアを再検索」ボタン（上部中央のフローティングピル） */
+#research-btn { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); z-index: 55;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 10px 18px; border-radius: var(--radius-pill);
+  background: var(--surface); color: var(--accent-strong); font-size: 14px; font-weight: 600;
+  box-shadow: var(--shadow-md); }
+#research-btn .ph { font-size: 17px; }
+#research-btn:active { transform: translateX(-50%) scale(.97); }
+#research-btn[hidden] { display: none; }
+
 /* ===== パネル / ボトムシート ===== */
 #panel { width: 340px; background: var(--surface); border-left: 1px solid var(--border);
   display: flex; flex-direction: column; min-height: 0; position: relative; }
