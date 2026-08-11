@@ -421,7 +421,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   #panel-content { padding: 4px 20px 24px; touch-action: none; }
   #panel.at-full #panel-content { touch-action: pan-y; }
 
-  #locate-btn { top: 14px; right: 14px; left: auto; bottom: auto; padding: 11px; gap: 0; }
+  #locate-btn { top: 118px; right: 14px; left: auto; bottom: auto; padding: 11px; gap: 0; } /* 2段ヘッダーの下へ（絞り込み×と重ならない） */
   #locate-btn span { display: none; } /* スマホではアイコンのみの丸ボタン */
   #calendar-view { padding-top: 124px; } /* 浮かせたヘッダー（2段）ぶん空ける */
   #research-btn { top: 116px; } /* 2段ヘッダー（検索欄は2段目・bottom≈102）の下に出す */
