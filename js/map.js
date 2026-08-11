@@ -157,7 +157,8 @@ App.map = (function () {
     }
     places.forEach((p) => {
       if (opts.hideRecords && markers.some((m) => sameSpot(p, markerLatLng(m)))) return; // 記録ピンがある場所は赤ピンを出さない
-      const content = el('<div class="search-pin"></div>');
+      const content = el('<div class="search-result"><div class="search-pin"></div><span class="search-label"></span></div>');
+      content.querySelector('.search-label').textContent = p.name || ''; // 店名（注入防止で textContent）
       if (p.name) content.title = p.name;
       const m = makeMarker(p.lat, p.lng, content, { zIndex: 1100, centered: true });
       m.addListener('click', () => { if (onSelect) onSelect(p.placeId); });

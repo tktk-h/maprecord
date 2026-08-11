@@ -154,9 +154,13 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .ss-empty, .ss-note { padding: 12px 14px; color: var(--text-muted); font-size: 13px; }
 .ss-note { border-top: 1px solid var(--border); }
 
-/* 場所検索の結果ピン（Google 風の赤丸） */
+/* 場所検索の結果ピン（Google 風の赤丸＋店名ラベル） */
+.search-result { position: relative; width: 20px; height: 20px; }
 .search-pin { width: 20px; height: 20px; border-radius: 50%;
   background: #ea4335; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(45,38,30,.5); }
+.search-label { position: absolute; left: 25px; top: 50%; transform: translateY(-50%);
+  white-space: nowrap; font-size: 12px; font-weight: 700; line-height: 1; color: #fff;
+  text-shadow: 0 0 3px rgba(0,0,0,.95), 0 1px 2px rgba(0,0,0,.95); pointer-events: none; }
 
 /* 「このエリアを再検索」ボタン（上部中央のフローティングピル） */
 #research-btn { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); z-index: 55;
