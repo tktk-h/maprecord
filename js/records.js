@@ -515,35 +515,64 @@ App.records = (function () {
     else clearPanel();
   }
 
+  // 記録の詳細（思い出ページ）：写真ヒーロー＋編集的レイアウト
   function showDetail(record) {
     App.map.clearTempMarker(); // 追加中の目印が残っていれば消す
     if (App.sheet) App.sheet.snapTo('half'); // シートを開く
-    const photosHtml = (record.photos || []).map((p, i) =>
-      `<img class="thumb" src="${p.url}" alt="" data-i="${i}">`).join('');
-    const visits = visitsAt(record.lat, record.lng);
+    const photos = record.photos || [];
+    const urls = photos.map((p) => p.url);
+    const genreColor = App.genres.color(record.genre);
+
+    // ヒーロー：1枚目の写真。写真なしはジャンル色の温かいグラデにフォールバック
+    const heroStyle = photos.length
+      ? `background-image:url(${photos[0].url})`
+      : `background-image:linear-gradient(160deg, var(--accent-soft), ${genreColor})`;
+    const countBadge = photos.length > 1 ? `<span class="dt-count">1 / ${photos.length}</span>` : '';
+    const heroIcon = photos.length ? '' : '<span class="dt-hero-icon"><i class="ph ph-map-pin"></i></span>';
+    const strip = photos.length > 1
+      ? `<div class="dt-strip">${photos.map((p, i) =>
+          `<span class="dt-thumb" data-i="${i}" style="background-image:url(${p.url})"></span>`).join('')}</div>`
+      : '';
+
+    // 同じ場所の訪問（新しい順）。2回以上ならチップで切替
+    const visits = visitsAt(record.lat, record.lng)
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
     const visitsHtml = visits.length > 1 ? `
-      <div class="visits">
-        <div class="visits-head"><i class="ph ph-repeat"></i>この場所に ${visits.length} 回 訪問</div>
-        <div class="visit-list">${visits.map((v) =>
-          `<button type="button" class="visit-chip ${v.id === record.id ? 'current' : ''}" data-id="${v.id}">${formatVisitDate(v.date)}</button>`
-        ).join('')}</div>
-      </div>` : '';
+      <div class="dt-visits-label">訪れた日（${visits.length}回）</div>
+      <div class="dt-visits">${visits.map((v) =>
+        `<button type="button" class="visit-chip ${v.id === record.id ? 'current' : ''}" data-id="${v.id}">${formatVisitDate(v.date)}</button>`
+      ).join('')}</div>` : '';
+
+    const tagsHtml = (record.tags || []).length
+      ? `<div class="dt-tags">${(record.tags || []).map((t) =>
+          `<button type="button" class="tag-chip" data-tag="${esc(t)}">#${esc(t)}</button>`).join('')}</div>`
+      : '';
+    const gmapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(record.name || '')}`;
+
     panel().innerHTML = `
-      <button type="button" id="detail-back" class="back-btn"><i class="ph ph-arrow-left"></i>戻る</button>
-      <h2>${esc(record.name)}</h2>
-      <p class="meta">${App.genres.label(record.genre)} ・ ${record.date}</p>
-      ${visitsHtml}
-      <div class="photos">${photosHtml || '<span class="hint">写真なし</span>'}</div>
-      <p class="memo">${esc(record.memo).replace(/\n/g, '<br>') || '<span class="hint">メモなし</span>'}</p>
-      <div class="tags">${(record.tags || []).map((t) =>
-        `<button type="button" class="tag-chip" data-tag="${esc(t)}">#${esc(t)}</button>`).join('')
-        || '<span class="hint">タグなし</span>'}</div>
-      <button type="button" id="revisit-btn" class="revisit-btn"><i class="ph ph-plus"></i>同じ場所にもう一度記録</button>
-      <a class="gmaps-btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(record.name || '')}" target="_blank" rel="noopener"><i class="ph ph-map-trifold"></i>Googleマップで開く</a>
-      <div class="form-actions">
-        <button type="button" id="edit-btn"><i class="ph ph-pencil-simple"></i>編集</button>
-        <button type="button" id="del-btn"><i class="ph ph-trash"></i>削除</button>
+      <div class="detail">
+        <div class="dt-hero${photos.length ? '' : ' no-photo'}" style="${heroStyle}">
+          <button type="button" id="detail-back" class="dt-back" aria-label="戻る"><i class="ph ph-arrow-left"></i></button>
+          ${heroIcon}${countBadge}
+        </div>
+        ${strip}
+        <div class="dt-body">
+          <div class="dt-date">${formatVisitDate(record.date)}</div>
+          <h2 class="dt-title">${esc(record.name) || '(名称未設定)'}</h2>
+          <div class="dt-genre"><span class="dt-dot" style="background:${genreColor}"></span>${App.genres.label(record.genre)}</div>
+          ${visitsHtml}
+          <div class="dt-rule"></div>
+          <p class="dt-memo">${esc(record.memo).replace(/\n/g, '<br>') || '<span class="hint">メモなし</span>'}</p>
+          ${tagsHtml}
+          <button type="button" id="revisit-btn" class="dt-primary"><i class="ph ph-plus"></i>またここに記録する</button>
+          <div class="dt-actions">
+            <button type="button" id="edit-btn"><i class="ph ph-pencil-simple"></i>編集</button>
+            <a href="${gmapsUrl}" target="_blank" rel="noopener"><i class="ph ph-map-trifold"></i>マップで開く</a>
+            <button type="button" id="del-btn"><i class="ph ph-trash"></i>削除</button>
+          </div>
+        </div>
       </div>`;
+
     document.getElementById('detail-back').onclick = goBack;
     document.getElementById('revisit-btn').onclick = () =>
       showAddForm(record.lat, record.lng, { name: record.name, genre: record.genre });
@@ -553,9 +582,13 @@ App.records = (function () {
         if (rec) showDetail(rec);
       };
     });
-    panel().querySelectorAll('.photos .thumb[data-i]').forEach((img) => {
-      img.onclick = () => App.lightbox.open((record.photos || []).map((p) => p.url), Number(img.dataset.i));
-    });
+    if (photos.length) { // ヒーロー・ストリップをタップでライトボックス
+      const hero = panel().querySelector('.dt-hero');
+      if (hero) hero.onclick = () => App.lightbox.open(urls, 0);
+      panel().querySelectorAll('.dt-thumb').forEach((t) => {
+        t.onclick = () => App.lightbox.open(urls, Number(t.dataset.i));
+      });
+    }
     panel().querySelectorAll('.tag-chip').forEach((btn) => {
       btn.onclick = () => runTagSearch(btn.dataset.tag);
     });

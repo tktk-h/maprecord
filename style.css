@@ -409,6 +409,51 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   border-radius: var(--radius-pill); padding: 5px 12px; font-size: 12px; cursor: pointer; transition: background .15s, color .15s; }
 .tag-chip:hover { background: var(--accent); color: #fff; }
 
+/* ===== 記録の詳細（思い出ページ：写真ヒーロー＋編集的レイアウト） ===== */
+.dt-hero { position: relative; margin: 0 -20px; height: 200px;
+  background-size: cover; background-position: center; background-repeat: no-repeat; cursor: zoom-in; }
+.dt-hero.no-photo { cursor: default; display: flex; align-items: center; justify-content: center; }
+.dt-hero-icon { color: rgba(255,255,255,.92); font-size: 40px; text-shadow: 0 1px 8px rgba(45,38,30,.25); }
+.dt-back { position: absolute; top: 12px; left: 12px; width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center; border-radius: 50%;
+  background: rgba(255,254,251,.9); color: var(--accent-strong); font-size: 18px; box-shadow: var(--shadow-sm); }
+.dt-back:hover { background: #fff; }
+.dt-count { position: absolute; bottom: 12px; right: 12px; background: rgba(28,24,20,.5); color: #fff;
+  font-size: 11px; padding: 3px 10px; border-radius: var(--radius-pill); }
+.dt-strip { display: flex; gap: 7px; overflow-x: auto; margin: 10px 0 0;
+  -webkit-overflow-scrolling: touch; }
+.dt-thumb { flex: 0 0 auto; width: 46px; height: 46px; border-radius: 9px; cursor: zoom-in;
+  background-size: cover; background-position: center; box-shadow: var(--shadow-sm); }
+.dt-body { padding-top: 16px; }
+.dt-date { font-size: 12px; color: var(--accent); letter-spacing: .08em; margin-bottom: 4px; }
+.dt-title { font-size: 23px; font-weight: 700; margin: 0 0 6px; overflow-wrap: anywhere; }
+.dt-genre { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px; }
+.dt-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.dt-visits-label { font-size: 11px; color: var(--text-muted); letter-spacing: .04em; margin-bottom: 8px; }
+.dt-visits { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.dt-visits .visit-chip { font-size: 12.5px; background: var(--surface); color: var(--text-muted);
+  border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 6px 13px; cursor: pointer;
+  font-family: var(--font-display); }
+.dt-visits .visit-chip:hover { border-color: var(--accent); color: var(--accent-strong); }
+.dt-visits .visit-chip.current { background: var(--accent); color: #fff; border-color: var(--accent); }
+.dt-rule { height: 1px; background: var(--border); margin: 2px 0 16px; }
+.dt-memo { font-size: 14.5px; color: var(--text); line-height: 1.9; margin: 0 0 18px;
+  overflow-wrap: anywhere; word-break: break-word; }
+.dt-tags { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; margin: 0 0 22px; }
+.dt-tags .tag-chip { background: none; border: none; padding: 0; color: var(--accent-strong); cursor: pointer; }
+.dt-tags .tag-chip:hover { background: none; color: var(--accent); text-decoration: underline; }
+.dt-primary { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%;
+  background: var(--accent); color: #fff; border-radius: 12px; padding: 13px; font-size: 14px; font-weight: 500; margin-bottom: 14px; }
+.dt-primary .ph { font-size: 17px; }
+.dt-primary:hover { background: var(--accent-strong); }
+.dt-actions { display: flex; justify-content: center; gap: 22px; }
+.dt-actions button, .dt-actions a { display: inline-flex; align-items: center; gap: 5px;
+  background: none; border: none; color: var(--text-muted); text-decoration: none; cursor: pointer; font-size: 13px; }
+.dt-actions .ph { font-size: 15px; }
+.dt-actions button:hover, .dt-actions a:hover { color: var(--text); }
+.dt-actions #del-btn { color: #b5675f; }
+.dt-actions #del-btn:hover { color: #9c4b43; }
+
 /* ===== 追加地点の目印（脈打つ） ===== */
 .temp-pin { width: 16px; height: 16px; border-radius: 50%; background: var(--accent);
   border: 3px solid #fff; box-shadow: 0 0 0 0 rgba(183,110,100,.5); animation: temp-pulse 1.3s infinite; }
