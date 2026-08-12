@@ -207,7 +207,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   display: flex; align-items: center; justify-content: center; }
 .mem-x:hover { background: var(--border); color: var(--text); }
 @media (max-width: 700px) {
-  #memory-card { top: 60px; }
+  #memory-card { top: 116px; } /* 2段ヘッダー（検索バーは2段目）の下へ出す */
 }
 
 /* ===== クイック記録カード ===== */
