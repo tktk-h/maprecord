@@ -244,6 +244,10 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .form-actions button { flex: 1; padding: 11px 16px; border-radius: var(--radius-sm); font-weight: 600; font-size: 14px; }
 .form-actions button[type=submit] { background: var(--accent); color: #fff; }
 .form-actions button[type=submit]:hover { background: var(--accent-strong); }
+
+/* 追加/クイック：主ボタンを主役に、副操作は控えめ */
+#rec-form .form-actions, #quick-log .form-actions { margin-top: 18px; }
+#rec-form label, #quick-log label { margin-top: 14px; }
 .form-actions button[type=button] { background: var(--surface-2); color: var(--text); }
 .form-actions button[type=button]:hover { background: var(--border); }
 
