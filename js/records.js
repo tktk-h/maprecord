@@ -350,6 +350,7 @@ App.records = (function () {
     activeTag = null;
     const today = new Date().toISOString().slice(0, 10);
     const state = { name: '', genre: 'food', candidates: [] };
+    let cancelled = false; // 保存/詳しく書く に移ったら候補の遅延描画を止める
 
     function draw() {
       const chips = state.candidates.length
@@ -385,11 +386,14 @@ App.records = (function () {
         };
       });
       document.getElementById('ql-save').onclick = save;
-      document.getElementById('ql-more').onclick = () =>
+      document.getElementById('ql-more').onclick = () => {
+        cancelled = true;
         showAddForm(lat, lng, { name: state.name, genre: state.genre });
+      };
     }
 
     async function save() {
+      cancelled = true;
       const btn = document.getElementById('ql-save');
       btn.disabled = true; btn.textContent = '保存中…';
       const name = state.name.trim();
@@ -412,12 +416,20 @@ App.records = (function () {
 
     try {
       const cands = await App.places.nearbyPlaces(lat, lng);
+      if (cancelled) return; // 既に保存/詳しく書くへ移った後は上書きしない
       state.candidates = cands.slice(0, 3);
       if (cands.length && !state.name) {
         state.name = cands[0].name;
         if (cands[0].genre) state.genre = cands[0].genre;
       }
+      const active = document.activeElement;
+      const typing = !!(active && active.id === 'ql-name');
+      const caret = typing ? active.selectionStart : null;
       draw();
+      if (typing) {
+        const ni = document.getElementById('ql-name');
+        if (ni) { ni.focus(); if (caret != null) { try { ni.setSelectionRange(caret, caret); } catch (_) { /* noop */ } } }
+      }
     } catch (_) { /* 候補取得失敗は空のまま */ }
   }
 
