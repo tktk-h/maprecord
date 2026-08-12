@@ -356,10 +356,12 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 #mode-segment .seg-btn.active { background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
 
 /* 日付入力（温かい枠）。font-size:16px 未満だと iOS Safari が入力時に自動ズームする */
-#filter-bar input[type=date] { width: 100%; padding: 11px 13px; font-size: 16px;
+#filter-bar input[type=date] { width: 100%; min-width: 0; padding: 11px 13px; font-size: 16px;
   background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+#day-input[hidden] { display: none; } /* mode切替でJSが hidden にしたとき確実に隠す */
 #range-inputs { display: flex; align-items: center; gap: 8px; color: var(--text-muted); }
-#range-inputs input[type=date] { flex: 1; }
+#range-inputs[hidden] { display: none; } /* display:flex が hidden を打ち消さないように */
+#range-inputs input[type=date] { flex: 1; width: auto; min-width: 0; }
 
 /* ジャンル：色付きトグルチップ（真実は隠した checkbox） */
 .gf-label { font-size: 11px; color: var(--text-muted); letter-spacing: .04em; margin-bottom: -6px; }
@@ -503,6 +505,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   #panel.at-full #panel-content { touch-action: pan-y; }
 
   #locate-btn { top: 118px; right: 14px; left: auto; bottom: auto; padding: 11px; gap: 0; } /* 2段ヘッダーの下へ（絞り込み×と重ならない） */
+  #topbar.filters-open ~ #layout #locate-btn { display: none; } /* 絞り込みパネルを開いている間は被る現在地ボタンを隠す */
   #locate-btn span { display: none; } /* スマホではアイコンのみの丸ボタン */
   #calendar-view { padding-top: 124px; } /* 浮かせたヘッダー（2段）ぶん空ける */
   #research-btn { top: 116px; } /* 2段ヘッダー（検索欄は2段目・bottom≈102）の下に出す */
