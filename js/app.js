@@ -75,6 +75,21 @@ function wireUI() {
     const s = await space.findMySpace(auth.user().uid);
     alert('招待コード：' + (s ? s.inviteCode : '不明'));
   });
+  document.getElementById('anniv-btn').addEventListener('click', async () => {
+    const cur = (currentSpace && currentSpace.anniversary) || '';
+    const input = prompt('記念日を入力（YYYY-MM-DD）。空にすると解除します。', cur);
+    if (input == null) return;
+    const v = input.trim();
+    if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) { alert('YYYY-MM-DD の形式で入力してください'); return; }
+    try {
+      await space.setAnniversary(currentSpace.id, v);
+      currentSpace.anniversary = v || null;
+      App.memories.setAnniversary(currentSpace.anniversary);
+      alert(v ? '記念日を保存しました' : '記念日を解除しました');
+    } catch (e) {
+      alert('保存に失敗しました: ' + e.message);
+    }
+  });
 }
 
 function showMapLoading() { const el = document.getElementById('map-loading'); if (el) el.hidden = false; }

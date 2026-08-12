@@ -59,6 +59,11 @@ App.space = (function () {
     });
   }
 
+  // スペースの記念日（YYYY-MM-DD、空文字で解除）を保存
+  async function setAnniversary(spaceId, date) {
+    await updateDoc(doc(fb.db, SPACES, spaceId), { anniversary: date || '' });
+  }
+
   function _selfTest() {
     const eq = (n, got, want) => console.log((got === want ? 'PASS' : 'FAIL') + ' ' + n, got);
     const c = genInviteCode();
@@ -69,6 +74,7 @@ App.space = (function () {
     eq('match', normalizeCode('abcd-2345') === normalizeCode('ABCD2345'), true);
   }
 
-  return { genInviteCode, normalizeCode, findMySpace, createSpace, joinSpace, touchLastSeen, _selfTest };
+  return { genInviteCode, normalizeCode, findMySpace, createSpace, joinSpace,
+           touchLastSeen, setAnniversary, _selfTest };
 })();
 export const space = App.space;
