@@ -67,25 +67,31 @@
     <button id="filter-toggle" title="絞り込み"><i class="ph ph-funnel"></i><span>絞り込み</span></button>
     <button id="filter-clear-top" type="button" hidden aria-label="絞り込みをクリア"><i class="ph ph-x"></i></button>
     <div id="filter-panel">
-    <div id="filter-bar">
-      <select id="mode-select">
-        <option value="all">全部</option>
-        <option value="day">特定の日</option>
-        <option value="range">期間</option>
-      </select>
-      <input type="date" id="day-input" hidden>
-      <span id="range-inputs" hidden>
-        <input type="date" id="from-input"> 〜 <input type="date" id="to-input">
-      </span>
-      <span id="genre-filters"><!-- チェックボックスをJSで生成 --></span>
-      <button id="filter-clear" title="絞り込みをリセット"><i class="ph ph-x"></i>クリア</button>
-    </div>
-    <div id="backup-bar">
-      <button id="export-btn"><i class="ph ph-download-simple"></i><span>書き出し</span></button>
-      <button id="show-invite-btn"><i class="ph ph-user-plus"></i><span>招待コード</span></button>
-      <button id="anniv-btn"><i class="ph ph-heart"></i><span>記念日</span></button>
-      <button id="logout-btn"><i class="ph ph-sign-out"></i><span>ログアウト</span></button>
-    </div>
+      <div class="filter-title"><i class="ph ph-sliders-horizontal"></i>絞り込み</div>
+      <div id="filter-bar">
+        <select id="mode-select">
+          <option value="all">全部</option>
+          <option value="day">特定の日</option>
+          <option value="range">期間</option>
+        </select>
+        <div id="mode-segment"><!-- セグメントをJSで生成 --></div>
+        <input type="date" id="day-input" hidden>
+        <span id="range-inputs" hidden>
+          <input type="date" id="from-input"> 〜 <input type="date" id="to-input">
+        </span>
+        <div class="gf-label">ジャンル</div>
+        <span id="genre-filters"><!-- チップをJSで生成 --></span>
+        <button id="filter-clear" title="絞り込みをリセット"><i class="ph ph-arrow-counter-clockwise"></i>リセット</button>
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">設定</div>
+        <div id="backup-bar">
+          <button id="export-btn"><i class="ph ph-download-simple"></i><span>書き出し</span></button>
+          <button id="show-invite-btn"><i class="ph ph-user-plus"></i><span>招待コード</span></button>
+          <button id="anniv-btn"><i class="ph ph-heart"></i><span>記念日</span></button>
+          <button id="logout-btn"><i class="ph ph-sign-out"></i><span>ログアウト</span></button>
+        </div>
+      </div>
     </div>
   </header>
 
