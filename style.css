@@ -337,27 +337,63 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .lb-close:hover, .lb-prev:hover, .lb-next:hover { background: rgba(255,255,255,.2); }
 .lb-counter { position: absolute; bottom: 20px; left: 0; right: 0; text-align: center; color: rgba(255,255,255,.85); font-size: 13px; }
 
-/* ===== 絞り込みパネル（押したときだけ白背景で表示） ===== */
+/* ===== 絞り込みパネル（温かみ・エモい・作り込み） ===== */
 #filter-panel { display: none; flex-basis: 100%; }
-#topbar.filters-open #filter-panel { display: flex; flex-direction: column; gap: 12px;
-  background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-md);
-  padding: 16px; margin-top: 2px; max-width: 520px; }
-#filter-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
-/* font-size:16px 未満だと iOS Safari が入力時に自動ズームするため16pxに */
-#filter-bar select, #filter-bar input[type=date] { width: auto; padding: 7px 10px; font-size: 16px; }
-.gf { display: inline-flex; align-items: center; gap: 5px; background: rgba(51,48,43,.06); color: var(--text);
-  padding: 6px 11px; border-radius: var(--radius-pill); cursor: pointer; font-size: 13px; }
-.gf input { width: auto; vertical-align: middle; accent-color: var(--accent); }
-#filter-clear { display: inline-flex; align-items: center; gap: 5px; color: var(--text);
-  background: rgba(51,48,43,.06); border-radius: var(--radius-pill); padding: 6px 12px; font-size: 13px; }
-#filter-clear:hover { background: rgba(51,48,43,.12); }
+#topbar.filters-open #filter-panel { display: flex; flex-direction: column; gap: 14px;
+  background: var(--surface); border-radius: var(--radius);
+  box-shadow: 0 12px 34px rgba(45,38,30,.14), 0 2px 8px rgba(45,38,30,.06);
+  padding: 18px; margin-top: 2px; max-width: 360px; }
+.filter-title { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; color: var(--text); }
+.filter-title .ph { color: var(--accent-strong); font-size: 17px; }
 
-/* バックアップ */
-#backup-bar { display: flex; gap: 8px; }
-#backup-bar button, #import-label { display: inline-flex; align-items: center; gap: 6px;
-  background: rgba(51,48,43,.06); color: var(--text); border-radius: var(--radius-pill);
-  padding: 7px 13px; cursor: pointer; font-size: 13px; }
-#backup-bar button:hover, #import-label:hover { background: rgba(51,48,43,.12); }
+#filter-bar { display: flex; flex-direction: column; align-items: stretch; gap: 14px; font-size: 13px; }
+
+/* モード：セグメント式ピル（地図/カレンダー切替と同じ手触り） */
+#mode-select { display: none; }
+#mode-segment { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: var(--radius-pill); }
+#mode-segment .seg-btn { flex: 1; padding: 8px 0; border-radius: var(--radius-pill);
+  font-size: 13px; color: var(--text-muted); transition: background .15s, color .15s; }
+#mode-segment .seg-btn.active { background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
+
+/* 日付入力（温かい枠）。font-size:16px 未満だと iOS Safari が入力時に自動ズームする */
+#filter-bar input[type=date] { width: 100%; padding: 11px 13px; font-size: 16px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+#range-inputs { display: flex; align-items: center; gap: 8px; color: var(--text-muted); }
+#range-inputs input[type=date] { flex: 1; }
+
+/* ジャンル：色付きトグルチップ（真実は隠した checkbox） */
+.gf-label { font-size: 11px; color: var(--text-muted); letter-spacing: .04em; margin-bottom: -6px; }
+#genre-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.gf { position: relative; display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 13px; border-radius: var(--radius-pill); cursor: pointer; font-size: 13px;
+  background: var(--surface); border: 1px solid var(--border); color: var(--text-muted);
+  transition: background .12s, border-color .12s, color .12s; }
+.gf input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; pointer-events: none; }
+.gf-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gc); opacity: .4; }
+.gf:active { transform: scale(.97); }
+.gf:has(input:checked) { background: color-mix(in srgb, var(--gc) 15%, transparent);
+  border-color: color-mix(in srgb, var(--gc) 34%, transparent);
+  color: color-mix(in srgb, var(--gc), #000 34%); font-weight: 600; }
+.gf:has(input:checked) .gf-dot { opacity: 1; }
+.gf:focus-within { box-shadow: var(--ring); }
+
+/* リセット（控えめ・右寄せ） */
+#filter-clear { align-self: flex-end; display: inline-flex; align-items: center; gap: 5px;
+  color: var(--text-muted); background: none; padding: 2px 4px; font-size: 12px; }
+#filter-clear:hover { color: var(--accent-strong); }
+
+/* 設定セクション（絞り込みと視覚的に分離） */
+.settings-section { border-top: 1px solid var(--border); padding-top: 14px; }
+.settings-label { font-size: 11px; color: var(--text-muted); letter-spacing: .04em; margin-bottom: 8px; }
+#backup-bar { display: flex; flex-direction: column; gap: 2px; }
+#backup-bar button { display: flex; align-items: center; gap: 11px; width: 100%;
+  background: none; color: var(--text); border-radius: var(--radius-sm);
+  padding: 9px 8px; font-size: 14px; text-align: left; }
+#backup-bar button .ph { font-size: 18px; color: var(--text-muted); }
+#backup-bar button:hover { background: var(--surface-2); }
+#anniv-btn .ph { color: var(--accent); }
+#logout-btn { color: #a86a62; }
+#logout-btn .ph { color: #a86a62; }
 
 /* ===== ハッシュタグ ===== */
 .tags { display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0; }
