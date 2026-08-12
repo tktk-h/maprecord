@@ -5,6 +5,8 @@ import { space } from './space.js';
 import { photos } from './photos.js'; // 読み込みで window.App.photos を用意
 
 let started = false;
+let currentSpace = null;
+let memoriesShown = false;
 
 function wireUI() {
   const mapBtn = document.getElementById('view-map');
@@ -80,6 +82,7 @@ function hideMapLoading() { const el = document.getElementById('map-loading'); i
 
 async function startApp(sp) {
   cloud.setSpace(sp.id);
+  currentSpace = sp;
   showMapLoading(); // 記録の初回読み込みが終わるまで「読み込み中」を出す
   // アプリを開いた記録（最終アクセス）を残す。失敗しても本体には影響させない。
   const u = auth.user();
@@ -92,7 +95,12 @@ async function startApp(sp) {
     wireUI();
     started = true;
   }
-  cloud.subscribe((records) => { App.records.setRecords(records); hideMapLoading(); }); // 初回スナップショットで消す
+  App.memories.setAnniversary(sp.anniversary || null);
+  cloud.subscribe((records) => {
+    App.records.setRecords(records);
+    hideMapLoading();
+    if (!memoriesShown) { memoriesShown = true; App.memories.show(); } // 初回ロード後に一度だけ
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
