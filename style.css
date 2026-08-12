@@ -210,6 +210,17 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   #memory-card { top: 60px; }
 }
 
+/* ===== クイック記録カード ===== */
+#quick-log .ql-cands-label { font-size: 11px; color: var(--text-muted); margin: 8px 0 6px; }
+#quick-log .ql-cands { display: flex; flex-wrap: wrap; gap: 6px; }
+#quick-log .ql-chip { border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text); border-radius: var(--radius-pill); padding: 6px 12px; font-size: 12px; }
+#quick-log .ql-chip:hover { border-color: var(--accent); color: var(--accent-strong); }
+#quick-log .ql-chip-manual { background: none; color: var(--text-muted); }
+#quick-log .form-actions button#ql-save { background: var(--accent); color: #fff; }
+#quick-log .form-actions button#ql-save:hover { background: var(--accent-strong); }
+#quick-log .ql-more { display: inline-flex; margin-top: 12px; }
+
 /* ===== パネル / ボトムシート ===== */
 #panel { width: 340px; background: var(--surface); border-left: 1px solid var(--border);
   display: flex; flex-direction: column; min-height: 0; position: relative; }

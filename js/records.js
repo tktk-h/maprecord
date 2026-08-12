@@ -344,6 +344,83 @@ App.records = (function () {
     };
   }
 
+  // クイック記録：現在地から一瞬で保存。近くの店を候補表示、写真/メモは後から。
+  async function showQuickLog(lat, lng) {
+    searchResults = null;
+    activeTag = null;
+    const today = new Date().toISOString().slice(0, 10);
+    const state = { name: '', genre: 'food', candidates: [] };
+
+    function draw() {
+      const chips = state.candidates.length
+        ? `<div class="ql-cands-label">近くの候補</div>
+           <div class="ql-cands">
+             ${state.candidates.map((c, i) =>
+               `<button type="button" class="ql-chip" data-i="${i}">${esc(c.name)}</button>`).join('')}
+             <button type="button" class="ql-chip ql-chip-manual" data-manual="1">手動で入力</button>
+           </div>`
+        : '';
+      panel().innerHTML = `
+        <div id="quick-log">
+          <h2>今ここを記録</h2>
+          <p class="meta">${today} ・ 今日</p>
+          <label>場所名<input type="text" id="ql-name" value="${esc(state.name)}" placeholder="お店・施設の名前"></label>
+          ${chips}
+          <label>ジャンル<select id="ql-genre">${genreOptions(state.genre)}</select></label>
+          <div class="form-actions">
+            <button type="button" id="ql-save">保存</button>
+          </div>
+          <button type="button" id="ql-more" class="back-btn ql-more"><i class="ph ph-pencil-simple"></i>詳しく書く</button>
+        </div>`;
+      const nameInput = document.getElementById('ql-name');
+      nameInput.oninput = () => { state.name = nameInput.value; };
+      document.getElementById('ql-genre').onchange = (e) => { state.genre = e.target.value; };
+      panel().querySelectorAll('.ql-chip').forEach((b) => {
+        b.onclick = () => {
+          if (b.dataset.manual) { document.getElementById('ql-name').focus(); return; }
+          const c = state.candidates[Number(b.dataset.i)];
+          state.name = c.name;
+          if (c.genre) state.genre = c.genre;
+          draw();
+        };
+      });
+      document.getElementById('ql-save').onclick = save;
+      document.getElementById('ql-more').onclick = () =>
+        showAddForm(lat, lng, { name: state.name, genre: state.genre });
+    }
+
+    async function save() {
+      const btn = document.getElementById('ql-save');
+      btn.disabled = true; btn.textContent = '保存中…';
+      const name = state.name.trim();
+      const genre = state.genre;
+      try {
+        const order = all.filter((r) => r.date === today).length;
+        const id = await App.cloud.add({
+          date: today, name, genre, memo: '', tags: [], order, lat, lng, photos: [],
+        });
+        showDetail({ id, date: today, name, genre, memo: '', tags: [], order, lat, lng, photos: [] });
+      } catch (err) {
+        alert('保存に失敗しました: ' + err.message);
+        btn.disabled = false; btn.textContent = '保存';
+      }
+    }
+
+    App.map.showTempMarker(lat, lng);
+    if (App.sheet) App.sheet.snapTo('half');
+    draw(); // まず即描画（候補取得を待たない）
+
+    try {
+      const cands = await App.places.nearbyPlaces(lat, lng);
+      state.candidates = cands.slice(0, 3);
+      if (cands.length && !state.name) {
+        state.name = cands[0].name;
+        if (cands[0].genre) state.genre = cands[0].genre;
+      }
+      draw();
+    } catch (_) { /* 候補取得失敗は空のまま */ }
+  }
+
   // 店(POI)カード：Places の情報を Googleマップ風に下シートへ。「記録に追加」で追加フォームへ。
   async function showPlaceCard(placeId, opts) {
     searchResults = null;
@@ -653,6 +730,6 @@ App.records = (function () {
 
   return { init, reload, setRecords, render, getAll, setFilterState, applyUiFilter, focusDay,
            searchTag, clearTag, searchByName, clearSearch,
-           showDetail, showEditForm, showAddForm, showPlaceCard, suggestRecords,
+           showDetail, showEditForm, showAddForm, showQuickLog, showPlaceCard, suggestRecords,
            _clearPanel: clearPanel, _selfTest };
 })();

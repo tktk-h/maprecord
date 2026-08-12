@@ -47,7 +47,7 @@ function wireUI() {
         locateBtn.disabled = false;
         const { latitude, longitude } = pos.coords;
         App.map.flyTo(latitude, longitude);
-        App.records.showAddForm(latitude, longitude);
+        App.records.showQuickLog(latitude, longitude);
       },
       () => {
         locateBtn.disabled = false;
