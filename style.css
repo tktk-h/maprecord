@@ -506,6 +506,9 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 
   #locate-btn { top: 118px; right: 14px; left: auto; bottom: auto; padding: 11px; gap: 0; } /* 2段ヘッダーの下へ（絞り込み×と重ならない） */
   #topbar.filters-open ~ #layout #locate-btn { display: none; } /* 絞り込みパネルを開いている間は被る現在地ボタンを隠す */
+  /* iOS: appearance 既定だと width:100% を無視して最小幅ではみ出すため、スマホ幅ではリセット */
+  #filter-bar input[type=date] { -webkit-appearance: none; appearance: none; }
+  #filter-bar input[type=date]::-webkit-date-and-time-value { text-align: left; margin: 0; }
   #locate-btn span { display: none; } /* スマホではアイコンのみの丸ボタン */
   #calendar-view { padding-top: 124px; } /* 浮かせたヘッダー（2段）ぶん空ける */
   #research-btn { top: 116px; } /* 2段ヘッダー（検索欄は2段目・bottom≈102）の下に出す */
