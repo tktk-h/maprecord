@@ -659,10 +659,37 @@ App.records = (function () {
   function buildGenreFilters() {
     const box = document.getElementById('genre-filters');
     box.innerHTML = App.genres.list.map((g) =>
-      `<label class="gf"><input type="checkbox" value="${g.key}" checked>
-        <span style="color:${g.color}">●</span>${g.label}</label>`
+      `<label class="gf" style="--gc:${g.color}">
+        <input type="checkbox" value="${g.key}" checked>
+        <span class="gf-dot"></span>${g.label}
+      </label>`
     ).join('');
     box.querySelectorAll('input').forEach((cb) => cb.addEventListener('change', applyUiFilter));
+  }
+
+  // モード切替のセグメントUI。真実は隠した #mode-select。押下で select を変えて change を発火。
+  function buildModeSegment() {
+    const sel = document.getElementById('mode-select');
+    const seg = document.getElementById('mode-segment');
+    if (!sel || !seg) return;
+    seg.innerHTML = Array.from(sel.options).map((o) =>
+      `<button type="button" class="seg-btn" data-val="${o.value}">${o.textContent}</button>`).join('');
+    seg.querySelectorAll('.seg-btn').forEach((b) => {
+      b.onclick = () => {
+        sel.value = b.dataset.val;
+        sel.dispatchEvent(new Event('change')); // 既存の applyUiFilter が走る
+      };
+    });
+    syncModeSegment();
+  }
+  // #mode-select の現在値に合わせてセグメントの active 表示を更新
+  function syncModeSegment() {
+    const sel = document.getElementById('mode-select');
+    const seg = document.getElementById('mode-segment');
+    if (!sel || !seg) return;
+    seg.querySelectorAll('.seg-btn').forEach((b) => {
+      b.classList.toggle('active', b.dataset.val === sel.value);
+    });
   }
 
   function readFilterState() {
@@ -696,6 +723,7 @@ App.records = (function () {
     const clr = document.getElementById('filter-clear-top');
     if (clr) clr.hidden = !isFiltering(); // 絞り込み中だけ×を出す
     setFilterState(readFilterState());
+    syncModeSegment(); // focusDay/resetFilters 経由でもセグメント表示を合わせる
   }
 
   // カレンダーで日付を選んだとき：その日で絞り込み、最初の記録へ移動
@@ -732,6 +760,7 @@ App.records = (function () {
     App.map.setPlaceClickHandler(showPlaceCard);
     App.map.setClickHandler(() => { if (App.sheet) App.sheet.collapse(); }); // 地図タップでシートを下げる
     buildGenreFilters();
+    buildModeSegment();
     ['mode-select', 'day-input', 'from-input', 'to-input'].forEach((id) =>
       document.getElementById(id).addEventListener('change', applyUiFilter));
     document.getElementById('filter-clear').addEventListener('click', resetFilters);
