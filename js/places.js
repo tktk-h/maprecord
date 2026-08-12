@@ -147,6 +147,23 @@ App.places = (function () {
     return _normalizeTextResults(places);
   }
 
-  return { fetchPlace, genreFromTypes, searchPlaces, searchText, newSessionToken,
+  // (lat,lng) の近くの店・施設を距離順に取得。正規化は searchText と同型。
+  // opts.radius=半径m（既定120）, opts.max=最大件数（既定8）
+  async function nearbyPlaces(lat, lng, opts) {
+    opts = opts || {};
+    const { Place, SearchNearbyRankPreference } =
+      await google.maps.importLibrary('places');
+    const req = {
+      fields: ['id', 'displayName', 'location', 'types'],
+      locationRestriction: { center: { lat, lng }, radius: opts.radius || 120 },
+      maxResultCount: opts.max || 8,
+      rankPreference: SearchNearbyRankPreference.DISTANCE,
+      language: 'ja', region: 'JP',
+    };
+    const { places } = await Place.searchNearby(req);
+    return _normalizeTextResults(places); // [{ placeId, name, lat, lng, genre }]
+  }
+
+  return { fetchPlace, genreFromTypes, searchPlaces, searchText, nearbyPlaces, newSessionToken,
            _normalizePredictions, _normalizeTextResults, _selfTest, _selfTestText };
 })();
