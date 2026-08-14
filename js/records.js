@@ -294,6 +294,34 @@ App.records = (function () {
     ).join('');
   }
 
+  // ジャンル選択の色チップ（単一選択）。真実は隠した <select name="genre">。
+  // selId を渡すと select に id を付ける（クイック記録が onchange で参照）
+  function genrePicker(selected, selId) {
+    const idAttr = selId ? ` id="${selId}"` : '';
+    const chips = App.genres.list.map((g) =>
+      `<button type="button" class="gp-chip${g.key === selected ? ' active' : ''}" data-key="${g.key}" style="--gc:${g.color}"><span class="gp-dot"></span>${g.label}</button>`).join('');
+    return `<div class="gpick"><select name="genre"${idAttr} class="gpick-select">${genreOptions(selected)}</select>${chips}</div>`;
+  }
+  // .gpick 内のチップを配線：クリックで隠しselectを更新＋active切替＋change発火
+  function wireGenrePicker(scope) {
+    const pick = scope.querySelector('.gpick');
+    if (!pick) return;
+    const sel = pick.querySelector('select');
+    pick.querySelectorAll('.gp-chip').forEach((b) => {
+      b.onclick = () => {
+        sel.value = b.dataset.key;
+        pick.querySelectorAll('.gp-chip').forEach((x) => x.classList.toggle('active', x === b));
+        sel.dispatchEvent(new Event('change'));
+      };
+    });
+  }
+
+  // 写真ファイル選択（生の input を隠して破線タイルに）
+  function fileDrop(label) {
+    return `<label class="filedrop"><i class="ph ph-image"></i><span>${label}</span>`
+      + '<input type="file" name="photos" accept="image/*" multiple></label>';
+  }
+
   // 追加フォーム表示（地図クリック時／同じ場所への再訪時）
   // prefill: { name, genre } を渡すと場所名・ジャンルを引き継ぐ（日付は今日・メモ/写真は空）
   function showAddForm(lat, lng, prefill) {
@@ -306,17 +334,18 @@ App.records = (function () {
       <form id="rec-form">
         <label>日付<input type="date" name="date" value="${today}" required></label>
         <label>場所名<input type="text" name="name" value="${nameVal}" placeholder="お店・施設の名前" required></label>
-        <label>ジャンル<select name="genre">${genreOptions(prefill.genre || 'food')}</select></label>
-        <label>メモ・感想<textarea name="memo" rows="4"></textarea></label>
+        <label>ジャンル</label>${genrePicker(prefill.genre || 'food')}
+        <label>メモ・感想<textarea name="memo" rows="4" placeholder="今日はどんな一日だった？"></textarea></label>
         <label>ハッシュタグ<input type="text" name="tags" placeholder="#カフェ #記念日"></label>
-        <label>写真<input type="file" name="photos" accept="image/*" multiple></label>
+        <label>写真</label>${fileDrop('写真を選ぶ')}
         <div class="form-actions">
-          <button type="submit">保存</button>
           <button type="button" id="cancel-btn">キャンセル</button>
+          <button type="submit">保存</button>
         </div>
       </form>`;
     App.map.showTempMarker(lat, lng); // 追加地点の目印を表示
     if (App.sheet) App.sheet.snapTo('half'); // シートを開く
+    wireGenrePicker(panel());
     document.getElementById('cancel-btn').onclick = clearPanel;
     document.getElementById('rec-form').onsubmit = async (e) => {
       e.preventDefault();
@@ -367,7 +396,7 @@ App.records = (function () {
           <p class="meta">${today} ・ 今日</p>
           <label>場所名<input type="text" id="ql-name" value="${esc(state.name)}" placeholder="お店・施設の名前"></label>
           ${chips}
-          <label>ジャンル<select id="ql-genre">${genreOptions(state.genre)}</select></label>
+          <label>ジャンル</label>${genrePicker(state.genre, 'ql-genre')}
           <div class="form-actions">
             <button type="button" id="ql-save">保存</button>
           </div>
@@ -376,6 +405,7 @@ App.records = (function () {
       const nameInput = document.getElementById('ql-name');
       nameInput.oninput = () => { state.name = nameInput.value; };
       document.getElementById('ql-genre').onchange = (e) => { state.genre = e.target.value; };
+      wireGenrePicker(panel());
       panel().querySelectorAll('.ql-chip').forEach((b) => {
         b.onclick = () => {
           if (b.dataset.manual) { document.getElementById('ql-name').focus(); return; }
@@ -607,12 +637,12 @@ App.records = (function () {
       <form id="edit-form">
         <label>日付<input type="date" name="date" value="${record.date}" required></label>
         <label>場所名<input type="text" name="name" value="${esc(record.name)}" required></label>
-        <label>ジャンル<select name="genre">${genreOptions(record.genre)}</select></label>
+        <label>ジャンル</label>${genrePicker(record.genre)}
         <label>メモ・感想<textarea name="memo" rows="4">${esc(record.memo)}</textarea></label>
         <label>ハッシュタグ<input type="text" name="tags" value="${esc(tagsToInput(record.tags))}" placeholder="#カフェ #記念日"></label>
         <label>今の写真（<i class="ph ph-map-pin"></i>でピンの写真に・×で削除）</label>
         <div id="existing-photos" class="photos"></div>
-        <label>写真を追加<input type="file" name="photos" accept="image/*" multiple></label>
+        <label>写真を追加</label>${fileDrop('写真を選ぶ')}
         <label>場所の位置</label>
         <button type="button" id="fix-loc-btn" class="fix-loc-btn"><i class="ph ph-map-pin"></i>位置を修正</button>
         <p id="fix-loc-hint" class="hint" hidden>ピンをドラッグして正しい位置へ。「更新」で保存されます。</p>
@@ -646,6 +676,7 @@ App.records = (function () {
       });
     }
     renderExisting();
+    wireGenrePicker(panel());
 
     document.getElementById('fix-loc-btn').onclick = () => {
       App.map.startPickLocation(record.lat, record.lng);
