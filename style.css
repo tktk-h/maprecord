@@ -613,33 +613,47 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 }
 
 /* ===== 起動スプラッシュ（待機画面） ===== */
-#splash { position: fixed; inset: 0; z-index: 4000; background: var(--bg);
+#splash { position: fixed; inset: 0; z-index: 4000;
+  background: linear-gradient(170deg, #f8f1e9 0%, #efdfd4 100%);
   display: flex; align-items: center; justify-content: center;
   transition: opacity .35s ease; }
 #splash[hidden] { display: none; }
-.splash-inner { display: flex; flex-direction: column; align-items: center; gap: 16px; }
-.splash-logo { width: 72px; height: 72px; border-radius: 22px; background: var(--accent);
-  color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-md); }
+.splash-inner { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.splash-logo { width: 78px; height: 78px; border-radius: 22px;
+  background: linear-gradient(150deg, #cd8d72, #af564c);
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 10px 24px rgba(175,86,76,.3); }
 .splash-logo .ph { font-size: 40px; }
-.splash-title { font-size: 20px; font-weight: 700; color: var(--text); margin: 0; letter-spacing: .02em; }
-.splash-spinner { width: 28px; height: 28px; border-radius: 50%;
+.splash-title { font-size: 22px; font-weight: 700; color: var(--text); margin: 4px 0 0; letter-spacing: .02em; }
+.splash-tag { font-size: 13px; color: var(--text-muted); margin: 0; }
+.splash-spinner { width: 28px; height: 28px; border-radius: 50%; margin-top: 16px;
   border: 3px solid var(--accent-soft); border-top-color: var(--accent);
   animation: splash-spin .8s linear infinite; }
 @keyframes splash-spin { to { transform: rotate(360deg); } }
 
 /* ===== ログイン/スペースのゲート ===== */
-#gate { position: fixed; inset: 0; z-index: 3000; background: var(--bg);
+#gate { position: fixed; inset: 0; z-index: 3000;
+  background: linear-gradient(170deg, #f8f1e9 0%, #efdfd4 100%);
   display: flex; align-items: center; justify-content: center; padding: 24px; }
 #gate[hidden] { display: none; }
-.gate-card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-md);
-  padding: 28px 24px; width: 100%; max-width: 380px; text-align: center; }
-.gate-title { font-size: 22px; font-weight: 700; margin: 0 0 8px; color: var(--text); }
-.gate-lead { color: var(--text-muted); font-size: 14px; margin: 0 0 18px; line-height: 1.6; }
+.gate-card { background: var(--surface); border-radius: 20px; box-shadow: 0 14px 40px rgba(45,38,30,.13);
+  padding: 32px 24px 28px; width: 100%; max-width: 380px; text-align: center; }
+.gate-logo { width: 64px; height: 64px; border-radius: 18px; margin: 0 auto 14px;
+  background: linear-gradient(150deg, #cd8d72, #af564c); color: #fff;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 24px rgba(175,86,76,.28); }
+.gate-logo .ph { font-size: 32px; }
+.gate-title { font-size: 22px; font-weight: 700; margin: 0 0 6px; color: var(--text); }
+.gate-lead { color: var(--text-muted); font-size: 14px; margin: 0 0 22px; line-height: 1.7; }
 .gate-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  width: 100%; padding: 12px 16px; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600;
+  width: 100%; padding: 14px 16px; border-radius: 14px; font-size: 15px; font-weight: 500;
   background: var(--surface-2); color: var(--text); margin-top: 8px; }
 .gate-btn.primary { background: var(--accent); color: #fff; }
 .gate-btn.primary:hover { background: var(--accent-strong); }
+.gate-btn.google { background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  box-shadow: 0 4px 14px rgba(45,38,30,.08); }
+.gate-btn.google:hover { background: var(--surface-2); }
+.gate-btn.google .ph { font-size: 18px; }
+.gate-note { font-size: 11px; color: var(--text-muted); margin: 16px 0 0; line-height: 1.7; }
 .gate-or { color: var(--text-muted); font-size: 12px; margin: 16px 0 8px; }
 .gate-join { display: flex; gap: 8px; }
 .gate-join input { flex: 1; }
