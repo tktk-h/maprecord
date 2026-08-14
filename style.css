@@ -55,42 +55,43 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   pointer-events: none; }
 #topbar > * { pointer-events: auto; }
 
-/* 検索ボックス（白いフローティングピル） */
-#search-wrap { position: relative; display: flex; align-items: center; flex: 1 1 200px; max-width: 360px;
-  background: var(--surface); border-radius: var(--radius-pill); box-shadow: var(--shadow-md); }
-#search-wrap .ph { position: absolute; left: 14px; color: var(--text-muted); font-size: 18px; pointer-events: none; }
-#search-box { padding: 11px 38px 11px 40px; background: transparent;
-  border: none; color: var(--text); border-radius: var(--radius-pill); }
+/* 検索ボックス（絞り込みアイコンを内蔵した1本のピル） */
+#search-wrap { position: relative; display: flex; align-items: center; gap: 4px; flex: 1 1 200px; max-width: 360px;
+  padding: 0 6px 0 14px; background: var(--surface); border-radius: var(--radius-pill);
+  box-shadow: 0 4px 16px rgba(45,38,30,.1); }
+#search-wrap > .ph { color: var(--text-muted); font-size: 18px; flex: 0 0 auto; pointer-events: none; }
+#search-box { flex: 1; min-width: 0; padding: 12px 2px; background: transparent;
+  border: none; color: var(--text); }
 #search-box::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; } /* ネイティブの×を隠す */
-/* 検索バーの×（クリア）：右端 */
-#search-clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+/* 検索バーの×（クリア） */
+#search-clear { flex: 0 0 auto; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
   border-radius: 50%; color: var(--text-muted); font-size: 15px; }
 #search-clear:hover { background: var(--surface-2); color: var(--text); }
 #search-clear[hidden] { display: none; }
+.search-div { flex: 0 0 auto; width: 1px; height: 22px; background: var(--border); }
+/* 絞り込みアイコン（検索バー右端・内蔵） */
+#filter-toggle { flex: 0 0 auto; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; color: var(--text-muted); transition: background .15s, color .15s; }
+#filter-toggle .ph { font-size: 19px; }
+#filter-toggle:hover { color: var(--text); }
+#topbar.filters-open #filter-toggle { background: var(--accent-soft); color: var(--accent-strong); }
 #search-box::placeholder { color: var(--text-muted); }
 #search-box:focus { box-shadow: none; }
-#search-wrap:focus-within { box-shadow: var(--shadow-md), var(--ring); }
-#search-wrap:focus-within .ph { color: var(--accent); }
+#search-wrap:focus-within { box-shadow: 0 4px 16px rgba(45,38,30,.1), var(--ring); }
+#search-wrap:focus-within > .ph { color: var(--accent); }
 
 /* ビュー切替（白いピルグループ） */
 #view-toggle { display: flex; gap: 4px; background: var(--surface); padding: 4px;
-  border-radius: var(--radius-pill); box-shadow: var(--shadow-md); }
-#view-toggle button, #filter-toggle {
+  border-radius: var(--radius-pill); box-shadow: 0 4px 16px rgba(45,38,30,.1); }
+#view-toggle button {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 8px 14px; border-radius: var(--radius-pill); font-size: 13px;
   color: var(--text-muted); transition: background .15s, color .15s; }
 #view-toggle button.active { background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
-/* 絞り込みボタン（白いピル・常時表示） */
-#filter-toggle { background: var(--surface); color: var(--text); box-shadow: var(--shadow-md); font-weight: 500; }
-#topbar.filters-open #filter-toggle { background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
-
-/* 絞り込み・現在地の高さを 地図/カレンダー 切替に合わせる */
-#filter-toggle, #locate-btn { min-height: 41px; }
 /* 絞り込みの×（絞り込み中のみ・絞り込みボタンの右） */
 #filter-clear-top { display: inline-flex; align-items: center; justify-content: center;
-  width: 41px; min-height: 41px; border-radius: var(--radius-pill);
-  background: var(--surface); color: var(--text-muted); box-shadow: var(--shadow-md); font-size: 15px; }
+  width: 41px; height: 41px; border-radius: 50%;
+  background: var(--surface); color: var(--text-muted); box-shadow: 0 4px 16px rgba(45,38,30,.1); font-size: 15px; }
 #filter-clear-top:hover { color: var(--accent-strong); }
 #filter-clear-top[hidden] { display: none; }
 
