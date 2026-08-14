@@ -603,6 +603,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 
   #locate-btn { top: 118px; right: 14px; left: auto; bottom: auto; padding: 11px; gap: 0; } /* 2段ヘッダーの下へ（絞り込み×と重ならない） */
   #topbar.filters-open ~ #layout #locate-btn { display: none; } /* 絞り込みパネルを開いている間は被る現在地ボタンを隠す */
+  #layout:has(#panel:not([hidden])) #locate-btn { display: none; } /* シート（詳細/フォーム等）を開いている間も隠す */
   /* iOS: appearance 既定だと width:100% を無視して最小幅ではみ出すため、スマホ幅ではリセット */
   #filter-bar input[type=date] { -webkit-appearance: none; appearance: none; }
   #filter-bar input[type=date]::-webkit-date-and-time-value { text-align: left; margin: 0; }
