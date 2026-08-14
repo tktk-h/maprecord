@@ -821,7 +821,11 @@ App.records = (function () {
 
   function init() {
     App.map.setLongPressHandler(showAddForm); // 長押しで記録追加
-    App.map.setPlaceClickHandler(showPlaceCard);
+    App.map.setPlaceClickHandler((placeId) => {
+      // 詳細を開いているときは、店POIでも地図タップで詳細を閉じる（店カードは開かない）
+      if (panel().querySelector('.detail')) { clearPanel(); return; }
+      showPlaceCard(placeId);
+    });
     App.map.setClickHandler(() => {
       // 詳細を開いているときは地図タップで詳細を閉じる。それ以外はシートを下げるだけ
       if (panel().querySelector('.detail')) { clearPanel(); return; }
