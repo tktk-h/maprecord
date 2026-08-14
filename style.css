@@ -401,6 +401,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 /* 設定セクション（絞り込みと視覚的に分離） */
 .settings-section { border-top: 1px solid var(--border); padding-top: 14px; }
 .settings-label { font-size: 11px; color: var(--text-muted); letter-spacing: .04em; margin-bottom: 8px; }
+.app-ver { text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 14px; letter-spacing: .04em; }
 #backup-bar { display: flex; flex-direction: column; gap: 2px; }
 #backup-bar button { display: flex; align-items: center; gap: 11px; width: 100%;
   background: none; color: var(--text); border-radius: var(--radius-sm);
