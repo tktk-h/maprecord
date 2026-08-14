@@ -822,7 +822,11 @@ App.records = (function () {
   function init() {
     App.map.setLongPressHandler(showAddForm); // 長押しで記録追加
     App.map.setPlaceClickHandler(showPlaceCard);
-    App.map.setClickHandler(() => { if (App.sheet) App.sheet.collapse(); }); // 地図タップでシートを下げる
+    App.map.setClickHandler(() => {
+      // 詳細を開いているときは地図タップで詳細を閉じる。それ以外はシートを下げるだけ
+      if (panel().querySelector('.detail')) { clearPanel(); return; }
+      if (App.sheet) App.sheet.collapse();
+    });
     buildGenreFilters();
     buildModeSegment();
     ['mode-select', 'day-input', 'from-input', 'to-input'].forEach((id) =>
