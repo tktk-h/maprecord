@@ -44,7 +44,7 @@ App.calendar = (function () {
     return months;
   }
 
-  // 1日ぶんのセル
+  // 1日ぶんのセル。空の日は静かに（薄い数字だけ）、記録の日は写真/ジャンル色で主役に
   function cellHtml(dateStr, dayNum, recs) {
     if (!recs || recs.length === 0) {
       return `<div class="cal-cell empty"><span class="cal-num">${dayNum}</span></div>`;
@@ -54,13 +54,13 @@ App.calendar = (function () {
     if (photo) {
       return `<button type="button" class="cal-cell has-photo" data-date="${dateStr}" `
         + `style="background-image:url(${photo.url})">`
-        + `<span class="cal-num on-photo">${dayNum}</span>${badge}</button>`;
+        + `<span class="cal-scrim"></span><span class="cal-num on-photo">${dayNum}</span>${badge}</button>`;
     }
     // 写真なしの記録 → ジャンル色で塗る
     const color = App.genres.color(recs[0].genre);
     return `<button type="button" class="cal-cell has-rec" data-date="${dateStr}" `
       + `style="background:${color}">`
-      + `<span class="cal-num on-photo">${dayNum}</span>${badge}</button>`;
+      + `<span class="cal-scrim"></span><span class="cal-num on-photo">${dayNum}</span>${badge}</button>`;
   }
 
   // 1か月ぶんのグリッド
@@ -68,14 +68,19 @@ App.calendar = (function () {
     const startWeekday = new Date(y, m, 1).getDay();
     const daysInMonth = new Date(y, m + 1, 0).getDate();
     let cells = '';
+    let count = 0; // その月の記録数（「N つの思い出」）
     for (let i = 0; i < startWeekday; i += 1) cells += '<div class="cal-cell blank"></div>';
     for (let d = 1; d <= daysInMonth; d += 1) {
       const dateStr = ymd(new Date(y, m, d));
-      cells += cellHtml(dateStr, d, grouped[dateStr]);
+      const recs = grouped[dateStr];
+      if (recs) count += recs.length;
+      cells += cellHtml(dateStr, d, recs);
     }
-    const head = WEEKDAYS.map((w) => `<div class="cal-wd">${w}</div>`).join('');
+    const head = WEEKDAYS.map((w, i) =>
+      `<div class="cal-wd${i === 0 ? ' sun' : i === 6 ? ' sat' : ''}">${w}</div>`).join('');
+    const countHtml = count ? `<span class="cal-count">${count}つの思い出</span>` : '';
     return '<div class="cal-month">'
-      + `<h3 class="cal-title">${m + 1}月 ${y}</h3>`
+      + `<div class="cal-title"><span class="cal-mon">${m + 1}月</span><span class="cal-yr">${y}</span>${countHtml}</div>`
       + `<div class="cal-grid">${head}${cells}</div>`
       + '</div>';
   }
