@@ -13,6 +13,7 @@ App.map = (function () {
   let onPlaceClick = null;     // (placeId) => void  ... 店(POI)タップ時
   let onLongPress = null;      // (lat, lng) => void  ... 長押し（記録追加）
   let onUserPan = null;         // ユーザーが地図をドラッグしたとき
+  let onTap = null;             // 地図を短くタップしたとき（Google click に頼らず pointer で検出）
   let overlayProjection = null; // 画面ピクセル→緯度経度の変換用（長押し判定）
   let suppressClickUntil = 0;   // 長押し直後のクリックを無視する時刻
 
@@ -86,14 +87,18 @@ App.map = (function () {
     let timer = null;
     let startX = 0;
     let startY = 0;
+    let downTime = 0;    // 押した時刻（タップ判定用）
+    let longFired = false; // 長押しが発火したか
+    let moved = false;   // 閾値以上動いたか（パン）
     const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
 
     div.addEventListener('pointerdown', (ev) => {
       if (ev.pointerType === 'mouse' && ev.button !== 0) return; // 右クリック等は無視
       startX = ev.clientX; startY = ev.clientY;
+      downTime = performance.now(); longFired = false; moved = false;
       cancel();
       timer = setTimeout(() => {
-        timer = null;
+        timer = null; longFired = true;
         if (!onLongPress || !overlayProjection) return;
         const rect = div.getBoundingClientRect();
         const pt = new google.maps.Point(startX - rect.left, startY - rect.top);
@@ -104,10 +109,16 @@ App.map = (function () {
       }, LONG_MS);
     });
     div.addEventListener('pointermove', (ev) => {
-      if (!timer) return;
-      if (Math.abs(ev.clientX - startX) > MOVE_TOL || Math.abs(ev.clientY - startY) > MOVE_TOL) cancel();
+      if (Math.abs(ev.clientX - startX) > MOVE_TOL || Math.abs(ev.clientY - startY) > MOVE_TOL) {
+        moved = true; cancel();
+      }
     });
-    div.addEventListener('pointerup', cancel);
+    div.addEventListener('pointerup', () => {
+      // 短くその場を離した＝タップ。長押し・パンでなければ onTap を発火（Google click に依存しない）
+      const wasTap = !longFired && !moved && (performance.now() - downTime) < LONG_MS;
+      cancel();
+      if (wasTap && onTap) onTap();
+    });
     div.addEventListener('pointercancel', cancel);
     div.addEventListener('pointerleave', cancel);
   }
@@ -116,6 +127,7 @@ App.map = (function () {
   function setPlaceClickHandler(fn) { onPlaceClick = fn; }
   function setLongPressHandler(fn) { onLongPress = fn; }
   function setUserPanHandler(fn) { onUserPan = fn; }
+  function setTapHandler(fn) { onTap = fn; }
 
   function clearPins() {
     markers.forEach((m) => { m.map = null; });
@@ -279,7 +291,7 @@ App.map = (function () {
     });
   }
 
-  return { init, setClickHandler, setPlaceClickHandler, setLongPressHandler, setUserPanHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
+  return { init, setClickHandler, setPlaceClickHandler, setLongPressHandler, setUserPanHandler, setTapHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
            renderPlaceResults, clearPlaceResults, hideRecordPins,
            showTempMarker, clearTempMarker,
            startPickLocation, getPickedLatLng, stopPickLocation,

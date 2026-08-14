@@ -6,6 +6,7 @@ App.records = (function () {
   let routeEditMode = false;    // ルートシートで並べ替え編集中か
   let searchResults = null;     // 場所名検索の複数該当リスト。null=検索結果モードでない
   let searchQuery = '';         // 検索結果の見出し用
+  let suppressPlaceUntil = 0;   // 地図タップで詳細を閉じた直後は店カードを出さない（ms）
   const panel = () => document.getElementById('panel-content');
 
   function setRecords(records) { all = records; render(); } // 購読から最新を受け取る
@@ -822,13 +823,14 @@ App.records = (function () {
   function init() {
     App.map.setLongPressHandler(showAddForm); // 長押しで記録追加
     App.map.setPlaceClickHandler((placeId) => {
-      // 詳細を開いているときは、店POIでも地図タップで詳細を閉じる（店カードは開かない）
+      if (Date.now() < suppressPlaceUntil) return; // 直前のタップで詳細を閉じたときは店カードを出さない
       if (panel().querySelector('.detail')) { clearPanel(); return; }
       showPlaceCard(placeId);
     });
-    App.map.setClickHandler(() => {
-      // 詳細を開いているときは地図タップで詳細を閉じる。それ以外はシートを下げるだけ
-      if (panel().querySelector('.detail')) { clearPanel(); return; }
+    // 地図の短いタップ（pointer検出・Google click に依存しない）
+    App.map.setTapHandler(() => {
+      // 詳細を開いているときは地図タップで閉じる。それ以外はシートを下げるだけ
+      if (panel().querySelector('.detail')) { clearPanel(); suppressPlaceUntil = Date.now() + 600; return; }
       if (App.sheet) App.sheet.collapse();
     });
     buildGenreFilters();
