@@ -263,7 +263,7 @@ App.map = (function () {
     else if (count > 1) badge = `<span class="visit-count">${count}</span>`;
     if (photo) {
       const c = el(`<div class="photo-pin">`
-        + `<img class="pin-img" src="${photo.url}" style="border-color:${color}">`
+        + `<img class="pin-img" src="${App.photos.thumbOf(photo)}" style="border-color:${color}">`
         + badge
         + `<span class="pin-tail" style="border-top-color:${color}"></span>`
         + `</div>`);

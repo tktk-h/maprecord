@@ -182,7 +182,7 @@ App.records = (function () {
     const rows = groups.map((g) => {
       const r = g.rep;
       const thumb = g.photo
-        ? `<span class="result-thumb" style="background-image:url(${g.photo.url})"></span>`
+        ? `<span class="result-thumb" style="background-image:url(${App.photos.thumbOf(g.photo)})"></span>`
         : `<span class="result-thumb" style="background:${App.genres.color(r.genre)}"></span>`;
       const sub = g.count > 1
         ? `${App.genres.label(r.genre)} ・ ${g.count}回訪問`
@@ -567,7 +567,7 @@ App.records = (function () {
     const heroIcon = photos.length ? '' : '<span class="dt-hero-icon"><i class="ph ph-map-pin"></i></span>';
     const strip = photos.length > 1
       ? `<div class="dt-strip">${photos.map((p, i) =>
-          `<span class="dt-thumb" data-i="${i}" style="background-image:url(${p.url})"></span>`).join('')}</div>`
+          `<span class="dt-thumb" data-i="${i}" style="background-image:url(${App.photos.thumbOf(p)})"></span>`).join('')}</div>`
       : '';
 
     // 同じ場所の訪問（新しい順）。2回以上ならチップで切替
@@ -680,7 +680,7 @@ App.records = (function () {
       // 先頭(keep[0])の写真がピンに使われる。各写真の📍でその写真を先頭に持ってくる。
       box.innerHTML = keep.map((p, i) =>
         `<div class="photo-edit${i === 0 ? ' is-cover' : ''}">
-          <img class="thumb" src="${p.url}" alt="">
+          <img class="thumb" src="${App.photos.thumbOf(p)}" alt="">
           ${i === 0
             ? '<span class="cover-badge"><i class="ph ph-map-pin"></i>ピン</span>'
             : `<button type="button" class="photo-cover" data-i="${i}" title="ピンの写真にする"><i class="ph ph-map-pin"></i></button>`}

@@ -56,7 +56,7 @@ App.search = (function () {
     const recRows = (recs || []).map((g) => {
       const r = g.rep;
       const thumb = g.photo
-        ? `<span class="ss-thumb" style="background-image:url(${g.photo.url})"></span>`
+        ? `<span class="ss-thumb" style="background-image:url(${App.photos.thumbOf(g.photo)})"></span>`
         : `<span class="ss-thumb" style="background:${App.genres.color(r.genre)}"></span>`;
       const sub = g.count > 1
         ? `${App.genres.label(r.genre)} ・ ${g.count}回訪問`

@@ -76,7 +76,7 @@ App.memories = (function () {
     const r = it.record;
     const photo = (r.photos || [])[0];
     const thumb = photo
-      ? `<div class="mem-icon" style="background-image:url(${photo.url})"></div>`
+      ? `<div class="mem-icon" style="background-image:url(${App.photos.thumbOf(photo)})"></div>`
       : `<div class="mem-icon mem-icon-accent"><i class="ph ph-map-pin"></i></div>`;
     const more = mem.count > 1 ? ` ・ ほか${mem.count - 1}件` : '';
     host.innerHTML = `
