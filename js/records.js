@@ -639,6 +639,7 @@ App.records = (function () {
 
   function showEditForm(record) {
     const keep = (record.photos || []).slice(); // 残す既存写真（×で減らす）
+    let linkedPlaceId = record.placeId || null; // Googleの場所ID（紐付けボタンで後付け／既存を維持）
     panel().innerHTML = `
       <h2>記録を編集</h2>
       <form id="edit-form">
@@ -653,6 +654,15 @@ App.records = (function () {
         <label>場所の位置</label>
         <button type="button" id="fix-loc-btn" class="fix-loc-btn"><i class="ph ph-map-pin"></i>位置を修正</button>
         <p id="fix-loc-hint" class="hint" hidden>ピンをドラッグして正しい位置へ。「更新」で保存されます。</p>
+        <label>Googleの場所と紐付け</label>
+        <button type="button" id="link-place-btn" class="fix-loc-btn"><i class="ph ph-link-simple"></i><span id="link-place-label"></span></button>
+        <div id="link-place-box" hidden>
+          <input type="text" id="link-place-q" placeholder="店名で検索">
+          <div class="ql-cands" style="margin-top:8px">
+            <button type="button" id="link-place-search" class="ql-chip">この名前で検索</button>
+          </div>
+          <div id="link-place-results" class="ql-cands" style="margin-top:8px"></div>
+        </div>
         <div class="form-actions">
           <button type="submit">更新</button>
           <button type="button" id="cancel-btn">キャンセル</button>
@@ -685,6 +695,42 @@ App.records = (function () {
     renderExisting();
     wireGenrePicker(panel());
 
+    // Googleの場所と紐付け（既存記録に placeId を後付け。検索したときだけ Places を1回叩く）
+    const linkLabel = document.getElementById('link-place-label');
+    const linkBtn = document.getElementById('link-place-btn');
+    const linkBox = document.getElementById('link-place-box');
+    const linkQ = document.getElementById('link-place-q');
+    const linkResults = document.getElementById('link-place-results');
+    linkLabel.textContent = linkedPlaceId ? '紐付け済み（変更する）' : 'Googleの場所を選んで紐付け';
+    linkBtn.classList.toggle('active', !!linkedPlaceId);
+    async function runLinkSearch() {
+      const q = linkQ.value.trim();
+      if (!q) return;
+      linkResults.innerHTML = '<span class="hint">検索中…</span>';
+      try {
+        const bias = { center: { lat: record.lat, lng: record.lng }, radius: 3000 }; // 記録の近くを優先
+        const places = await App.places.searchText(q, { bias });
+        if (!places.length) { linkResults.innerHTML = '<span class="hint">該当なし</span>'; return; }
+        linkResults.innerHTML = places.slice(0, 6).map((p, i) =>
+          `<button type="button" class="ql-chip" data-i="${i}">${esc(p.name)}</button>`).join('');
+        linkResults.querySelectorAll('.ql-chip').forEach((b) => {
+          b.onclick = () => {
+            const p = places[Number(b.dataset.i)];
+            linkedPlaceId = p.placeId;
+            linkBox.hidden = true;
+            linkBtn.classList.add('active');
+            linkLabel.textContent = '紐付け済み: ' + p.name + '（更新で保存）';
+          };
+        });
+      } catch (e) { linkResults.innerHTML = '<span class="hint">検索できませんでした</span>'; }
+    }
+    linkBtn.onclick = () => {
+      linkBox.hidden = !linkBox.hidden;
+      if (!linkBox.hidden && !linkQ.value) { linkQ.value = record.name || ''; runLinkSearch(); }
+    };
+    document.getElementById('link-place-search').onclick = runLinkSearch;
+    linkQ.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); runLinkSearch(); } });
+
     document.getElementById('fix-loc-btn').onclick = () => {
       App.map.startPickLocation(record.lat, record.lng);
       const btn = document.getElementById('fix-loc-btn');
@@ -716,7 +762,7 @@ App.records = (function () {
           lat: picked ? picked.lat : record.lat,
           lng: picked ? picked.lng : record.lng,
           photos,
-          ...(record.placeId ? { placeId: record.placeId } : {}), // 既存の場所IDを維持
+          ...(linkedPlaceId ? { placeId: linkedPlaceId } : {}), // 既存の場所IDを維持／紐付けで後付け
         };
         App.map.stopPickLocation();
         await App.cloud.put(updated);
