@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // spaces/{id}.members（Firestore）にログインuidが含まれるか
+    function isSpaceMember(spaceId) {
+      return request.auth != null
+        && request.auth.uid in
+           firestore.get(/databases/(default)/documents/spaces/$(spaceId)).data.members;
+    }
+
+    // 書込みは画像のみ・15MB上限（圧縮後は数百KB想定、安全枠）
+    function isValidImage() {
+      return request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /spaces/{spaceId}/photos/{allPaths=**} {
+      allow read: if isSpaceMember(spaceId);
+      allow write: if isSpaceMember(spaceId) && isValidImage();
+    }
+
+    // 既定は全拒否
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
