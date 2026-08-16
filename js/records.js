@@ -829,9 +829,13 @@ App.records = (function () {
     });
     // 地図の短いタップ（pointer検出・Google click に依存しない）
     App.map.setTapHandler(() => {
+      // 絞り込みパネルを開いているときは、地図タップで閉じる
+      const topbar = document.getElementById('topbar');
+      if (topbar && topbar.classList.contains('filters-open')) {
+        topbar.classList.remove('filters-open');
+        return;
+      }
       // 詳細を開いているときは地図タップで閉じる。それ以外はシートを下げるだけ
-      const hasDetail = !!panel().querySelector('.detail'); // TEMP DEBUG
-      if (window.__tapdbg) window.__tapdbg('  handler detail=' + hasDetail); // TEMP DEBUG
       if (panel().querySelector('.detail')) { clearPanel(); suppressPlaceUntil = Date.now() + 600; return; }
       if (App.sheet) App.sheet.collapse();
     });
