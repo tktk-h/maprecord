@@ -323,6 +323,32 @@ App.records = (function () {
       + '<input type="file" name="photos" accept="image/*" multiple></label>';
   }
 
+  // ファイル選択にプレビューを配線。選んだ写真を即サムネ表示し、×で保存前に外せる。
+  // 何度でも選び直せる（選択は追記）。返り値 getFiles() が保存時に使う現在の File[]。
+  function wireFilePicker(input, box) {
+    const pending = []; // { file, url }
+    function render() {
+      box.innerHTML = pending.map((p, i) =>
+        `<div class="photo-edit">
+          <img class="thumb" src="${p.url}" alt="">
+          <button type="button" class="photo-del" data-i="${i}"><i class="ph ph-x"></i></button>
+        </div>`).join('');
+      box.querySelectorAll('.photo-del').forEach((btn) => {
+        btn.onclick = () => {
+          const [removed] = pending.splice(Number(btn.dataset.i), 1);
+          URL.revokeObjectURL(removed.url); // プレビュー用URLを解放
+          render();
+        };
+      });
+    }
+    input.addEventListener('change', () => {
+      for (const f of Array.from(input.files)) pending.push({ file: f, url: URL.createObjectURL(f) });
+      input.value = ''; // 同じ写真を選び直せるように＆二重取得を防ぐ
+      render();
+    });
+    return () => pending.map((p) => p.file);
+  }
+
   // 追加フォーム表示（地図クリック時／同じ場所への再訪時）
   // prefill: { name, genre, placeId } を渡すと場所名・ジャンル・Google場所IDを引き継ぐ（日付は今日・メモ/写真は空）
   function showAddForm(lat, lng, prefill) {
@@ -340,6 +366,7 @@ App.records = (function () {
         <label>メモ・感想<textarea name="memo" rows="4" placeholder="今日はどんな一日だった？"></textarea></label>
         <label>ハッシュタグ<input type="text" name="tags" placeholder="#カフェ #記念日"></label>
         <label>写真</label>${fileDrop('写真を選ぶ')}
+        <div id="new-photos" class="photos"></div>
         <div class="form-actions">
           <button type="button" id="cancel-btn">キャンセル</button>
           <button type="submit">保存</button>
@@ -348,11 +375,12 @@ App.records = (function () {
     App.map.showTempMarker(lat, lng); // 追加地点の目印を表示
     if (App.sheet) App.sheet.snapTo('half'); // シートを開く
     wireGenrePicker(panel());
+    const getNewFiles = wireFilePicker(panel().querySelector('#rec-form input[name=photos]'), document.getElementById('new-photos'));
     document.getElementById('cancel-btn').onclick = clearPanel;
     document.getElementById('rec-form').onsubmit = async (e) => {
       e.preventDefault();
       const f = e.target;
-      const files = Array.from(f.photos.files);
+      const files = getNewFiles();
       const order = all.filter((r) => r.date === f.date.value).length; // その日の末尾に追加
       const submitBtn = f.querySelector('button[type=submit]');
       submitBtn.disabled = true; submitBtn.textContent = '保存中…';
@@ -656,6 +684,7 @@ App.records = (function () {
         <label>今の写真（<i class="ph ph-map-pin"></i>でピンの写真に・×で削除）</label>
         <div id="existing-photos" class="photos"></div>
         <label>写真を追加</label>${fileDrop('写真を選ぶ')}
+        <div id="add-photos" class="photos"></div>
         <label>場所の位置</label>
         <button type="button" id="fix-loc-btn" class="fix-loc-btn"><i class="ph ph-map-pin"></i>位置を修正</button>
         <p id="fix-loc-hint" class="hint" hidden>ピンをドラッグして正しい位置へ。「更新」で保存されます。</p>
@@ -698,6 +727,7 @@ App.records = (function () {
       });
     }
     renderExisting();
+    const getAddFiles = wireFilePicker(panel().querySelector('#edit-form input[name=photos]'), document.getElementById('add-photos'));
     wireGenrePicker(panel());
 
     // Googleの場所と紐付け（既存記録に placeId を後付け。検索したときだけ Places を1回叩く）
@@ -753,7 +783,7 @@ App.records = (function () {
       btn.disabled = true; btn.textContent = '更新中…';
       let uploaded = [];
       try {
-        const newFiles = Array.from(f.photos.files);
+        const newFiles = getAddFiles();
         uploaded = newFiles.length
           ? await App.photos.toStoredMany(newFiles, record.id, (done, total) => {
               if (total > 1) btn.textContent = `アップロード中 ${done}/${total}`;
