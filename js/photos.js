@@ -1,8 +1,14 @@
+import {
+  ref, uploadBytes, getDownloadURL, deleteObject,
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
+import { fb } from './firebaseInit.js';
+
 window.App = window.App || {};
-// 方式B：写真は圧縮して data URL(Base64) にし、Firestore の記録に保存する。
+// 方式C：写真は圧縮して Cloud Storage に保存し、Firestore の記録には URL だけ持つ。
 App.photos = (function () {
-  const MAX_EDGE = 1280;   // 長辺の上限
-  const QUALITY = 0.72;    // JPEG 画質
+  const FULL_EDGE = 1280;   // 詳細ヒーロー・ライトボックス用
+  const THUMB_EDGE = 400;   // 一覧・ピン・検索候補用
+  const QUALITY = 0.72;     // JPEG 画質
 
   // 元の(w,h)を長辺maxEdgeに収める寸法を返す（拡大はしない）
   function fitSize(w, h, maxEdge) {
@@ -23,41 +29,84 @@ App.photos = (function () {
     return photo.thumbUrl || photo.url || null;
   }
 
-  // File/Blob → 圧縮JPEGの data URL 文字列
-  function compressToDataURL(file) {
+  // File/Blob → 長辺 maxEdge に収めた圧縮JPEG Blob
+  function compressToBlob(file, maxEdge) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       const objUrl = URL.createObjectURL(file);
       img.onload = () => {
-        const { w, h } = fitSize(img.naturalWidth, img.naturalHeight, MAX_EDGE);
+        const { w, h } = fitSize(img.naturalWidth, img.naturalHeight, maxEdge);
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
         URL.revokeObjectURL(objUrl);
-        resolve(canvas.toDataURL('image/jpeg', QUALITY));
+        canvas.toBlob(
+          (blob) => (blob ? resolve(blob) : reject(new Error('画像の変換に失敗'))),
+          'image/jpeg', QUALITY,
+        );
       };
       img.onerror = () => { URL.revokeObjectURL(objUrl); reject(new Error('画像読み込み失敗')); };
       img.src = objUrl;
     });
   }
 
-  // File → 記録に保存する写真オブジェクト { url }（url は data URL）
-  async function toStored(file) {
-    return { url: await compressToDataURL(file) };
-  }
-  async function toStoredMany(files) {
-    const out = [];
-    for (const f of files) out.push(await toStored(f)); // 直列で確実に
-    return out;
+  // ランダムID（グループ内で衝突しない程度に十分）
+  function rid() {
+    return (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
   }
 
-  // 方式B：写真は data URL で記録に埋め込むため Firestore の1記録=1MB上限に注意。
-  // 他フィールドの余白を残し、写真の合計は約0.9MBまでを安全枠とする。
-  const PHOTO_BUDGET = 900000; // bytes（data URL は ASCII なので概ね「文字数=バイト数」）
-  function bytesOf(photos) {
-    return (photos || []).reduce((sum, p) => sum + ((p && p.url) ? p.url.length : 0), 0);
+  // File → Storage に full/thumb を上げ、記録に保存する写真オブジェクトを返す
+  // { url(=full), thumbUrl, path, thumbPath }
+  async function toStored(file, groupId) {
+    const spaceId = App.cloud._spaceId();
+    if (!spaceId) throw new Error('スペース未選択のため写真を保存できません');
+    const photoId = rid();
+    const path = storagePathFor(spaceId, groupId, photoId, 'full');
+    const thumbPath = storagePathFor(spaceId, groupId, photoId, 'thumb');
+
+    const [fullBlob, thumbBlob] = await Promise.all([
+      compressToBlob(file, FULL_EDGE),
+      compressToBlob(file, THUMB_EDGE),
+    ]);
+
+    const fullRef = ref(fb.storage, path);
+    const thumbRef = ref(fb.storage, thumbPath);
+    await uploadBytes(fullRef, fullBlob, { contentType: 'image/jpeg' });
+    await uploadBytes(thumbRef, thumbBlob, { contentType: 'image/jpeg' });
+    const [url, thumbUrl] = await Promise.all([
+      getDownloadURL(fullRef),
+      getDownloadURL(thumbRef),
+    ]);
+    return { url, thumbUrl, path, thumbPath };
   }
-  function withinLimit(photos) { return bytesOf(photos) <= PHOTO_BUDGET; }
+
+  // 複数を直列アップロード。途中失敗したら、それまでに上げた分を消してから throw（孤児防止）
+  // onProgress(done, total) を任意で呼ぶ
+  async function toStoredMany(files, groupId, onProgress) {
+    const out = [];
+    try {
+      for (let i = 0; i < files.length; i++) {
+        out.push(await toStored(files[i], groupId));
+        if (onProgress) onProgress(i + 1, files.length);
+      }
+      return out;
+    } catch (err) {
+      // 部分アップロードのロールバック（ベストエフォート）
+      for (const p of out) { try { await deletePhotoFiles(p); } catch (_) { /* noop */ } }
+      throw err;
+    }
+  }
+
+  // 写真1件の実ファイル(full/thumb)を削除。path が無い写真(既存Base64)は何もしない。
+  // 存在しない等のエラーは握りつぶす（冪等・ベストエフォート）
+  async function deletePhotoFiles(photo) {
+    if (!photo) return;
+    for (const key of ['path', 'thumbPath']) {
+      const p = photo[key];
+      if (!p) continue;
+      try { await deleteObject(ref(fb.storage, p)); } catch (e) { console.warn('storage delete skip', p, e && e.code); }
+    }
+  }
 
   function _selfTest() {
     const eq = (n, got, want) => console.log((JSON.stringify(got) === JSON.stringify(want) ? 'PASS' : 'FAIL') + ' ' + n, JSON.stringify(got));
@@ -72,6 +121,6 @@ App.photos = (function () {
     eq('thumb-of-null', thumbOf(null), null);
   }
 
-  return { fitSize, storagePathFor, thumbOf, compressToDataURL, toStored, toStoredMany, bytesOf, withinLimit, _selfTest };
+  return { fitSize, storagePathFor, thumbOf, compressToBlob, toStored, toStoredMany, deletePhotoFiles, _selfTest };
 })();
 export const photos = App.photos;
