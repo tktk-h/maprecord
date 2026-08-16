@@ -830,6 +830,8 @@ App.records = (function () {
     // 地図の短いタップ（pointer検出・Google click に依存しない）
     App.map.setTapHandler(() => {
       // 詳細を開いているときは地図タップで閉じる。それ以外はシートを下げるだけ
+      const hasDetail = !!panel().querySelector('.detail'); // TEMP DEBUG
+      if (window.__tapdbg) window.__tapdbg('  handler detail=' + hasDetail); // TEMP DEBUG
       if (panel().querySelector('.detail')) { clearPanel(); suppressPlaceUntil = Date.now() + 600; return; }
       if (App.sheet) App.sheet.collapse();
     });

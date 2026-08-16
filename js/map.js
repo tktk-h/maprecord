@@ -72,6 +72,25 @@ App.map = (function () {
     setupLongPress();
   }
 
+  // ===== TEMP DEBUG: 実機でタップ検出のどの段で止まるか可視化（確認後に削除） =====
+  const _dbgLog = [];
+  function dbg(m) {
+    try {
+      _dbgLog.push(m);
+      while (_dbgLog.length > 5) _dbgLog.shift();
+      let d = document.getElementById('__tapdbg');
+      if (!d) {
+        d = document.createElement('div');
+        d.id = '__tapdbg';
+        d.style.cssText = 'position:fixed;top:64px;left:8px;z-index:99999;background:rgba(0,0,0,.82);color:#0f0;font:11px/1.4 monospace;padding:5px 8px;border-radius:6px;max-width:92vw;white-space:pre-wrap;pointer-events:none';
+        document.body.appendChild(d);
+      }
+      d.textContent = _dbgLog.join('\n');
+    } catch (e) { /* noop */ }
+  }
+  window.__tapdbg = dbg;
+  // ===== /TEMP DEBUG =====
+
   // 長押し検出（Google標準の contextmenu がスマホで出ない端末向けの独自実装）
   function setupLongPress() {
     // 座標変換用のオーバーレイ（画面ピクセル→緯度経度）
@@ -100,6 +119,7 @@ App.map = (function () {
       startX = ev.clientX; startY = ev.clientY;
       downTime = performance.now(); longFired = false; moved = false;
       active = true; tapFired = false;
+      dbg('down ' + ev.pointerType); // TEMP DEBUG
       cancel();
       timer = setTimeout(() => {
         timer = null; longFired = true;
@@ -123,12 +143,14 @@ App.map = (function () {
       }
     }, { capture: true });
     document.addEventListener('pointerup', () => {
+      dbg('up active=' + active); // TEMP DEBUG（active=false なら pointerdown が #map に届いていない）
       if (!active) return;
       active = false;
       // 短くその場を離した＝タップ。長押し・パンでなければ onTap を発火（Google click に依存しない）
       const wasTap = !longFired && !moved && (performance.now() - downTime) < LONG_MS;
+      dbg('  tap=' + wasTap + ' mv=' + moved + ' lf=' + longFired); // TEMP DEBUG
       cancel();
-      if (wasTap && !tapFired && onTap) { tapFired = true; onTap(); }
+      if (wasTap && !tapFired && onTap) { tapFired = true; dbg('  →onTap'); onTap(); }
     }, { capture: true });
     document.addEventListener('pointercancel', () => { active = false; cancel(); }, { capture: true });
   }
