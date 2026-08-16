@@ -18,7 +18,10 @@ service firebase.storage {
 
     match /spaces/{spaceId}/photos/{allPaths=**} {
       allow read: if isSpaceMember(spaceId);
-      allow write: if isSpaceMember(spaceId) && isValidImage();
+      // 作成・更新はアップロードされる画像を検証（request.resource あり）
+      allow create, update: if isSpaceMember(spaceId) && isValidImage();
+      // 削除には request.resource が無いので画像検証を外す（メンバーなら可）
+      allow delete: if isSpaceMember(spaceId);
     }
 
     // 既定は全拒否
