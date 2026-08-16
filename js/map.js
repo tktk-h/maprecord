@@ -90,12 +90,16 @@ App.map = (function () {
     let downTime = 0;    // 押した時刻（タップ判定用）
     let longFired = false; // 長押しが発火したか
     let moved = false;   // 閾値以上動いたか（パン）
+    let active = false;  // 地図で始まったポインタ操作の最中か
+    let tapFired = false; // この操作で onTap 済みか（二重発火防止）
     const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
 
+    // pointerdown は #map に届く（＝長押しが動く実績あり）。ここで操作開始を記録する。
     div.addEventListener('pointerdown', (ev) => {
       if (ev.pointerType === 'mouse' && ev.button !== 0) return; // 右クリック等は無視
       startX = ev.clientX; startY = ev.clientY;
       downTime = performance.now(); longFired = false; moved = false;
+      active = true; tapFired = false;
       cancel();
       timer = setTimeout(() => {
         timer = null; longFired = true;
@@ -108,19 +112,25 @@ App.map = (function () {
         onLongPress(ll.lat(), ll.lng());
       }, LONG_MS);
     });
-    div.addEventListener('pointermove', (ev) => {
+
+    // move / up は document のキャプチャフェーズで拾う。Google Maps のジェスチャー層は
+    // pointerup を #map まで伝える前に消費するため、要素バブルでは onTap が発火しない。
+    // キャプチャは Google の stopPropagation より先に走るので確実に受け取れる。
+    document.addEventListener('pointermove', (ev) => {
+      if (!active) return;
       if (Math.abs(ev.clientX - startX) > MOVE_TOL || Math.abs(ev.clientY - startY) > MOVE_TOL) {
         moved = true; cancel();
       }
-    });
-    div.addEventListener('pointerup', () => {
+    }, { capture: true });
+    document.addEventListener('pointerup', () => {
+      if (!active) return;
+      active = false;
       // 短くその場を離した＝タップ。長押し・パンでなければ onTap を発火（Google click に依存しない）
       const wasTap = !longFired && !moved && (performance.now() - downTime) < LONG_MS;
       cancel();
-      if (wasTap && onTap) onTap();
-    });
-    div.addEventListener('pointercancel', cancel);
-    div.addEventListener('pointerleave', cancel);
+      if (wasTap && !tapFired && onTap) { tapFired = true; onTap(); }
+    }, { capture: true });
+    document.addEventListener('pointercancel', () => { active = false; cancel(); }, { capture: true });
   }
 
   function setClickHandler(fn) { onMapClick = fn; }
