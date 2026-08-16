@@ -12,3 +12,6 @@ S__*.jpg
 serviceAccountKey.json
 *serviceaccount*.json
 node_modules/
+
+# brainstorm mockups (visual companion)
+.superpowers/
