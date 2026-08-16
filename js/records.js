@@ -710,7 +710,7 @@ App.records = (function () {
       try {
         const bias = { center: { lat: record.lat, lng: record.lng }, radius: 3000 }; // 記録の近くを優先
         const places = await App.places.searchText(q, { bias });
-        if (!places.length) { linkResults.innerHTML = '<span class="hint">該当なし</span>'; return; }
+        if (!places.length) { linkResults.innerHTML = '<span class="hint">該当なし（紐付けなしのまま保存でOK）</span>'; return; }
         linkResults.innerHTML = places.slice(0, 6).map((p, i) =>
           `<button type="button" class="ql-chip" data-i="${i}">${esc(p.name)}</button>`).join('');
         linkResults.querySelectorAll('.ql-chip').forEach((b) => {
