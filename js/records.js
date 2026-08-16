@@ -557,7 +557,7 @@ App.records = (function () {
     // ヒーロー：1枚目の写真。写真なしはジャンル色の温かいグラデにフォールバック
     const heroStyle = photos.length
       ? `background-image:url(${photos[0].url})`
-      : `background-image:linear-gradient(160deg, var(--accent-soft), ${genreColor})`;
+      : `background-image:linear-gradient(160deg, color-mix(in srgb, ${genreColor} 22%, #fff), color-mix(in srgb, ${genreColor}, #000 14%))`;
     const countBadge = photos.length > 1 ? `<span class="dt-count">1 / ${photos.length}</span>` : '';
     const heroIcon = photos.length ? '' : '<span class="dt-hero-icon"><i class="ph ph-map-pin"></i></span>';
     const strip = photos.length > 1

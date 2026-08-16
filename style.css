@@ -9,6 +9,9 @@
   --accent: #b76e64;      /* 落ち着いたテラコッタ／ローズ */
   --accent-strong: #9c554c;
   --accent-soft: #f1e6e3; /* アクセントの淡いトーン */
+  --accent-deep: #8f463d; /* 深いテラコッタ（選択状態の塗り・詳細の細ライン） */
+  --cta-grad: linear-gradient(135deg, #a85a4f, #7e3b33); /* 主役ボタン用グラデ */
+  --cta-shadow: 0 4px 14px rgba(126,59,51,.30);          /* CTA の淡い影 */
   --header-bg: #ffffff;   /* 白ヘッダー */
   --header-text: #33302b; /* 濃い文字 */
   --radius: 14px;
@@ -231,7 +234,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   color: var(--text); border-radius: var(--radius-pill); padding: 6px 12px; font-size: 12px; }
 #quick-log .ql-chip:hover { border-color: var(--accent); color: var(--accent-strong); }
 #quick-log .ql-chip-manual { background: none; color: var(--text-muted); }
-#quick-log .form-actions button#ql-save { background: var(--accent); color: #fff; }
+#quick-log .form-actions button#ql-save { background: var(--cta-grad); color: #fff; box-shadow: var(--cta-shadow); }
 #quick-log .form-actions button#ql-save:hover { background: var(--accent-strong); }
 #quick-log .ql-more { display: inline-flex; margin-top: 12px; }
 
@@ -256,7 +259,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 #rec-form label:first-of-type, #edit-form label:first-of-type { margin-top: 4px; }
 .form-actions { margin-top: 20px; display: flex; gap: 10px; }
 .form-actions button { flex: 1; padding: 11px 16px; border-radius: var(--radius-sm); font-weight: 600; font-size: 14px; }
-.form-actions button[type=submit] { background: var(--accent); color: #fff; }
+.form-actions button[type=submit] { background: var(--cta-grad); color: #fff; box-shadow: var(--cta-shadow); }
 .form-actions button[type=submit]:hover { background: var(--accent-strong); }
 
 /* 追加/クイック：主ボタンを主役に、副操作は控えめ */
@@ -303,7 +306,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .fix-loc-btn { display: inline-flex; align-items: center; gap: 7px; margin: 2px 0 2px;
   padding: 10px 14px; border-radius: var(--radius-sm); background: var(--surface-2);
   color: var(--accent-strong); font-size: 14px; font-weight: 600; }
-.fix-loc-btn.active { background: var(--accent); color: #fff; }
+.fix-loc-btn.active { background: var(--accent-deep); color: #fff; }
 .fix-loc-btn .ph { font-size: 18px; }
 .meta { color: var(--text-muted); font-size: 13px; margin: 2px 0 12px; }
 
@@ -323,14 +326,15 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .result-row:hover .result-name { color: var(--accent-strong); }
 
 /* 訪問回数（この場所に何回来たか） */
-.visits { background: var(--accent-soft); border-radius: var(--radius-sm); padding: 12px 14px; margin: 0 0 14px; }
+.visits { background: var(--accent-soft); border-radius: var(--radius-sm); padding: 12px 14px; margin: 0 0 14px;
+  border-left: 3px solid var(--accent-deep); }
 .visits-head { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;
   color: var(--accent-strong); margin-bottom: 10px; }
 .visit-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .visit-chip { border: 1px solid var(--border); background: var(--surface); color: var(--text);
   border-radius: var(--radius-pill); padding: 5px 11px; font-size: 12px; cursor: pointer; }
 .visit-chip:hover { border-color: var(--accent); color: var(--accent-strong); }
-.visit-chip.current { background: var(--accent); color: #fff; border-color: var(--accent); }
+.visit-chip.current { background: var(--accent-deep); color: #fff; border-color: var(--accent-deep); }
 .photos { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
 .thumb { width: 92px; height: 92px; object-fit: cover; border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
 .photos .thumb[data-i] { cursor: zoom-in; transition: transform .1s; }
@@ -387,9 +391,9 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .gf input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; pointer-events: none; }
 .gf-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gc); opacity: .4; }
 .gf:active { transform: scale(.97); }
-.gf:has(input:checked) { background: color-mix(in srgb, var(--gc) 15%, transparent);
-  border-color: color-mix(in srgb, var(--gc) 34%, transparent);
-  color: color-mix(in srgb, var(--gc), #000 34%); font-weight: 600; }
+.gf:has(input:checked) { background: color-mix(in srgb, var(--gc) 22%, transparent);
+  border-color: color-mix(in srgb, var(--gc) 48%, transparent);
+  color: color-mix(in srgb, var(--gc), #000 40%); font-weight: 600; }
 .gf:has(input:checked) .gf-dot { opacity: 1; }
 .gf:focus-within { box-shadow: var(--ring); }
 
@@ -434,7 +438,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .dt-thumb { flex: 0 0 auto; width: 46px; height: 46px; border-radius: 9px; cursor: zoom-in;
   background-size: cover; background-position: center; box-shadow: var(--shadow-sm); }
 .dt-body { padding-top: 16px; }
-.dt-date { font-size: 12px; color: var(--accent); letter-spacing: .08em; margin-bottom: 4px; }
+.dt-date { font-size: 12px; color: var(--accent-strong); letter-spacing: .08em; margin-bottom: 4px; }
 .dt-title { font-size: 23px; font-weight: 700; margin: 0 0 6px; overflow-wrap: anywhere; }
 .dt-genre { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px; }
 .dt-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
@@ -444,7 +448,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 6px 13px; cursor: pointer;
   font-family: var(--font-display); }
 .dt-visits .visit-chip:hover { border-color: var(--accent); color: var(--accent-strong); }
-.dt-visits .visit-chip.current { background: var(--accent); color: #fff; border-color: var(--accent); }
+.dt-visits .visit-chip.current { background: var(--accent-deep); color: #fff; border-color: var(--accent-deep); }
 .dt-rule { height: 1px; background: var(--border); margin: 2px 0 16px; }
 .dt-memo { font-size: 14.5px; color: var(--text); line-height: 1.9; margin: 0 0 18px;
   overflow-wrap: anywhere; word-break: break-word; }
@@ -452,7 +456,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .dt-tags .tag-chip { background: none; border: none; padding: 0; color: var(--accent-strong); cursor: pointer; }
 .dt-tags .tag-chip:hover { background: none; color: var(--accent); text-decoration: underline; }
 .dt-primary { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%;
-  background: var(--accent); color: #fff; border-radius: 12px; padding: 13px; font-size: 14px; font-weight: 500; margin-bottom: 14px; }
+  background: var(--cta-grad); color: #fff; border-radius: 12px; padding: 13px; font-size: 14px; font-weight: 500; margin-bottom: 14px; box-shadow: var(--cta-shadow); }
 .dt-primary .ph { font-size: 17px; }
 .dt-primary:hover { background: var(--accent-strong); }
 .dt-actions { display: flex; justify-content: center; gap: 22px; }
@@ -480,10 +484,9 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   color: var(--text-muted); cursor: pointer; transition: background .12s, border-color .12s, color .12s; }
 .gp-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gc); opacity: .4; }
 .gp-chip:active { transform: scale(.97); }
-.gp-chip.active { background: color-mix(in srgb, var(--gc) 15%, transparent);
-  border-color: color-mix(in srgb, var(--gc) 34%, transparent);
-  color: color-mix(in srgb, var(--gc), #000 34%); font-weight: 500; }
-.gp-chip.active .gp-dot { opacity: 1; }
+.gp-chip.active { background: var(--gc); border-color: var(--gc);
+  color: #fff; font-weight: 600; }
+.gp-chip.active .gp-dot { opacity: 1; background: #fff; }
 
 /* 写真の破線タイル（生の file input を隠す）。id を付けて label 規則に勝つ */
 #rec-form .filedrop, #edit-form .filedrop { display: flex; flex-direction: column; align-items: center;
@@ -498,8 +501,8 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 #rec-form .form-actions, #edit-form .form-actions, #quick-log .form-actions { margin-top: 20px; }
 #rec-form .form-actions button, #edit-form .form-actions button { border-radius: 12px; }
 #rec-form .form-actions button[type=submit], #edit-form .form-actions button[type=submit] { flex: 1.3; }
-#quick-log #ql-save { width: 100%; background: var(--accent); color: #fff; border-radius: 12px;
-  padding: 13px; font-weight: 500; }
+#quick-log #ql-save { width: 100%; background: var(--cta-grad); color: #fff; border-radius: 12px;
+  padding: 13px; font-weight: 500; box-shadow: var(--cta-shadow); }
 #quick-log #ql-save:hover { background: var(--accent-strong); }
 
 /* ===== 追加地点の目印（脈打つ） ===== */
@@ -532,7 +535,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 #route-edit-btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--accent);
   color: var(--accent-strong); background: var(--surface); border-radius: var(--radius-pill);
   padding: 8px 16px; font-size: 13px; font-weight: 600; }
-#route-edit-btn.editing { background: var(--accent); color: #fff; border-color: var(--accent); }
+#route-edit-btn.editing { background: var(--accent-deep); color: #fff; border-color: var(--accent-deep); }
 
 .route-flow { list-style: none; padding: 0; margin: 16px 0 0; }
 .flow-row { display: grid; grid-template-columns: 30px 1fr auto; align-items: center;
@@ -649,7 +652,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .gate-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   width: 100%; padding: 14px 16px; border-radius: 14px; font-size: 15px; font-weight: 500;
   background: var(--surface-2); color: var(--text); margin-top: 8px; }
-.gate-btn.primary { background: var(--accent); color: #fff; }
+.gate-btn.primary { background: var(--cta-grad); color: #fff; box-shadow: var(--cta-shadow); }
 .gate-btn.primary:hover { background: var(--accent-strong); }
 .gate-btn.google { background: var(--surface); color: var(--text); border: 1px solid var(--border);
   box-shadow: 0 4px 14px rgba(45,38,30,.08); }
