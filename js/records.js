@@ -634,6 +634,10 @@ App.records = (function () {
     document.getElementById('del-btn').onclick = async () => {
       if (!confirm(`「${record.name}」を削除しますか？`)) return;
       await App.cloud.remove(record.id);
+      // 記録が持つ写真の実ファイルも掃除（Base64はpath無し=no-op、失敗は握りつぶす）
+      for (const p of (record.photos || [])) {
+        try { await App.photos.deletePhotoFiles(p); } catch (_) { /* noop */ }
+      }
       clearPanel(); // 購読が自動反映
     };
   }
