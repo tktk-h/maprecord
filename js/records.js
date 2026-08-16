@@ -356,13 +356,12 @@ App.records = (function () {
       const order = all.filter((r) => r.date === f.date.value).length; // その日の末尾に追加
       const submitBtn = f.querySelector('button[type=submit]');
       submitBtn.disabled = true; submitBtn.textContent = '保存中…';
+      let photos = [];
       try {
-        const photos = await App.photos.toStoredMany(files); // 圧縮 → {url}[]
-        if (!App.photos.withinLimit(photos)) {
-          alert('写真の合計サイズが大きすぎて保存できません。枚数を減らすか、写真を分けて登録してください。');
-          submitBtn.disabled = false; submitBtn.textContent = '保存';
-          return;
-        }
+        const groupId = 'new-' + Date.now(); // recordId 未確定なので一時ID（パスは表示用途のみ）
+        photos = await App.photos.toStoredMany(files, groupId, (done, total) => {
+          if (total > 1) submitBtn.textContent = `アップロード中 ${done}/${total}`;
+        });
         await App.cloud.add({
           date: f.date.value, name: f.name.value, genre: f.genre.value,
           memo: f.memo.value, tags: parseTags(f.tags.value), order, lat, lng, photos,
@@ -370,6 +369,8 @@ App.records = (function () {
         });
         clearPanel(); // 保存後は購読が自動反映
       } catch (err) {
+        // DB保存前に上げた写真が孤児化しないよう掃除（ベストエフォート）
+        for (const p of photos) { try { await App.photos.deletePhotoFiles(p); } catch (_) { /* noop */ } }
         alert('保存に失敗しました: ' + err.message);
         submitBtn.disabled = false; submitBtn.textContent = '保存';
       }
