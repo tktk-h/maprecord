@@ -587,6 +587,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 @media (max-width: 700px) {
   #topbar { padding: 10px; gap: 8px; }
   #search-wrap { flex: 1 1 100%; max-width: none; order: 5; }
+  #filter-panel { order: 6; } /* 検索バー(order:5)より後 ＝ 常にバーの下に開く（バー位置は固定） */
 
   /* 地図をほぼ全画面、パネルは下シート（z-index:0で地図内部を閉じ込める） */
   #map { position: absolute; inset: 0; z-index: 0; }
