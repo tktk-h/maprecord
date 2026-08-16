@@ -747,16 +747,16 @@ App.records = (function () {
       const f = e.target;
       const btn = f.querySelector('button[type=submit]');
       btn.disabled = true; btn.textContent = '更新中…';
+      let uploaded = [];
       try {
         const newFiles = Array.from(f.photos.files);
-        const uploaded = newFiles.length ? await App.photos.toStoredMany(newFiles) : [];
+        uploaded = newFiles.length
+          ? await App.photos.toStoredMany(newFiles, record.id, (done, total) => {
+              if (total > 1) btn.textContent = `アップロード中 ${done}/${total}`;
+            })
+          : [];
         const picked = App.map.getPickedLatLng(); // 「位置を修正」していれば新座標
         const photos = keep.concat(uploaded); // 残した既存写真＋追加分
-        if (!App.photos.withinLimit(photos)) {
-          alert('写真の合計サイズが大きすぎて保存できません。枚数を減らすか、写真を分けて登録してください。');
-          btn.disabled = false; btn.textContent = '更新';
-          return;
-        }
         const updated = {
           id: record.id, date: f.date.value, name: f.name.value, genre: f.genre.value,
           memo: f.memo.value, tags: parseTags(f.tags.value), order: record.order,
@@ -767,8 +767,13 @@ App.records = (function () {
         };
         App.map.stopPickLocation();
         await App.cloud.put(updated);
+        // 保存成功後：×で外したStorage写真の実ファイルを掃除（Base64はpath無し=no-op）
+        const removed = (record.photos || []).filter((p) => !keep.includes(p));
+        for (const p of removed) { try { await App.photos.deletePhotoFiles(p); } catch (_) { /* noop */ } }
         showDetail(updated);
       } catch (err) {
+        // 保存できなかったら新規アップ分が孤児化しないよう掃除
+        for (const p of uploaded) { try { await App.photos.deletePhotoFiles(p); } catch (_) { /* noop */ } }
         alert('更新に失敗しました: ' + err.message);
         btn.disabled = false; btn.textContent = '更新';
       }
