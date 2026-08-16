@@ -324,10 +324,11 @@ App.records = (function () {
   }
 
   // 追加フォーム表示（地図クリック時／同じ場所への再訪時）
-  // prefill: { name, genre } を渡すと場所名・ジャンルを引き継ぐ（日付は今日・メモ/写真は空）
+  // prefill: { name, genre, placeId } を渡すと場所名・ジャンル・Google場所IDを引き継ぐ（日付は今日・メモ/写真は空）
   function showAddForm(lat, lng, prefill) {
     searchResults = null; // 追加を始めたら検索結果モードは終了
     prefill = prefill || {};
+    const placeId = prefill.placeId || null; // Google の場所から来た記録だけ持つ（手動追加は null）
     const today = new Date().toISOString().slice(0, 10);
     const nameVal = esc(prefill.name);
     panel().innerHTML = `
@@ -365,6 +366,7 @@ App.records = (function () {
         await App.cloud.add({
           date: f.date.value, name: f.name.value, genre: f.genre.value,
           memo: f.memo.value, tags: parseTags(f.tags.value), order, lat, lng, photos,
+          ...(placeId ? { placeId } : {}),
         });
         clearPanel(); // 保存後は購読が自動反映
       } catch (err) {
@@ -379,7 +381,7 @@ App.records = (function () {
     searchResults = null;
     activeTag = null;
     const today = new Date().toISOString().slice(0, 10);
-    const state = { name: '', genre: 'food', candidates: [] };
+    const state = { name: '', genre: 'food', candidates: [], placeId: null };
     let cancelled = false; // 保存/詳しく書く に移ったら候補の遅延描画を止める
 
     function draw() {
@@ -404,7 +406,7 @@ App.records = (function () {
           <button type="button" id="ql-more" class="back-btn ql-more"><i class="ph ph-pencil-simple"></i>詳しく書く</button>
         </div>`;
       const nameInput = document.getElementById('ql-name');
-      nameInput.oninput = () => { state.name = nameInput.value; };
+      nameInput.oninput = () => { state.name = nameInput.value; state.placeId = null; }; // 手入力に変えたら候補の紐付けを解除
       document.getElementById('ql-genre').onchange = (e) => { state.genre = e.target.value; };
       wireGenrePicker(panel());
       panel().querySelectorAll('.ql-chip').forEach((b) => {
@@ -412,6 +414,7 @@ App.records = (function () {
           if (b.dataset.manual) { document.getElementById('ql-name').focus(); return; }
           const c = state.candidates[Number(b.dataset.i)];
           state.name = c.name;
+          state.placeId = c.placeId || null; // 候補＝Google の場所なので placeId を紐付け
           if (c.genre) state.genre = c.genre;
           draw();
         };
@@ -431,10 +434,11 @@ App.records = (function () {
       const genre = state.genre;
       try {
         const order = all.filter((r) => r.date === today).length;
-        const id = await App.cloud.add({
-          date: today, name, genre, memo: '', tags: [], order, lat, lng, photos: [],
-        });
-        showDetail({ id, date: today, name, genre, memo: '', tags: [], order, lat, lng, photos: [] });
+        const placeId = state.placeId || null;
+        const rec = { date: today, name, genre, memo: '', tags: [], order, lat, lng, photos: [],
+          ...(placeId ? { placeId } : {}) };
+        const id = await App.cloud.add(rec);
+        showDetail({ id, ...rec });
       } catch (err) {
         alert('保存に失敗しました: ' + err.message);
         btn.disabled = false; btn.textContent = '保存';
@@ -526,7 +530,7 @@ App.records = (function () {
     });
     document.getElementById('pc-add').onclick = () => {
       App.map.flyTo(p.lat, p.lng);
-      showAddForm(p.lat, p.lng, { name: p.name, genre: p.genre });
+      showAddForm(p.lat, p.lng, { name: p.name, genre: p.genre, placeId });
     };
   }
 
@@ -578,7 +582,9 @@ App.records = (function () {
       ? `<div class="dt-tags">${(record.tags || []).map((t) =>
           `<button type="button" class="tag-chip" data-tag="${esc(t)}">#${esc(t)}</button>`).join('')}</div>`
       : '';
-    const gmapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(record.name || '')}`;
+    // placeId があれば「その店そのもの」を開く（同名店で別の店に飛ぶのを防ぐ）。無ければ名前で検索。
+    const gmapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(record.name || '')}`
+      + (record.placeId ? `&query_place_id=${encodeURIComponent(record.placeId)}` : '');
 
     panel().innerHTML = `
       <div class="detail">
@@ -606,7 +612,7 @@ App.records = (function () {
 
     document.getElementById('detail-back').onclick = goBack;
     document.getElementById('revisit-btn').onclick = () =>
-      showAddForm(record.lat, record.lng, { name: record.name, genre: record.genre });
+      showAddForm(record.lat, record.lng, { name: record.name, genre: record.genre, placeId: record.placeId });
     panel().querySelectorAll('.visit-chip').forEach((b) => {
       b.onclick = () => {
         const rec = all.find((x) => String(x.id) === b.dataset.id);
@@ -710,6 +716,7 @@ App.records = (function () {
           lat: picked ? picked.lat : record.lat,
           lng: picked ? picked.lng : record.lng,
           photos,
+          ...(record.placeId ? { placeId: record.placeId } : {}), // 既存の場所IDを維持
         };
         App.map.stopPickLocation();
         await App.cloud.put(updated);
