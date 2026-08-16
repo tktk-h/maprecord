@@ -12,6 +12,17 @@ App.photos = (function () {
     return { w: Math.round(w * scale), h: Math.round(h * scale) };
   }
 
+  // Storage のオブジェクトパスを組み立てる（純粋）。variant は 'full' | 'thumb'
+  function storagePathFor(spaceId, groupId, photoId, variant) {
+    return `spaces/${spaceId}/photos/${groupId}/${photoId}-${variant}.jpg`;
+  }
+
+  // 表示用サムネURL。Storage写真は thumbUrl、既存Base64は url にフォールバック（純粋）
+  function thumbOf(photo) {
+    if (!photo) return null;
+    return photo.thumbUrl || photo.url || null;
+  }
+
   // File/Blob → 圧縮JPEGの data URL 文字列
   function compressToDataURL(file) {
     return new Promise((resolve, reject) => {
@@ -54,8 +65,13 @@ App.photos = (function () {
     eq('portrait', fitSize(3000, 4000, 1280), { w: 960, h: 1280 });
     eq('small-nogrow', fitSize(800, 600, 1280), { w: 800, h: 600 });
     eq('square', fitSize(2000, 2000, 1280), { w: 1280, h: 1280 });
+    eq('path-full', storagePathFor('sp1', 'grp1', 'p1', 'full'), 'spaces/sp1/photos/grp1/p1-full.jpg');
+    eq('path-thumb', storagePathFor('sp1', 'grp1', 'p1', 'thumb'), 'spaces/sp1/photos/grp1/p1-thumb.jpg');
+    eq('thumb-of-storage', thumbOf({ url: 'https://f/full', thumbUrl: 'https://f/thumb' }), 'https://f/thumb');
+    eq('thumb-of-base64', thumbOf({ url: 'data:image/jpeg;base64,xxx' }), 'data:image/jpeg;base64,xxx');
+    eq('thumb-of-null', thumbOf(null), null);
   }
 
-  return { fitSize, compressToDataURL, toStored, toStoredMany, bytesOf, withinLimit, _selfTest };
+  return { fitSize, storagePathFor, thumbOf, compressToDataURL, toStored, toStoredMany, bytesOf, withinLimit, _selfTest };
 })();
 export const photos = App.photos;
