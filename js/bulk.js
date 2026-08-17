@@ -129,7 +129,47 @@ App.bulk = (function () {
   function countPhotos() { return groups.reduce((n, g) => n + g.photos.length, 0); }
   function groupLatLng(g) { return g.hasGps ? g.center : g.place; }        // 保存座標
   function saveableCount() { return groups.filter((g) => groupLatLng(g)).length; }
-  function wireCards() { /* Task 5-6 */ }
+  function wireCards() {
+    const list = document.getElementById('bulk-list');
+    if (!list) return;
+    list.querySelectorAll('.bulk-act').forEach((btn) => {
+      btn.onclick = () => {
+        const i = Number(btn.dataset.i), act = btn.dataset.act;
+        if (act === 'merge') mergeUp(i);
+        else if (act === 'del') { groups.splice(i, 1); renderReview(); }
+        else if (act === 'split') doSplit(i);
+      };
+    });
+    list.querySelectorAll('.bulk-genre').forEach((sel) => {
+      sel.onchange = () => { groups[Number(sel.dataset.i)].genre = sel.value; };
+    });
+    list.querySelectorAll('.bulk-datefld').forEach((inp) => {
+      inp.onchange = () => { groups[Number(inp.dataset.i)].date = inp.value; };
+    });
+    list.querySelectorAll('.bulk-place').forEach((btn) => {
+      btn.onclick = () => openPlaceSearch(Number(btn.dataset.i)); // Task 6
+    });
+    wireStrip(); // Task 6（分割の写真選択）
+    const save = document.getElementById('bulk-save');
+    if (save) save.onclick = doSave; // Task 7
+  }
+
+  // i番目を i-1 に統合。座標/場所は「結合先(前)」を優先し、無ければ自分のを引き継ぐ。
+  function mergeUp(i) {
+    if (i <= 0) return;
+    const prev = groups[i - 1], g = groups[i];
+    prev.photos = prev.photos.concat(g.photos).sort((a, b) => a.time - b.time);
+    if (!prev.hasGps && g.hasGps) { prev.hasGps = true; prev.center = g.center; }
+    if (!prev.placeId && g.placeId) { prev.placeId = g.placeId; prev.place = g.place; prev.name = g.name; }
+    prev.date = App.grouping.dateOf(prev.photos[0].time); // 最早写真の日
+    groups.splice(i, 1);
+    renderReview();
+  }
+
+  function doSplit(i) { /* Task 6 */ }
+  function openPlaceSearch(i) { /* Task 6 */ }
+  function wireStrip() { /* Task 6 */ }
+  function doSave() { /* Task 7 */ }
 
   function init() {
     const btn = document.getElementById('bulk-btn');
