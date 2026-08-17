@@ -68,7 +68,68 @@ App.bulk = (function () {
     groups = [];
   }
 
-  function renderReview() { /* Task 4 で実装 */ }
+  function esc(s) {
+    return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  // 'HH:MM'
+  function hhmm(ms) { const d = new Date(ms); const p = (n) => String(n).padStart(2, '0'); return `${p(d.getHours())}:${p(d.getMinutes())}`; }
+  function genreOptions(sel) {
+    return App.genres.list.map((g) => `<option value="${g.key}" ${g.key === sel ? 'selected' : ''}>${g.label}</option>`).join('');
+  }
+
+  function cardHtml(g, i) {
+    const first = g.photos[0], last = g.photos[g.photos.length - 1];
+    const cover = g.photos[0].url;
+    const timeRange = g.photos.length > 1 ? `${hhmm(first.time)}〜${hhmm(last.time)}` : hhmm(first.time);
+    const noGpsTag = g.hasGps ? '' : '<span class="bulk-tag">場所未設定</span>';
+    const placeBtn = g.name
+      ? `<button class="bulk-place set" data-i="${i}">📍 ${esc(g.name)} ・ 変更</button>`
+      : `<button class="bulk-place" data-i="${i}">📍 店名を検索して紐付け${g.hasGps ? '' : '（GPSなし）'}</button>`;
+    const strip = g.photos.map((p, j) =>
+      `<div class="bulk-ph" data-i="${i}" data-j="${j}" style="background-image:url(${p.url})"></div>`).join('');
+    const mergeBtn = i > 0 ? `<button class="bulk-act" data-act="merge" data-i="${i}">↑ 前と結合</button>` : '';
+    return `
+      <div class="bulk-card" data-i="${i}">
+        <div class="bulk-top">
+          <div class="bulk-cover" style="background-image:url(${cover})"><span>${g.photos.length}枚</span></div>
+          <div class="bulk-meta">
+            <div class="bulk-date">${g.date} <span class="bulk-count">${timeRange} ・ ${g.photos.length}枚</span>${noGpsTag}</div>
+            ${placeBtn}
+            <div class="bulk-fields">
+              <select class="bulk-genre" data-i="${i}">${genreOptions(g.genre)}</select>
+              <input class="bulk-datefld" type="date" value="${g.date}" data-i="${i}">
+            </div>
+          </div>
+        </div>
+        <div class="bulk-strip">${strip}</div>
+        <div class="bulk-splithint">▸ 写真をタップ →「ここで分割」でその位置から下を別グループに</div>
+        <div class="bulk-acts">
+          ${mergeBtn}
+          <button class="bulk-act" data-act="split" data-i="${i}" disabled>✂️ ここで分割</button>
+          <button class="bulk-act warn" data-act="del" data-i="${i}">🗑 削除</button>
+        </div>
+      </div>`;
+  }
+
+  function renderReview() {
+    const ov = document.getElementById('bulk-overlay');
+    ov.hidden = false;
+    ov.innerHTML = `
+      <div class="bulk-head">
+        <button id="bulk-cancel" class="bulk-x">✕</button>
+        <div class="bulk-title">確認・修正</div>
+      </div>
+      <div class="bulk-lead">${countPhotos()}枚を ${groups.length}グループに整理しました。直してまとめて保存。</div>
+      <div id="bulk-list">${groups.map(cardHtml).join('')}</div>
+      <button id="bulk-save" class="bulk-save">すべて保存（${saveableCount()}件の記録をつくる）</button>`;
+    document.getElementById('bulk-cancel').onclick = close;
+    wireCards(); // Task 5-6 で実装（この時点では空でよい）
+  }
+
+  function countPhotos() { return groups.reduce((n, g) => n + g.photos.length, 0); }
+  function groupLatLng(g) { return g.hasGps ? g.center : g.place; }        // 保存座標
+  function saveableCount() { return groups.filter((g) => groupLatLng(g)).length; }
+  function wireCards() { /* Task 5-6 */ }
 
   function init() {
     const btn = document.getElementById('bulk-btn');
