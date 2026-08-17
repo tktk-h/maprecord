@@ -121,14 +121,22 @@ App.bulk = (function () {
       </div>
       <div class="bulk-lead">${countPhotos()}枚を ${groups.length}グループに整理しました。直してまとめて保存。</div>
       <div id="bulk-list">${groups.map(cardHtml).join('')}</div>
-      <button id="bulk-save" class="bulk-save">すべて保存（${saveableCount()}件の記録をつくる）</button>`;
+      ${saveButtonHtml()}`;
     document.getElementById('bulk-cancel').onclick = close;
     wireCards(); // Task 5-6 で実装（この時点では空でよい）
   }
 
+  // 保存ボタン。場所を選んだグループが0なら無効化して促す。
+  function saveButtonHtml() {
+    const n = saveableCount();
+    return n
+      ? `<button id="bulk-save" class="bulk-save">すべて保存（${n}件の記録をつくる）</button>`
+      : `<button id="bulk-save" class="bulk-save" disabled>各グループに📍場所を選んでください</button>`;
+  }
   function countPhotos() { return groups.reduce((n, g) => n + g.photos.length, 0); }
-  function groupLatLng(g) { return g.hasGps ? g.center : g.place; }        // 保存座標
-  function saveableCount() { return groups.filter((g) => groupLatLng(g)).length; }
+  function groupLatLng(g) { return g.hasGps ? g.center : g.place; }        // 保存座標（GPS中心優先、無ければ紐付け店）
+  function isSaveable(g) { return !!g.placeId; }                           // 場所（店）を選んだグループだけ保存する
+  function saveableCount() { return groups.filter(isSaveable).length; }
   function wireCards() {
     const list = document.getElementById('bulk-list');
     if (!list) return;
@@ -241,9 +249,9 @@ App.bulk = (function () {
   }
   async function doSave() {
     const saveBtn = document.getElementById('bulk-save');
-    const targets = groups.filter((g) => groupLatLng(g));
-    const skipped = groups.filter((g) => !groupLatLng(g));
-    if (!targets.length) { alert('保存できるグループがありません（場所を設定してください）'); return; }
+    const targets = groups.filter(isSaveable);
+    const skipped = groups.filter((g) => !isSaveable(g));
+    if (!targets.length) { alert('保存できるグループがありません（各グループに店名を紐付けてください）'); return; }
     saveBtn.disabled = true;
     const failed = [];
     let done = 0;
@@ -276,7 +284,7 @@ App.bulk = (function () {
       alert(`${done}件を保存しました。`);
     } else {
       renderReview();
-      alert(`${done}件を保存しました。残り${groups.length}件（場所未設定 or 失敗）を確認してください。`);
+      alert(`${done}件を保存しました。残り${groups.length}件（場所未選択 or 失敗）を確認してください。`);
     }
   }
 
