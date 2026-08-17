@@ -239,7 +239,46 @@ App.bulk = (function () {
     q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
     q.focus();
   }
-  function doSave() { /* Task 7 */ }
+  async function doSave() {
+    const saveBtn = document.getElementById('bulk-save');
+    const targets = groups.filter((g) => groupLatLng(g));
+    const skipped = groups.filter((g) => !groupLatLng(g));
+    if (!targets.length) { alert('保存できるグループがありません（場所を設定してください）'); return; }
+    saveBtn.disabled = true;
+    const failed = [];
+    let done = 0;
+    const all = App.records.getAll();
+    for (const g of targets) {
+      const loc = groupLatLng(g);
+      saveBtn.textContent = `保存中… ${done + 1}/${targets.length}`;
+      try {
+        const files = g.photos.map((p) => p.file);
+        const groupId = 'bulk-' + Date.now() + '-' + Math.random().toString(16).slice(2, 6);
+        const photos = await App.photos.toStoredMany(files, groupId, (n, t) => {
+          saveBtn.textContent = `保存中… グループ${done + 1}/${targets.length}（写真${n}/${t}）`;
+        });
+        const order = all.filter((r) => r.date === g.date).length + done; // その日の末尾へ
+        await App.cloud.add({
+          date: g.date, name: g.name || '', genre: g.genre, memo: '', tags: [], order,
+          lat: loc.lat, lng: loc.lng, photos,
+          ...(g.placeId ? { placeId: g.placeId } : {}),
+        });
+        done++;
+      } catch (err) {
+        console.error('bulk save failed', err);
+        failed.push(g);
+      }
+    }
+    // 保存できたグループを除き、失敗＋位置なしを残す
+    groups = failed.concat(skipped);
+    if (!groups.length) {
+      close();
+      alert(`${done}件を保存しました。`);
+    } else {
+      renderReview();
+      alert(`${done}件を保存しました。残り${groups.length}件（場所未設定 or 失敗）を確認してください。`);
+    }
+  }
 
   function init() {
     const btn = document.getElementById('bulk-btn');
