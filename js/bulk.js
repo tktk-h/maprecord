@@ -292,10 +292,43 @@ App.bulk = (function () {
   function showPickBar(i) {
     let bar = document.getElementById('bulk-pickbar');
     if (!bar) { bar = document.createElement('div'); bar.id = 'bulk-pickbar'; document.body.appendChild(bar); }
-    bar.innerHTML = `<span class="bulk-pickmsg">ピンをドラッグして位置を決めてください</span>
-      <button id="bulk-pick-ok" class="bulk-pickok">この位置に決定</button>
-      <button id="bulk-pick-cancel" class="bulk-pickcancel">キャンセル</button>`;
+    bar.innerHTML = `
+      <div class="bulk-picksearch">
+        <input type="text" id="bulk-pick-q" placeholder="店名で検索してピンを移動" value="${esc(groups[i].name || '')}">
+        <button id="bulk-pick-search">検索</button>
+      </div>
+      <div id="bulk-pick-results" class="bulk-presults"></div>
+      <div class="bulk-pickmsg">ピンをドラッグ、または検索した店をタップして位置を決めます</div>
+      <div class="bulk-pickacts">
+        <button id="bulk-pick-ok" class="bulk-pickok">この位置に決定</button>
+        <button id="bulk-pick-cancel" class="bulk-pickcancel">キャンセル</button>
+      </div>`;
     bar.hidden = false;
+    const q = document.getElementById('bulk-pick-q');
+    const results = document.getElementById('bulk-pick-results');
+    async function run() {
+      const text = q.value.trim(); if (!text) return;
+      results.innerHTML = '<span class="bulk-hint">検索中…</span>';
+      try {
+        const cur = App.map.getPickedLatLng() || groupLatLng(groups[i]) || mapCenter();
+        const places = await App.places.searchText(text, { bias: { center: cur, radius: 3000 } });
+        if (!places.length) { results.innerHTML = '<span class="bulk-hint">該当なし</span>'; return; }
+        results.innerHTML = places.slice(0, 6).map((p, k) => `<button type="button" class="bulk-pick" data-k="${k}">${esc(p.name)}</button>`).join('');
+        results.querySelectorAll('.bulk-pick').forEach((b) => {
+          b.onclick = () => {
+            const p = places[Number(b.dataset.k)];
+            groups[i].name = p.name; groups[i].placeId = p.placeId; groups[i].place = { lat: p.lat, lng: p.lng };
+            if (p.genre) groups[i].genre = p.genre;
+            App.map.startPickLocation(p.lat, p.lng); // ピンをその店へ移動（さらにドラッグで微調整可）
+            results.innerHTML = '';
+            const msg = bar.querySelector('.bulk-pickmsg');
+            if (msg) msg.textContent = `「${p.name}」に移動しました。微調整はドラッグで。`;
+          };
+        });
+      } catch (_) { results.innerHTML = '<span class="bulk-hint">検索できませんでした</span>'; }
+    }
+    document.getElementById('bulk-pick-search').onclick = run;
+    q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
     document.getElementById('bulk-pick-ok').onclick = () => finishPick(i, true);
     document.getElementById('bulk-pick-cancel').onclick = () => finishPick(i, false);
   }
