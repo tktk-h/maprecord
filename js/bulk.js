@@ -166,9 +166,79 @@ App.bulk = (function () {
     renderReview();
   }
 
-  function doSplit(i) { /* Task 6 */ }
-  function openPlaceSearch(i) { /* Task 6 */ }
-  function wireStrip() { /* Task 6 */ }
+  let splitSel = { i: -1, j: -1 }; // 選択中の分割起点
+
+  function wireStrip() {
+    splitSel = { i: -1, j: -1 };
+    document.querySelectorAll('.bulk-ph').forEach((el) => {
+      el.onclick = () => {
+        const i = Number(el.dataset.i), j = Number(el.dataset.j);
+        if (j === 0) return; // 先頭では分割不要
+        document.querySelectorAll(`.bulk-ph[data-i="${i}"]`).forEach((x) => x.classList.remove('sel'));
+        el.classList.add('sel');
+        splitSel = { i, j };
+        const btn = document.querySelector(`.bulk-act[data-act="split"][data-i="${i}"]`);
+        if (btn) btn.disabled = false;
+      };
+    });
+  }
+
+  // 選択した写真(j)から後ろを新グループに切り出す
+  function doSplit(i) {
+    if (splitSel.i !== i || splitSel.j <= 0) return;
+    const g = groups[i];
+    const tail = g.photos.splice(splitSel.j); // j以降
+    const newG = {
+      photos: tail, date: App.grouping.dateOf(tail[0].time),
+      center: null, hasGps: false, placeId: null, place: null, name: '', genre: g.genre,
+    };
+    // 新グループのGPS再計算（tailにGPSがあれば）
+    const pts = tail.filter((p) => p.gps).map((p) => p.gps);
+    if (pts.length) { newG.hasGps = true; newG.center = App.grouping.centroid(pts); }
+    // 元グループのGPS/日付も再計算
+    const headPts = g.photos.filter((p) => p.gps).map((p) => p.gps);
+    g.hasGps = headPts.length > 0; g.center = headPts.length ? App.grouping.centroid(headPts) : null;
+    g.date = App.grouping.dateOf(g.photos[0].time);
+    groups.splice(i + 1, 0, newG); // 時系列的に直後へ
+    renderReview();
+  }
+
+  function openPlaceSearch(i) {
+    const g = groups[i];
+    const card = document.querySelector(`.bulk-card[data-i="${i}"]`);
+    if (!card) return;
+    let box = card.querySelector('.bulk-placebox');
+    if (box) { box.remove(); return; } // トグル
+    box = document.createElement('div');
+    box.className = 'bulk-placebox';
+    box.innerHTML = `
+      <input type="text" class="bulk-pq" placeholder="店名で検索" value="${esc(g.name || '')}">
+      <button type="button" class="bulk-psearch">検索</button>
+      <div class="bulk-presults"></div>`;
+    card.querySelector('.bulk-meta').appendChild(box);
+    const q = box.querySelector('.bulk-pq'), results = box.querySelector('.bulk-presults');
+    async function run() {
+      const text = q.value.trim(); if (!text) return;
+      results.innerHTML = '<span class="bulk-hint">検索中…</span>';
+      try {
+        const opts = g.center ? { bias: { center: g.center, radius: 3000 } } : {};
+        const places = await App.places.searchText(text, opts);
+        if (!places.length) { results.innerHTML = '<span class="bulk-hint">該当なし</span>'; return; }
+        results.innerHTML = places.slice(0, 6).map((p, k) => `<button type="button" class="bulk-pick" data-k="${k}">${esc(p.name)}</button>`).join('');
+        results.querySelectorAll('.bulk-pick').forEach((b) => {
+          b.onclick = () => {
+            const p = places[Number(b.dataset.k)];
+            g.placeId = p.placeId; g.place = { lat: p.lat, lng: p.lng }; g.name = p.name;
+            if (p.genre) g.genre = p.genre;
+            renderReview();
+          };
+        });
+      } catch (_) { results.innerHTML = '<span class="bulk-hint">検索できませんでした</span>'; }
+    }
+    box.querySelector('.bulk-psearch').onclick = run;
+    q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
+    q.focus();
+  }
   function doSave() { /* Task 7 */ }
 
   function init() {
