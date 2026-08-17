@@ -699,6 +699,23 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .bulk-place { margin-top: 8px; border: 1.5px dashed var(--accent-strong); color: var(--accent-strong); background: transparent;
   border-radius: 10px; padding: 7px 11px; font-size: 13px; font-weight: 600; cursor: pointer; max-width: 100%; }
 .bulk-place.set { border-style: solid; background: rgba(181,103,95,.15); }
+.bulk-name { width: 100%; margin-top: 8px; border: 1px solid rgba(127,127,127,.35); border-radius: 10px;
+  padding: 9px 11px; font-size: 14px; background: transparent; color: inherit; }
+.bulk-locrow { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.bulk-locbtn { border: 1px solid rgba(181,103,95,.5); color: var(--accent-strong); background: transparent;
+  border-radius: 10px; padding: 7px 11px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.bulk-locstat { font-size: 12px; opacity: .8; }
+#bulk-pickbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1100;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  background: #fffaf5; color: #3a2e28; box-shadow: 0 -4px 16px rgba(0,0,0,.15); }
+@media (prefers-color-scheme: dark) { #bulk-pickbar { background: #2c231e; color: #efe7df; } }
+#bulk-pickbar[hidden] { display: none; }
+.bulk-pickmsg { font-size: 13px; flex: 1 1 100%; text-align: center; }
+.bulk-pickok { border: none; background: var(--accent-strong); color: #fff; border-radius: 10px;
+  padding: 10px 18px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.bulk-pickcancel { border: 1px solid rgba(127,127,127,.4); background: transparent; color: inherit;
+  border-radius: 10px; padding: 10px 16px; font-size: 14px; cursor: pointer; }
 .bulk-fields { display: flex; gap: 8px; margin-top: 9px; flex-wrap: wrap; }
 .bulk-genre, .bulk-datefld { border: 1px solid rgba(127,127,127,.3); border-radius: 9px; padding: 5px 8px;
   font-size: 12.5px; background: transparent; color: inherit; }

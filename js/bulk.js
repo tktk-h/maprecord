@@ -48,7 +48,8 @@ App.bulk = (function () {
       hasGps: g.hasGps,
       placeId: null,
       place: null,     // {lat,lng} 紐付けた店の座標
-      name: '',        // 店名（紐付けで入る／未設定は空）
+      manualLoc: null, // {lat,lng} 地図で手動に置いたピン（最優先）
+      name: '',        // 店名（紐付け／手入力で入る）
       genre: 'food',
     }));
     console.log('bulk groups', groups); // Task 4 でUI描画に差し替え
@@ -81,10 +82,6 @@ App.bulk = (function () {
     const first = g.photos[0], last = g.photos[g.photos.length - 1];
     const cover = g.photos[0].url;
     const timeRange = g.photos.length > 1 ? `${hhmm(first.time)}〜${hhmm(last.time)}` : hhmm(first.time);
-    const noGpsTag = g.hasGps ? '' : '<span class="bulk-tag">場所未設定</span>';
-    const placeBtn = g.name
-      ? `<button class="bulk-place set" data-i="${i}">📍 ${esc(g.name)} ・ 変更</button>`
-      : `<button class="bulk-place" data-i="${i}">📍 店名を検索して紐付け${g.hasGps ? '' : '（GPSなし）'}</button>`;
     const strip = g.photos.map((p, j) =>
       `<div class="bulk-ph" data-i="${i}" data-j="${j}" style="background-image:url(${p.url})"></div>`).join('');
     const mergeBtn = i > 0 ? `<button class="bulk-act" data-act="merge" data-i="${i}">↑ 前と結合</button>` : '';
@@ -93,8 +90,13 @@ App.bulk = (function () {
         <div class="bulk-top">
           <div class="bulk-cover" style="background-image:url(${cover})"><span>${g.photos.length}枚</span></div>
           <div class="bulk-meta">
-            <div class="bulk-date">${g.date} <span class="bulk-count">${timeRange} ・ ${g.photos.length}枚</span>${noGpsTag}</div>
-            ${placeBtn}
+            <div class="bulk-date">${g.date} <span class="bulk-count">${timeRange} ・ ${g.photos.length}枚</span></div>
+            <input class="bulk-name" type="text" placeholder="場所の名前（必須）" value="${esc(g.name || '')}" data-i="${i}">
+            <div class="bulk-locrow">
+              <button class="bulk-locbtn" data-act="search" data-i="${i}">🔍 店名で検索</button>
+              <button class="bulk-locbtn" data-act="pin" data-i="${i}">🗺 地図でピン</button>
+              <span class="bulk-locstat">${locStatus(g)}</span>
+            </div>
             <div class="bulk-fields">
               <select class="bulk-genre" data-i="${i}">${genreOptions(g.genre)}</select>
               <input class="bulk-datefld" type="date" value="${g.date}" data-i="${i}">
@@ -131,12 +133,30 @@ App.bulk = (function () {
     const n = saveableCount();
     return n
       ? `<button id="bulk-save" class="bulk-save">すべて保存（${n}件の記録をつくる）</button>`
-      : `<button id="bulk-save" class="bulk-save" disabled>各グループに📍場所を選んでください</button>`;
+      : `<button id="bulk-save" class="bulk-save" disabled>各グループに名前と場所を入れてください</button>`;
+  }
+  // 名前入力などで保存可能数が変わったら、フォーカスを保ったままボタンだけ差し替える
+  function refreshSaveButton() {
+    const old = document.getElementById('bulk-save');
+    if (!old) return;
+    const tmp = document.createElement('div'); tmp.innerHTML = saveButtonHtml();
+    const fresh = tmp.firstElementChild;
+    old.replaceWith(fresh);
+    fresh.onclick = doSave;
   }
   function countPhotos() { return groups.reduce((n, g) => n + g.photos.length, 0); }
-  function groupLatLng(g) { return g.hasGps ? g.center : g.place; }        // 保存座標（GPS中心優先、無ければ紐付け店）
-  function isSaveable(g) { return !!g.placeId; }                           // 場所（店）を選んだグループだけ保存する
+  // 保存座標：手動ピン優先 → GPS中心 → 検索店。無ければ null。
+  function groupLatLng(g) { return g.manualLoc || (g.hasGps ? g.center : g.place) || null; }
+  // 保存できるのは「名前あり かつ 位置あり」のグループだけ（名無しピンを作らない）
+  function isSaveable(g) { return !!(g.name && g.name.trim()) && !!groupLatLng(g); }
   function saveableCount() { return groups.filter(isSaveable).length; }
+  // 位置の由来を1行で
+  function locStatus(g) {
+    if (g.manualLoc) return '📍 地図ピン';
+    if (g.placeId) return '📍 検索した店';
+    if (g.hasGps) return '📍 写真のGPS';
+    return '⚠️ 位置なし';
+  }
   function wireCards() {
     const list = document.getElementById('bulk-list');
     if (!list) return;
@@ -154,10 +174,17 @@ App.bulk = (function () {
     list.querySelectorAll('.bulk-datefld').forEach((inp) => {
       inp.onchange = () => { groups[Number(inp.dataset.i)].date = inp.value; };
     });
-    list.querySelectorAll('.bulk-place').forEach((btn) => {
-      btn.onclick = () => openPlaceSearch(Number(btn.dataset.i)); // Task 6
+    list.querySelectorAll('.bulk-name').forEach((inp) => {
+      inp.oninput = () => { groups[Number(inp.dataset.i)].name = inp.value; refreshSaveButton(); };
     });
-    wireStrip(); // Task 6（分割の写真選択）
+    list.querySelectorAll('.bulk-locbtn').forEach((btn) => {
+      btn.onclick = () => {
+        const i = Number(btn.dataset.i);
+        if (btn.dataset.act === 'search') openPlaceSearch(i);
+        else pickLocationFor(i);
+      };
+    });
+    wireStrip(); // 分割の写真選択
     const save = document.getElementById('bulk-save');
     if (save) save.onclick = doSave; // Task 7
   }
@@ -168,6 +195,7 @@ App.bulk = (function () {
     const prev = groups[i - 1], g = groups[i];
     prev.photos = prev.photos.concat(g.photos).sort((a, b) => a.time - b.time);
     if (!prev.hasGps && g.hasGps) { prev.hasGps = true; prev.center = g.center; }
+    if (!prev.manualLoc && g.manualLoc) prev.manualLoc = g.manualLoc;
     if (!prev.placeId && g.placeId) { prev.placeId = g.placeId; prev.place = g.place; prev.name = g.name; }
     prev.date = App.grouping.dateOf(prev.photos[0].time); // 最早写真の日
     groups.splice(i, 1);
@@ -198,7 +226,7 @@ App.bulk = (function () {
     const tail = g.photos.splice(splitSel.j); // j以降
     const newG = {
       photos: tail, date: App.grouping.dateOf(tail[0].time),
-      center: null, hasGps: false, placeId: null, place: null, name: '', genre: g.genre,
+      center: null, hasGps: false, placeId: null, place: null, manualLoc: null, name: '', genre: g.genre,
     };
     // 新グループのGPS再計算（tailにGPSがあれば）
     const pts = tail.filter((p) => p.gps).map((p) => p.gps);
@@ -237,6 +265,7 @@ App.bulk = (function () {
           b.onclick = () => {
             const p = places[Number(b.dataset.k)];
             g.placeId = p.placeId; g.place = { lat: p.lat, lng: p.lng }; g.name = p.name;
+            g.manualLoc = null; // 検索で選んだらその店の位置を優先
             if (p.genre) g.genre = p.genre;
             renderReview();
           };
@@ -247,6 +276,37 @@ App.bulk = (function () {
     q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
     q.focus();
   }
+  // 地図の現在の中心（ピン初期位置のフォールバック）
+  function mapCenter() {
+    try { const c = App.map._getMap().getCenter(); return { lat: c.lat(), lng: c.lng() }; }
+    catch (_) { return { lat: 35.0116, lng: 135.7681 }; } // 京都あたり
+  }
+
+  // グループiの位置を「地図にピンを置いて」決める。オーバーレイを一旦隠して地図を出す。
+  function pickLocationFor(i) {
+    const start = groupLatLng(groups[i]) || mapCenter();
+    document.getElementById('bulk-overlay').hidden = true; // 地図を見せる
+    App.map.startPickLocation(start.lat, start.lng);
+    showPickBar(i);
+  }
+  function showPickBar(i) {
+    let bar = document.getElementById('bulk-pickbar');
+    if (!bar) { bar = document.createElement('div'); bar.id = 'bulk-pickbar'; document.body.appendChild(bar); }
+    bar.innerHTML = `<span class="bulk-pickmsg">ピンをドラッグして位置を決めてください</span>
+      <button id="bulk-pick-ok" class="bulk-pickok">この位置に決定</button>
+      <button id="bulk-pick-cancel" class="bulk-pickcancel">キャンセル</button>`;
+    bar.hidden = false;
+    document.getElementById('bulk-pick-ok').onclick = () => finishPick(i, true);
+    document.getElementById('bulk-pick-cancel').onclick = () => finishPick(i, false);
+  }
+  function finishPick(i, ok) {
+    if (ok) { const p = App.map.getPickedLatLng(); if (p) groups[i].manualLoc = p; }
+    App.map.stopPickLocation();
+    const bar = document.getElementById('bulk-pickbar'); if (bar) bar.hidden = true;
+    document.getElementById('bulk-overlay').hidden = false;
+    renderReview();
+  }
+
   async function doSave() {
     const saveBtn = document.getElementById('bulk-save');
     const targets = groups.filter(isSaveable);
