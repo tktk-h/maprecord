@@ -222,30 +222,61 @@ App.bulk = (function () {
     refreshSaveButton();
   }
 
-  // グループiにAI提案。loc=保存座標（近くの候補を取る中心）。失敗は静かに「該当なし」。
+  // 座標→住所（逆ジオコーディング）。Geocoding API 未有効などで失敗したら空文字。
+  async function addressOf(lat, lng) {
+    try {
+      const { Geocoder } = await google.maps.importLibrary('geocoding');
+      const geo = new Geocoder();
+      const { results } = await geo.geocode({ location: { lat, lng }, language: 'ja', region: 'JP' });
+      const a = results && results[0] && results[0].formatted_address;
+      // 先頭の「日本、〒000-0000 」などは冗長なので軽く整える
+      return (a || '').replace(/^日本、?\s*/, '').replace(/〒\d{3}-?\d{4}\s*/, '').trim();
+    } catch (e) { return ''; }
+  }
+
+  // Geminiの自由回答の店名を、実在する店に裏取り（placeId/座標/ジャンル付きで返す）。
+  async function resolveName(name, loc) {
+    try {
+      const bias = { center: { lat: loc.lat, lng: loc.lng }, radius: 1500 };
+      const res = await App.places.searchText(name, { bias });
+      return (res && res[0]) || null; // 位置バイアス＋関連度で最有力
+    } catch (e) { return null; }
+  }
+
+  // グループiにAI提案（ハイブリッド：写真＋住所でGeminiが店名を自由回答→searchTextで裏取り）。
+  // loc=保存座標。候補チップ（手動選択用）は従来通り近くの店から用意。失敗は静かに「不明」。
   async function aiSuggest(i, loc) {
     const g = groups[i];
     g.aiState = 'loading'; refreshCard(i);
     try {
+      // 候補チップ（手動で選べるように）＋Gemini用の付近ヒント
       const cands = await App.places.nearbyPlaces(loc.lat, loc.lng, { radius: 250, max: 20 });
       g.candidates = cands || [];
-      if (g.candidates.length) {
-        const thumb = await App.photos.compressToBlob(g.photos[0].file, 400);
-        const imageBase64 = await blobToBase64(thumb);
-        const r = await App.fb.suggestPlace({
-          imageBase64,
-          candidates: g.candidates.map((c) => ({ placeId: c.placeId, name: c.name, genre: c.genre })),
-        });
-        const pid = r && r.data && r.data.placeId;
-        // Geminiが写真から自信を持って選べた店だけ、最初から反映（✨）。
-        // 迷った時（-1）は入れない＝無関係な近所の店を勝手に入れない。
-        if (pid) {
-          g.aiPickId = pid;
-          const c = g.candidates.find((x) => x.placeId === pid);
+      // 代表写真を最大3枚・768pxで送る（看板が写った1枚が混じる確率を上げる）
+      const files = g.photos.slice(0, 3).map((p) => p.file);
+      const imagesBase64 = [];
+      for (const f of files) {
+        const blob = await App.photos.compressToBlob(f, 768);
+        imagesBase64.push(await blobToBase64(blob));
+      }
+      const address = await addressOf(loc.lat, loc.lng);
+      const r = await App.fb.suggestPlace({
+        imagesBase64, address,
+        candidates: g.candidates.map((c) => ({ name: c.name, genre: c.genre })),
+      });
+      const guess = r && r.data && r.data.name;
+      if (guess) {
+        // 自由回答を実在店に裏取り。見つからなければ近くの候補名と一致すればそれを採用。
+        const hit = await resolveName(guess, loc)
+          || g.candidates.find((c) => c.name === guess) || null;
+        if (hit && hit.placeId) {
+          g.aiPickId = hit.placeId;
+          // 候補チップに無ければ先頭に足して✨で見せる
+          if (!g.candidates.some((c) => c.placeId === hit.placeId)) g.candidates.unshift(hit);
           // 既に名前が入っていたら上書きしない（ユーザー入力/検索を尊重）
-          if (c && !(g.name && g.name.trim())) {
-            g.name = c.name; g.placeId = c.placeId; g.place = { lat: c.lat, lng: c.lng };
-            if (c.genre) g.genre = c.genre;
+          if (!(g.name && g.name.trim())) {
+            g.name = hit.name; g.placeId = hit.placeId; g.place = { lat: hit.lat, lng: hit.lng };
+            if (hit.genre) g.genre = hit.genre;
           }
         }
       }
