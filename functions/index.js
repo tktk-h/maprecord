@@ -7,7 +7,7 @@ const GEMINI_KEY = defineSecret('GEMINI_KEY');
 // 写真（複数可）＋住所＋近くの店ヒントから、撮影された「お店の正式名称」を自由回答で推測する。
 // 返り値は { name: string|null }。フロント側で searchText により実在の placeId/座標に裏取りする。
 exports.suggestPlace = onCall(
-  { secrets: [GEMINI_KEY], region: 'us-central1', timeoutSeconds: 30 },
+  { secrets: [GEMINI_KEY], region: 'us-central1', timeoutSeconds: 60, memory: '512MiB' },
   async (req) => {
     if (!req.auth) throw new HttpsError('unauthenticated', 'login required');
     const data = req.data || {};
