@@ -608,7 +608,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   #panel-content { padding: 4px 20px 24px; touch-action: none; }
   #panel.at-full #panel-content { touch-action: pan-y; }
 
-  #locate-btn { top: calc(env(safe-area-inset-top) + 10px); right: 64px; left: auto; bottom: auto; padding: 11px; gap: 0; } /* 上の帯・右から2つめ */
+  #locate-btn { top: calc(env(safe-area-inset-top) + 10px); right: 66px; left: auto; bottom: auto; width: 46px; height: 46px; padding: 0; gap: 0; justify-content: center; } /* 上の帯・右から2つめ・丸 */
   #topbar.filters-open ~ #layout #locate-btn { display: none; } /* 絞り込みパネルを開いている間は被る現在地ボタンを隠す */
   #layout:has(#panel:not([hidden])) #locate-btn { display: none; } /* シート（詳細/フォーム等）を開いている間も隠す */
   /* iOS: appearance 既定だと width:100% を無視して最小幅ではみ出すため、スマホ幅ではリセット */
@@ -755,7 +755,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .bulk-save[disabled] { opacity: .6; }
 
 @media (max-width: 700px) {
-  #bulk-btn { top: calc(env(safe-area-inset-top) + 10px); right: 14px; left: auto; bottom: auto; padding: 11px; gap: 0; } /* 上の帯・右端 */
+  #bulk-btn { top: calc(env(safe-area-inset-top) + 10px); right: 14px; left: auto; bottom: auto; width: 46px; height: 46px; padding: 0; gap: 0; justify-content: center; } /* 上の帯・右端・丸 */
   #bulk-btn span { display: none; }
   #topbar.filters-open ~ #layout #bulk-btn { display: none; }
   #layout:has(#panel:not([hidden])) #bulk-btn { display: none; }
