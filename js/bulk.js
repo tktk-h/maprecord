@@ -261,7 +261,9 @@ App.bulk = (function () {
         const blob = await App.photos.compressToBlob(f, 768);
         imagesBase64.push(await blobToBase64(blob));
       }
-      const address = await addressOf(loc.lat, loc.lng);
+      // 住所：近くの店データから流用（Geocoding API不要）。無ければ逆ジオコーディングを試す。
+      let address = (g.candidates.find((c) => c.addr) || {}).addr || '';
+      if (!address) address = await addressOf(loc.lat, loc.lng);
       dbg.addr = address; // (B) 住所が取れているか
       const r = await App.fb.suggestPlace({
         imagesBase64, address,

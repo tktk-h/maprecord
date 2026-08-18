@@ -111,7 +111,8 @@ App.places = (function () {
       const lng = loc ? (typeof loc.lng === 'function' ? loc.lng() : loc.lng) : null;
       const name = (p && (typeof p.displayName === 'string'
         ? p.displayName : (p.displayName && p.displayName.text))) || '';
-      return { placeId: p && p.id, name, lat, lng, genre: genreFromTypes(p && p.types) };
+      const addr = (p && p.formattedAddress) || '';
+      return { placeId: p && p.id, name, lat, lng, genre: genreFromTypes(p && p.types), addr };
     }).filter((x) => x.placeId && x.lat != null && x.lng != null);
   }
 
@@ -139,7 +140,7 @@ App.places = (function () {
     const { Place } = await google.maps.importLibrary('places');
     const req = {
       textQuery: query,
-      fields: ['id', 'displayName', 'location', 'types'],
+      fields: ['id', 'displayName', 'location', 'types', 'formattedAddress'],
       language: 'ja', region: 'JP', maxResultCount: 20,
     };
     if (opts.bias) req.locationBias = opts.bias;
@@ -154,7 +155,7 @@ App.places = (function () {
     const { Place, SearchNearbyRankPreference } =
       await google.maps.importLibrary('places');
     const req = {
-      fields: ['id', 'displayName', 'location', 'types'],
+      fields: ['id', 'displayName', 'location', 'types', 'formattedAddress'],
       locationRestriction: { center: { lat, lng }, radius: opts.radius || 120 },
       maxResultCount: opts.max || 8,
       rankPreference: SearchNearbyRankPreference.DISTANCE,
