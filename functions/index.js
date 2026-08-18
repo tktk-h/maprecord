@@ -41,8 +41,19 @@ exports.suggestPlace = onCall(
 
     let text = '';
     try {
-      const result = await model.generateContent([...parts, prompt]);
-      text = (result.response.text() || '').trim();
+      // 一時的な混雑(429/500/503)は少し待って最大3回まで自動リトライ
+      for (let attempt = 0; ; attempt++) {
+        try {
+          const result = await model.generateContent([...parts, prompt]);
+          text = (result.response.text() || '').trim();
+          break;
+        } catch (e) {
+          const m = String((e && e.message) || e);
+          const transient = /(429|500|503|high demand|unavailable|overload|rate)/i.test(m);
+          if (!transient || attempt >= 2) throw e; // 一時的でない or 3回目は諦める
+          await new Promise((r) => setTimeout(r, 900 * (attempt + 1))); // 0.9s → 1.8s
+        }
+      }
     } catch (e) {
       const err = String((e && e.message) || e).slice(0, 300);
       console.error('gemini error', err);
