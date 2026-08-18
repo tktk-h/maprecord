@@ -783,3 +783,26 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .bulk-dbg { margin-top: 8px; padding: 7px 10px; border-radius: 8px;
   background: rgba(127,127,127,.12); color: inherit; font-size: 11.5px; line-height: 1.5;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+
+/* --- 一括：折りたたみカード＋メモ＋個別保存 --- */
+.bulk-cardhead { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.bulk-cover.sm { width: 52px; height: 52px; border-radius: 10px; flex: 0 0 auto;
+  background-size: cover; background-position: center; }
+.bulk-headinfo { flex: 1; min-width: 0; }
+.bulk-headname { font-size: 15px; font-weight: 700; color: inherit;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bulk-headname.empty { color: #9a8f7c; font-weight: 400; }
+.bulk-chev { color: #b3a891; flex: 0 0 auto; font-size: 15px; }
+.bulk-collapsed-acts { display: flex; gap: 7px; margin-top: 9px; }
+.bulk-collapsed-acts .bulk-act,
+.bulk-collapsed-acts .bulk-savecard { flex: 1; }
+
+.bulk-savecard { border: 1px solid #9ec9a0; background: #e7f2e6; color: #3f7a44;
+  font-weight: 700; border-radius: 10px; padding: 8px 10px; font-size: 13px; cursor: pointer; }
+.bulk-savecard.wide { width: 100%; margin-top: 8px; padding: 11px; font-size: 14px; }
+.bulk-savecard.off { border-color: #d9cdbb; background: #efe9de; color: #b3a891; cursor: default; }
+
+.bulk-memolabel { display: block; margin-top: 10px; font-size: 12.5px; color: #7a715c; font-weight: 600; }
+.bulk-memo { width: 100%; margin-top: 5px; box-sizing: border-box; resize: vertical;
+  border: 1px solid rgba(127,127,127,.3); border-radius: 9px; padding: 8px 10px;
+  font-size: 13px; font-family: inherit; }
