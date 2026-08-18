@@ -10,8 +10,18 @@ App.bulk = (function () {
     if (pending.length) { groups = groups.concat(pending); pending = []; }
     renderReview();
   }
+  // コールドスタート対策：空リクエストで関数を温める（Geminiは呼ばれない＝無料）。
+  // 同時処理数(3)ぶん温めておくと、選択後の初回判定が速い。
+  function warmupSuggest() {
+    if (!(App.fb && App.fb.suggestPlace)) return;
+    for (let k = 0; k < 3; k++) {
+      try { App.fb.suggestPlace({ warmup: true }).catch(() => {}); } catch (e) { /* noop */ }
+    }
+  }
+
   // 実際のファイル選択（「＋写真を追加」から呼ぶ）
   function pickFiles() {
+    warmupSuggest(); // ピッカーを開く＝写真を選んでいる間に関数を起こしておく
     if (!fileInput) {
       fileInput = document.createElement('input');
       fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.multiple = true;
