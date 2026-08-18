@@ -33,7 +33,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: non
 h1, h2, .splash-title, .gate-title, .gate-code,
 .mem-title, .filter-title, .meta { font-family: var(--font-display); }
 /* ページ全体は固定（スクロールさせない）。中身だけが内部スクロールする */
-body { display: flex; flex-direction: column; height: 100vh; height: 100dvh;
+body { display: flex; flex-direction: column;
   position: fixed; inset: 0; overflow: hidden;
   background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
 
