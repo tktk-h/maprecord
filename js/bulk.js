@@ -4,6 +4,7 @@ App.bulk = (function () {
   let groups = [];          // いま表示中の下書きグループ
   let pending = [];         // 退避中の未保存カード（別バッチ作業中は隠すが消さない）
   let fileInput = null;
+  let quotaHit = false;     // 枠切れ(429)を検知したら、その回の残りAI提案を止める
 
   // 「まとめて追加」画面を開く。退避していた未保存カードを表示に戻す（写真選択はしない）
   function open() {
@@ -341,6 +342,8 @@ App.bulk = (function () {
       dbg.raw = (r && r.data && r.data.raw) || '';   // Geminiの生返答
       dbg.gerr = (r && r.data && r.data.err) || '';  // Gemini呼び出しエラー
       dbg.imgs = (r && r.data && r.data.imgs) || 0;  // 送れた画像枚数
+      // 枠切れ(429/quota)なら、残りカードの無駄打ちを止める
+      if (/429|quota|exceeded|too many requests/i.test(dbg.gerr)) quotaHit = true;
       if (guess) {
         // 自由回答を実在店に裏取り。見つからなければ近くの候補名と一致すればそれを採用。
         const hit = await resolveName(guess, loc)
@@ -374,6 +377,7 @@ App.bulk = (function () {
   // 無料枠の分間リクエスト上限(429)を避けるため直列(1件ずつ)。※他の高速化は維持。
   async function autoSuggestAll() {
     const CONCURRENCY = 1;
+    quotaHit = false; // この回のためにリセット
     const targets = [];
     for (let i = 0; i < groups.length; i++) {
       const g = groups[i];
@@ -383,6 +387,7 @@ App.bulk = (function () {
     let cursor = 0;
     async function worker() {
       while (cursor < targets.length) {
+        if (quotaHit) break; // 枠切れを検知したら残りは打たない
         const t = targets[cursor++]; // 空いたワーカーが次の1件を取る
         await aiSuggest(t.i, t.loc);
       }

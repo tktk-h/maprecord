@@ -41,7 +41,8 @@ exports.suggestPlace = onCall(
 
     let text = '';
     try {
-      // 一時的な混雑(429/500/503)は少し待って最大3回まで自動リトライ
+      // サーバ側の一時混雑(500/503)だけ最大3回リトライ。
+      // 429(枠オーバー)はリトライしない＝無駄に枠を消費しない（再送しても通らない）。
       for (let attempt = 0; ; attempt++) {
         try {
           const result = await model.generateContent([...parts, prompt]);
@@ -49,8 +50,8 @@ exports.suggestPlace = onCall(
           break;
         } catch (e) {
           const m = String((e && e.message) || e);
-          const transient = /(429|500|503|high demand|unavailable|overload|rate)/i.test(m);
-          if (!transient || attempt >= 2) throw e; // 一時的でない or 3回目は諦める
+          const serverBusy = /(503|500|high demand|unavailable|overloaded|internal error)/i.test(m);
+          if (!serverBusy || attempt >= 2) throw e; // 一時混雑でない(429等) or 3回目は諦める
           await new Promise((r) => setTimeout(r, 900 * (attempt + 1))); // 0.9s → 1.8s
         }
       }
