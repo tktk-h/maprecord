@@ -591,6 +591,40 @@ App.bulk = (function () {
     renderReview();
   }
 
+  // 1グループを保存（写真アップロード→cloud.add）。order は呼び出し側が決める。
+  async function saveGroup(g, order, onProgress) {
+    const loc = groupLatLng(g);
+    const files = g.photos.map((p) => p.file);
+    const groupId = 'bulk-' + Date.now() + '-' + Math.random().toString(16).slice(2, 6);
+    const photos = await App.photos.toStoredMany(files, groupId, onProgress);
+    await App.cloud.add({
+      date: g.date, name: g.name || '', genre: g.genre, memo: g.memo || '', tags: [], order,
+      lat: loc.lat, lng: loc.lng, photos,
+      ...(g.placeId ? { placeId: g.placeId } : {}),
+    });
+  }
+
+  // カードiだけを保存。成功したらそのカードを一覧から除く。
+  async function saveOne(i) {
+    const g = groups[i];
+    if (!isSaveable(g)) return;
+    const btn = document.querySelector(`.bulk-savecard[data-i="${i}"]`);
+    if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
+    try {
+      const all = App.records.getAll();
+      const order = all.filter((r) => r.date === g.date).length;
+      await saveGroup(g, order);
+      for (const p of g.photos) URL.revokeObjectURL(p.url); // プレビューURL解放
+      groups.splice(i, 1);
+      if (!groups.length && pending.length) { groups = pending; pending = []; } // 退避中の前カードを表示
+      renderReview();
+    } catch (err) {
+      console.error('save one failed', err);
+      alert('保存に失敗しました。もう一度お試しください。');
+      refreshCard(i); // ボタン表示を元に戻す
+    }
+  }
+
   async function doSave() {
     const saveBtn = document.getElementById('bulk-save');
     const targets = groups.filter(isSaveable);
@@ -604,16 +638,9 @@ App.bulk = (function () {
       const loc = groupLatLng(g);
       saveBtn.textContent = `保存中… ${done + 1}/${targets.length}`;
       try {
-        const files = g.photos.map((p) => p.file);
-        const groupId = 'bulk-' + Date.now() + '-' + Math.random().toString(16).slice(2, 6);
-        const photos = await App.photos.toStoredMany(files, groupId, (n, t) => {
-          saveBtn.textContent = `保存中… グループ${done + 1}/${targets.length}（写真${n}/${t}）`;
-        });
         const order = all.filter((r) => r.date === g.date).length + done; // その日の末尾へ
-        await App.cloud.add({
-          date: g.date, name: g.name || '', genre: g.genre, memo: '', tags: [], order,
-          lat: loc.lat, lng: loc.lng, photos,
-          ...(g.placeId ? { placeId: g.placeId } : {}),
+        await saveGroup(g, order, (n, t) => {
+          saveBtn.textContent = `保存中… グループ${done + 1}/${targets.length}（写真${n}/${t}）`;
         });
         for (const p of g.photos) URL.revokeObjectURL(p.url); // 保存済みのプレビューURL解放
         done++;
