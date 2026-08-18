@@ -248,7 +248,7 @@ App.bulk = (function () {
   async function aiSuggest(i, loc) {
     const g = groups[i];
     g.aiState = 'loading'; refreshCard(i);
-    const dbg = { n: 0, addr: '', guess: '', hit: '', err: '' }; // ← 診断用（各段の中身）
+    const dbg = { n: 0, addr: '', guess: '', hit: '', err: '', raw: '', gerr: '', imgs: 0 }; // ← 診断用（各段の中身）
     try {
       // 候補チップ（手動で選べるように）＋Gemini用の付近ヒント
       const cands = await App.places.nearbyPlaces(loc.lat, loc.lng, { radius: 250, max: 20 });
@@ -271,6 +271,9 @@ App.bulk = (function () {
       });
       const guess = r && r.data && r.data.name;
       dbg.guess = guess || ''; // (D) Geminiの自由回答
+      dbg.raw = (r && r.data && r.data.raw) || '';   // Geminiの生返答
+      dbg.gerr = (r && r.data && r.data.err) || '';  // Gemini呼び出しエラー
+      dbg.imgs = (r && r.data && r.data.imgs) || 0;  // 送れた画像枚数
       if (guess) {
         // 自由回答を実在店に裏取り。見つからなければ近くの候補名と一致すればそれを採用。
         const hit = await resolveName(guess, loc)
@@ -327,9 +330,11 @@ App.bulk = (function () {
       : '';
     const d = g.aiDebug;
     const dbg = d
-      ? `<div class="bulk-dbg">🔎 候補${d.n}件 ／ 住所: ${esc(d.addr || '（なし）')}<br>`
-        + `Gemini: ${esc(d.guess || 'UNKNOWN')}<br>`
+      ? `<div class="bulk-dbg">🔎 候補${d.n}件 ／ 画像${d.imgs || 0}枚 ／ 住所: ${esc(d.addr || '（なし）')}<br>`
+        + `Gemini生返答: ${esc(d.raw || '（空）')}<br>`
+        + `採用名: ${esc(d.guess || 'UNKNOWN')}<br>`
         + `裏取り: ${esc(d.hit || '（見つからず）')}`
+        + `${d.gerr ? '<br>Geminiエラー: ' + esc(d.gerr) : ''}`
         + `${d.err ? '<br>err: ' + esc(d.err) : ''}</div>`
       : '';
     return `<button class="bulk-locbtn ai" data-act="ai" data-i="${i}">✨ AIで店名を提案</button>${chips}${dbg}`;

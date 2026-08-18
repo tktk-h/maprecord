@@ -44,12 +44,14 @@ exports.suggestPlace = onCall(
       const result = await model.generateContent([...parts, prompt]);
       text = (result.response.text() || '').trim();
     } catch (e) {
-      console.error('gemini error', e && e.message);
-      return { name: null }; // 失敗は「不明」に落とす（保存は止めない）
+      const err = String((e && e.message) || e).slice(0, 300);
+      console.error('gemini error', err);
+      return { name: null, raw: '', err, imgs: parts.length }; // 失敗は「不明」に落とす（保存は止めない）
     }
+    const raw = text.slice(0, 200); // 診断：Geminiの生返答（先頭200字）
     // 1行目だけ採用し、前後の引用符を除去。UNKNOWN/空は null。
     const line = (text.split('\n')[0] || '').trim().replace(/^["'「『]+|["'」』]+$/g, '').trim();
-    if (!line || /^unknown$/i.test(line)) return { name: null };
-    return { name: line };
+    if (!line || /^unknown$/i.test(line)) return { name: null, raw, err: '', imgs: parts.length };
+    return { name: line, raw, err: '', imgs: parts.length };
   }
 );
