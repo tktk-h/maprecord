@@ -64,6 +64,7 @@ App.bulk = (function () {
     pending = pending.concat(groups); // 表示中の未保存カードは退避（消さない）
     groups = added;                    // 今回追加したぶんだけを表示
     renderReview();
+    autoSuggestAll();                  // 位置ありグループを順にAI提案（awaitしない）
   }
 
   function showLoading(n) {
@@ -102,6 +103,7 @@ App.bulk = (function () {
           <div class="bulk-meta">
             <div class="bulk-date">${g.date} <span class="bulk-count">${timeRange} ・ ${g.photos.length}枚</span></div>
             <input class="bulk-name" type="text" placeholder="場所の名前（必須）" value="${esc(g.name || '')}" data-i="${i}">
+            ${aiAreaHtml(g, i)}
             <div class="bulk-locrow">
               <button class="bulk-locbtn" data-act="search" data-i="${i}">🔍 店名で検索</button>
               <button class="bulk-locbtn" data-act="pin" data-i="${i}">🗺 地図でピン</button>
@@ -285,9 +287,22 @@ App.bulk = (function () {
     });
     list.querySelectorAll('.bulk-locbtn').forEach((btn) => {
       btn.onclick = () => {
-        const i = Number(btn.dataset.i);
-        if (btn.dataset.act === 'search') openPlaceSearch(i);
-        else pickLocationFor(i);
+        const i = Number(btn.dataset.i), act = btn.dataset.act;
+        if (act === 'search') openPlaceSearch(i);
+        else if (act === 'pin') pickLocationFor(i);
+        else if (act === 'ai') runAiFor(i);
+      };
+    });
+    list.querySelectorAll('.bulk-cand').forEach((btn) => {
+      btn.onclick = () => {
+        const i = Number(btn.dataset.i), pid = btn.dataset.pid;
+        const g = groups[i];
+        const c = (g.candidates || []).find((x) => x.placeId === pid);
+        if (c) {
+          g.name = c.name; g.placeId = c.placeId; g.place = { lat: c.lat, lng: c.lng };
+          if (c.genre) g.genre = c.genre;
+          refreshCard(i);
+        }
       };
     });
     wireStrip(); // 分割の写真選択
