@@ -250,17 +250,16 @@ App.bulk = (function () {
     g.aiState = 'loading'; refreshCard(i);
     const dbg = { n: 0, addr: '', guess: '', hit: '', err: '', raw: '', gerr: '', imgs: 0 }; // ← 診断用（各段の中身）
     try {
+      // 速度優先：写真圧縮（代表1枚）と近くの店取得を並行実行
+      const imgPromise = (async () => {
+        const blob = await App.photos.compressToBlob(g.photos[0].file, 768);
+        return [await blobToBase64(blob)]; // 代表写真1枚だけ送る
+      })();
       // 候補チップ（手動で選べるように）＋Gemini用の付近ヒント
       const cands = await App.places.nearbyPlaces(loc.lat, loc.lng, { radius: 250, max: 20 });
       g.candidates = cands || [];
       dbg.n = g.candidates.length; // (A) 近くの店 何件取れたか
-      // 代表写真を最大3枚・768pxで送る（看板が写った1枚が混じる確率を上げる）
-      const files = g.photos.slice(0, 3).map((p) => p.file);
-      const imagesBase64 = [];
-      for (const f of files) {
-        const blob = await App.photos.compressToBlob(f, 768);
-        imagesBase64.push(await blobToBase64(blob));
-      }
+      const imagesBase64 = await imgPromise;
       // 住所：近くの店データから流用（Geocoding API不要）。無ければ逆ジオコーディングを試す。
       let address = (g.candidates.find((c) => c.addr) || {}).addr || '';
       if (!address) address = await addressOf(loc.lat, loc.lng);
