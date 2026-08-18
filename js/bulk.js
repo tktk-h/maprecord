@@ -56,7 +56,8 @@ App.bulk = (function () {
       name: '',        // 店名（紐付け／手入力で入る）
       genre: 'food',
     }));
-    groups = groups.concat(added).sort((a, b) => a.photos[0].time - b.photos[0].time);
+    for (const g of groups) for (const p of g.photos) URL.revokeObjectURL(p.url); // 新しく追加＝前の未保存/失敗カードは持ち越さない
+    groups = added;
     renderReview();
   }
 
