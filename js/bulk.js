@@ -70,6 +70,8 @@ App.bulk = (function () {
       candidates: [],  // 近くの店候補（AI提案で入る）
       aiState: 'idle', // 'idle' | 'loading' | 'done'
       aiPickId: null,  // Geminiが選んだ placeId（チップの✨用）
+      collapsed: true, // 既定は畳んだ状態
+      memo: '',        // メモ・感想
     }));
     pending = pending.concat(groups); // 表示中の未保存カードは退避（消さない）
     groups = added;                    // 今回追加したぶんだけを表示
@@ -99,22 +101,53 @@ App.bulk = (function () {
     return App.genres.list.map((g) => `<option value="${g.key}" ${g.key === sel ? 'selected' : ''}>${g.label}</option>`).join('');
   }
 
+  // 個別保存ボタン。isSaveable でない間は押せない。wide=開いた状態用の全幅。
+  function saveCardBtnHtml(g, i, label, wide) {
+    const ok = isSaveable(g);
+    return `<button class="bulk-savecard${wide ? ' wide' : ''}${ok ? '' : ' off'}" data-i="${i}"${ok ? '' : ' disabled'}>💾 ${esc(label)}</button>`;
+  }
   function cardHtml(g, i) {
     const first = g.photos[0], last = g.photos[g.photos.length - 1];
     const cover = g.photos[0].url;
     const timeRange = g.photos.length > 1 ? `${hhmm(first.time)}〜${hhmm(last.time)}` : hhmm(first.time);
+    const mergeBtn = i > 0 ? `<button class="bulk-act" data-act="merge" data-i="${i}">↑ 前と結合</button>` : '';
+
+    // --- 畳んだ状態 ---
+    if (g.collapsed) {
+      const nameLine = g.aiState === 'loading'
+        ? `<div class="bulk-ai-loading"><span class="bulk-spin"></span>AI判定中…</div>`
+        : `<div class="bulk-headname${(g.name && g.name.trim()) ? '' : ' empty'}">${esc((g.name && g.name.trim()) ? g.name : '（店名未入力）')}</div>`;
+      return `
+      <div class="bulk-card collapsed${isSaveable(g) ? '' : ' incomplete'}" data-i="${i}">
+        <div class="bulk-cardhead" data-i="${i}">
+          <div class="bulk-cover sm" style="background-image:url(${cover})"></div>
+          <div class="bulk-headinfo">
+            ${nameLine}
+            <div class="bulk-date">${g.date} <span class="bulk-count">${timeRange} ・ ${g.photos.length}枚</span></div>
+            <div class="bulk-badge">${esc(missingMsg(g))}</div>
+          </div>
+          <span class="bulk-chev">▾</span>
+        </div>
+        <div class="bulk-collapsed-acts">
+          ${mergeBtn}
+          <button class="bulk-act warn" data-act="del" data-i="${i}">🗑 削除</button>
+          ${saveCardBtnHtml(g, i, '保存')}
+        </div>
+      </div>`;
+    }
+
+    // --- 開いた状態 ---
     const strip = g.photos.map((p, j) =>
       `<div class="bulk-ph" data-i="${i}" data-j="${j}" style="background-image:url(${p.url})"></div>`).join('');
-    const mergeBtn = i > 0 ? `<button class="bulk-act" data-act="merge" data-i="${i}">↑ 前と結合</button>` : '';
     return `
       <div class="bulk-card${isSaveable(g) ? '' : ' incomplete'}" data-i="${i}">
         <div class="bulk-top">
-          <div class="bulk-cover" style="background-image:url(${cover})"><span>${g.photos.length}枚</span></div>
+          <div class="bulk-cover" data-act="collapse" data-i="${i}" style="background-image:url(${cover})"><span>${g.photos.length}枚</span></div>
           <div class="bulk-meta">
             <div class="bulk-date">${g.date} <span class="bulk-count">${timeRange} ・ ${g.photos.length}枚</span></div>
             <div class="bulk-badge">${esc(missingMsg(g))}</div>
             <input class="bulk-name" type="text" placeholder="場所の名前（必須）" value="${esc(g.name || '')}" data-i="${i}">
-            ${aiAreaHtml(g, i)}
+            <div class="bulk-aiwrap" data-i="${i}">${aiAreaHtml(g, i)}</div>
             <div class="bulk-locrow">
               <button class="bulk-locbtn" data-act="search" data-i="${i}">🔍 店名で検索</button>
               <button class="bulk-locbtn" data-act="pin" data-i="${i}">🗺 地図でピン</button>
@@ -124,6 +157,7 @@ App.bulk = (function () {
               <select class="bulk-genre" data-i="${i}">${genreOptions(g.genre)}</select>
               <input class="bulk-datefld" type="date" value="${g.date}" data-i="${i}">
             </div>
+            <label class="bulk-memolabel">メモ・感想<textarea class="bulk-memo" rows="3" placeholder="今日はどんな一日だった？" data-i="${i}">${esc(g.memo || '')}</textarea></label>
           </div>
         </div>
         <div class="bulk-strip">${strip}</div>
@@ -133,6 +167,7 @@ App.bulk = (function () {
           <button class="bulk-act" data-act="split" data-i="${i}" disabled>✂️ ここで分割</button>
           <button class="bulk-act warn" data-act="del" data-i="${i}">🗑 削除</button>
         </div>
+        ${saveCardBtnHtml(g, i, 'この1件を保存', true)}
       </div>`;
   }
 
@@ -198,9 +233,12 @@ App.bulk = (function () {
   function updateCardStatus(i) {
     const el = document.querySelector(`.bulk-card[data-i="${i}"]`);
     if (!el) return;
-    el.classList.toggle('incomplete', !isSaveable(groups[i]));
+    const ok = isSaveable(groups[i]);
+    el.classList.toggle('incomplete', !ok);
     const badge = el.querySelector('.bulk-badge');
     if (badge) badge.textContent = missingMsg(groups[i]);
+    const saveBtn = el.querySelector('.bulk-savecard');
+    if (saveBtn) { const dis = !ok || groups[i].saving; saveBtn.disabled = dis; saveBtn.classList.toggle('off', dis); }
   }
   function saveableCount() { return groups.filter(isSaveable).length; }
   // 位置の由来を1行で
@@ -232,6 +270,26 @@ App.bulk = (function () {
     refreshSaveButton();
   }
 
+  // AIの状態更新をカードiに反映。畳んでいるカードは全描画、開いているカードは
+  // 差分更新（名前値・AIエリア・場所状態・ジャンル・枠/バッジのみ）でメモ編集を壊さない。
+  function applyAiUpdate(i) {
+    const g = groups[i];
+    if (g.collapsed) { refreshCard(i); return; }
+    const el = document.querySelector(`.bulk-card[data-i="${i}"]`);
+    if (!el) { refreshCard(i); return; }
+    const nameInp = el.querySelector('.bulk-name');
+    if (nameInp && nameInp.value !== (g.name || '')) nameInp.value = g.name || '';
+    const aiwrap = el.querySelector('.bulk-aiwrap');
+    if (aiwrap) aiwrap.innerHTML = aiAreaHtml(g, i);
+    const locstat = el.querySelector('.bulk-locstat');
+    if (locstat) locstat.innerHTML = locStatus(g);
+    const genreSel = el.querySelector('.bulk-genre');
+    if (genreSel) genreSel.value = g.genre;
+    updateCardStatus(i); // 枠/バッジ＋個別保存ボタンのdisabledはwireCards再配線で反映
+    wireCards();         // 差し替えたAIエリアのボタン/チップを再配線
+    refreshSaveButton();
+  }
+
   // 座標→住所（逆ジオコーディング）。Geocoding API 未有効などで失敗したら空文字。
   async function addressOf(lat, lng) {
     try {
@@ -257,7 +315,7 @@ App.bulk = (function () {
   // loc=保存座標。候補チップ（手動選択用）は従来通り近くの店から用意。失敗は静かに「不明」。
   async function aiSuggest(i, loc) {
     const g = groups[i];
-    g.aiState = 'loading'; refreshCard(i);
+    g.aiState = 'loading'; applyAiUpdate(i);
     const dbg = { n: 0, addr: '', guess: '', hit: '', err: '', raw: '', gerr: '', imgs: 0 }; // ← 診断用（各段の中身）
     try {
       // 速度優先：写真圧縮（代表1枚）と近くの店取得を並行実行
@@ -302,7 +360,7 @@ App.bulk = (function () {
       console.log('[aiSuggest]', i, JSON.stringify(dbg));
     } catch (e) { dbg.err = String((e && e.message) || e); console.warn('ai suggest failed', e && e.message); }
     g.aiDebug = dbg;
-    g.aiState = 'done'; refreshCard(i);
+    g.aiState = 'done'; applyAiUpdate(i);
   }
 
   // 手動ボタン：そのグループに位置があればAI提案。無ければ促す。
@@ -399,6 +457,18 @@ App.bulk = (function () {
         }
       };
     });
+    list.querySelectorAll('.bulk-cardhead').forEach((h) => {
+      h.onclick = () => { const i = Number(h.dataset.i); groups[i].collapsed = false; refreshCard(i); };
+    });
+    list.querySelectorAll('.bulk-cover[data-act="collapse"]').forEach((c) => {
+      c.onclick = () => { const i = Number(c.dataset.i); groups[i].collapsed = true; refreshCard(i); };
+    });
+    list.querySelectorAll('.bulk-memo').forEach((t) => {
+      t.oninput = () => { groups[Number(t.dataset.i)].memo = t.value; };
+    });
+    list.querySelectorAll('.bulk-savecard').forEach((b) => {
+      b.onclick = () => saveOne(Number(b.dataset.i));
+    });
     wireStrip(); // 分割の写真選択
     const save = document.getElementById('bulk-save');
     if (save) save.onclick = doSave; // Task 7
@@ -442,7 +512,7 @@ App.bulk = (function () {
     const newG = {
       photos: tail, date: App.grouping.dateOf(tail[0].time),
       center: null, hasGps: false, placeId: null, place: null, manualLoc: null, name: '', genre: g.genre,
-      candidates: [], aiState: 'idle', aiPickId: null,
+      candidates: [], aiState: 'idle', aiPickId: null, collapsed: true, memo: '',
     };
     // 新グループのGPS再計算（tailにGPSがあれば）
     const pts = tail.filter((p) => p.gps).map((p) => p.gps);
@@ -556,6 +626,44 @@ App.bulk = (function () {
     renderReview();
   }
 
+  // 1グループを保存（写真アップロード→cloud.add）。order は呼び出し側が決める。
+  async function saveGroup(g, order, onProgress) {
+    const loc = groupLatLng(g);
+    const files = g.photos.map((p) => p.file);
+    const groupId = 'bulk-' + Date.now() + '-' + Math.random().toString(16).slice(2, 6);
+    const photos = await App.photos.toStoredMany(files, groupId, onProgress);
+    await App.cloud.add({
+      date: g.date, name: g.name || '', genre: g.genre, memo: g.memo || '', tags: [], order,
+      lat: loc.lat, lng: loc.lng, photos,
+      ...(g.placeId ? { placeId: g.placeId } : {}),
+    });
+  }
+
+  // カードiだけを保存。成功したらそのカードを一覧から除く。
+  async function saveOne(i) {
+    const g = groups[i];
+    if (!isSaveable(g) || g.saving) return; // 二重保存を防ぐ
+    g.saving = true;
+    const btn = document.querySelector(`.bulk-savecard[data-i="${i}"]`);
+    if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
+    try {
+      const all = App.records.getAll();
+      const order = all.filter((r) => r.date === g.date).length;
+      await saveGroup(g, order);
+      for (const p of g.photos) URL.revokeObjectURL(p.url); // プレビューURL解放
+      const idx = groups.indexOf(g); // await中にindexがずれても正しく除去
+      if (idx !== -1) groups.splice(idx, 1);
+      if (!groups.length && pending.length) { groups = pending; pending = []; } // 退避中の前カードを表示
+      renderReview();
+    } catch (err) {
+      console.error('save one failed', err);
+      g.saving = false;
+      alert('保存に失敗しました。もう一度お試しください。');
+      const idx = groups.indexOf(g);
+      if (idx !== -1) refreshCard(idx); // ボタン表示を元に戻す
+    }
+  }
+
   async function doSave() {
     const saveBtn = document.getElementById('bulk-save');
     const targets = groups.filter(isSaveable);
@@ -569,16 +677,9 @@ App.bulk = (function () {
       const loc = groupLatLng(g);
       saveBtn.textContent = `保存中… ${done + 1}/${targets.length}`;
       try {
-        const files = g.photos.map((p) => p.file);
-        const groupId = 'bulk-' + Date.now() + '-' + Math.random().toString(16).slice(2, 6);
-        const photos = await App.photos.toStoredMany(files, groupId, (n, t) => {
-          saveBtn.textContent = `保存中… グループ${done + 1}/${targets.length}（写真${n}/${t}）`;
-        });
         const order = all.filter((r) => r.date === g.date).length + done; // その日の末尾へ
-        await App.cloud.add({
-          date: g.date, name: g.name || '', genre: g.genre, memo: '', tags: [], order,
-          lat: loc.lat, lng: loc.lng, photos,
-          ...(g.placeId ? { placeId: g.placeId } : {}),
+        await saveGroup(g, order, (n, t) => {
+          saveBtn.textContent = `保存中… グループ${done + 1}/${targets.length}（写真${n}/${t}）`;
         });
         for (const p of g.photos) URL.revokeObjectURL(p.url); // 保存済みのプレビューURL解放
         done++;
