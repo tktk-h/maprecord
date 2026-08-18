@@ -248,10 +248,12 @@ App.bulk = (function () {
   async function aiSuggest(i, loc) {
     const g = groups[i];
     g.aiState = 'loading'; refreshCard(i);
+    const dbg = { n: 0, addr: '', guess: '', hit: '', err: '' }; // ← 診断用（各段の中身）
     try {
       // 候補チップ（手動で選べるように）＋Gemini用の付近ヒント
       const cands = await App.places.nearbyPlaces(loc.lat, loc.lng, { radius: 250, max: 20 });
       g.candidates = cands || [];
+      dbg.n = g.candidates.length; // (A) 近くの店 何件取れたか
       // 代表写真を最大3枚・768pxで送る（看板が写った1枚が混じる確率を上げる）
       const files = g.photos.slice(0, 3).map((p) => p.file);
       const imagesBase64 = [];
@@ -260,15 +262,18 @@ App.bulk = (function () {
         imagesBase64.push(await blobToBase64(blob));
       }
       const address = await addressOf(loc.lat, loc.lng);
+      dbg.addr = address; // (B) 住所が取れているか
       const r = await App.fb.suggestPlace({
         imagesBase64, address,
         candidates: g.candidates.map((c) => ({ name: c.name, genre: c.genre })),
       });
       const guess = r && r.data && r.data.name;
+      dbg.guess = guess || ''; // (D) Geminiの自由回答
       if (guess) {
         // 自由回答を実在店に裏取り。見つからなければ近くの候補名と一致すればそれを採用。
         const hit = await resolveName(guess, loc)
           || g.candidates.find((c) => c.name === guess) || null;
+        dbg.hit = hit ? hit.name : ''; // (E) 裏取りで実在店に変換できたか
         if (hit && hit.placeId) {
           g.aiPickId = hit.placeId;
           // 候補チップに無ければ先頭に足して✨で見せる
@@ -280,7 +285,9 @@ App.bulk = (function () {
           }
         }
       }
-    } catch (e) { console.warn('ai suggest failed', e && e.message); }
+      console.log('[aiSuggest]', i, JSON.stringify(dbg));
+    } catch (e) { dbg.err = String((e && e.message) || e); console.warn('ai suggest failed', e && e.message); }
+    g.aiDebug = dbg;
     g.aiState = 'done'; refreshCard(i);
   }
 
@@ -316,7 +323,14 @@ App.bulk = (function () {
             + `${c.placeId === g.aiPickId ? '✨ ' : ''}${esc(c.name)}</button>`;
         }).join('')}</div>`
       : '';
-    return `<button class="bulk-locbtn ai" data-act="ai" data-i="${i}">✨ AIで店名を提案</button>${chips}`;
+    const d = g.aiDebug;
+    const dbg = d
+      ? `<div class="bulk-dbg">🔎 候補${d.n}件 ／ 住所: ${esc(d.addr || '（なし）')}<br>`
+        + `Gemini: ${esc(d.guess || 'UNKNOWN')}<br>`
+        + `裏取り: ${esc(d.hit || '（見つからず）')}`
+        + `${d.err ? '<br>err: ' + esc(d.err) : ''}</div>`
+      : '';
+    return `<button class="bulk-locbtn ai" data-act="ai" data-i="${i}">✨ AIで店名を提案</button>${chips}${dbg}`;
   }
   function wireCards() {
     const list = document.getElementById('bulk-list');
