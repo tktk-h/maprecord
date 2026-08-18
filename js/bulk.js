@@ -207,7 +207,7 @@ App.bulk = (function () {
     const g = groups[i];
     g.aiState = 'loading'; refreshCard(i);
     try {
-      const cands = await App.places.nearbyPlaces(loc.lat, loc.lng, { radius: 200, max: 8 });
+      const cands = await App.places.nearbyPlaces(loc.lat, loc.lng, { radius: 250, max: 20 });
       g.candidates = cands || [];
       if (g.candidates.length) {
         const thumb = await App.photos.compressToBlob(g.photos[0].file, 400);
@@ -217,13 +217,16 @@ App.bulk = (function () {
           candidates: g.candidates.map((c) => ({ placeId: c.placeId, name: c.name, genre: c.genre })),
         });
         const pid = r && r.data && r.data.placeId;
-        if (pid) g.aiPickId = pid; // ✨はGeminiが自信を持って選んだ店だけ
-        // 一押しを最初から反映：Geminiの選択→無ければ最も近い候補（距離順の先頭）
-        const pick = (pid && g.candidates.find((x) => x.placeId === pid)) || g.candidates[0];
-        // 既に名前が入っていたら上書きしない（ユーザー入力/検索を尊重）
-        if (pick && !(g.name && g.name.trim())) {
-          g.name = pick.name; g.placeId = pick.placeId; g.place = { lat: pick.lat, lng: pick.lng };
-          if (pick.genre) g.genre = pick.genre;
+        // Geminiが写真から自信を持って選べた店だけ、最初から反映（✨）。
+        // 迷った時（-1）は入れない＝無関係な近所の店を勝手に入れない。
+        if (pid) {
+          g.aiPickId = pid;
+          const c = g.candidates.find((x) => x.placeId === pid);
+          // 既に名前が入っていたら上書きしない（ユーザー入力/検索を尊重）
+          if (c && !(g.name && g.name.trim())) {
+            g.name = c.name; g.placeId = c.placeId; g.place = { lat: c.lat, lng: c.lng };
+            if (c.genre) g.genre = c.genre;
+          }
         }
       }
     } catch (e) { console.warn('ai suggest failed', e && e.message); }
