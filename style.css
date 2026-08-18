@@ -685,6 +685,9 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .bulk-title { font-weight: 700; font-size: 18px; }
 .bulk-lead { font-size: 13px; opacity: .75; margin-bottom: 14px; }
 .bulk-loading { padding: 40px 0; text-align: center; opacity: .8; }
+.bulk-addbtn { display: block; width: 100%; max-width: 560px; margin: 4px auto 14px;
+  border: 1.5px dashed var(--accent-strong); color: var(--accent-strong); background: transparent;
+  border-radius: 14px; padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; }
 .bulk-card { background: rgba(127,127,127,.10); border: 1px solid rgba(127,127,127,.25);
   border-radius: 16px; padding: 12px; margin-bottom: 12px; max-width: 560px; margin-inline: auto; }
 .bulk-top { display: flex; gap: 12px; }

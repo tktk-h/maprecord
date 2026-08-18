@@ -4,8 +4,12 @@ App.bulk = (function () {
   let groups = [];          // 下書きグループ（下記 shape）
   let fileInput = null;
 
-  // 隠しファイル入力を用意して一括選択を促す
+  // 「まとめて追加」画面を開く（未保存カードがあれば残ったまま表示。写真選択はしない）
   function open() {
+    renderReview();
+  }
+  // 実際のファイル選択（「＋写真を追加」から呼ぶ）
+  function pickFiles() {
     if (!fileInput) {
       fileInput = document.createElement('input');
       fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.multiple = true;
@@ -40,7 +44,7 @@ App.bulk = (function () {
     for (const f of files) metas.push(await readMeta(f));
     const raw = App.grouping.groupPhotos(metas.map((m) => ({ time: m.time, gps: m.gps })));
     // 元indexを実ファイルに戻して下書きグループを組む
-    groups = raw.map((g) => ({
+    const added = raw.map((g) => ({
       photos: g.idx.map((i) => ({ file: files[i], time: metas[i].time, gps: metas[i].gps, url: URL.createObjectURL(files[i]) }))
                      .sort((a, b) => a.time - b.time),
       date: g.date,
@@ -52,7 +56,7 @@ App.bulk = (function () {
       name: '',        // 店名（紐付け／手入力で入る）
       genre: 'food',
     }));
-    console.log('bulk groups', groups); // Task 4 でUI描画に差し替え
+    groups = groups.concat(added).sort((a, b) => a.photos[0].time - b.photos[0].time);
     renderReview();
   }
 
@@ -116,17 +120,25 @@ App.bulk = (function () {
   function renderReview() {
     const ov = document.getElementById('bulk-overlay');
     ov.hidden = false;
+    const lead = groups.length
+      ? `${countPhotos()}枚を ${groups.length}グループに整理しました。直してまとめて保存。`
+      : '「＋写真を追加」で写真を選ぶと、日付と場所で自動グループ分けします。';
     ov.innerHTML = `
       <div class="bulk-head">
         <button id="bulk-cancel" class="bulk-x">✕</button>
-        <div class="bulk-title">確認・修正</div>
+        <div class="bulk-title">まとめて追加</div>
       </div>
-      <div class="bulk-lead">${countPhotos()}枚を ${groups.length}グループに整理しました。直してまとめて保存。</div>
+      <button id="bulk-add" class="bulk-addbtn">＋ 写真を追加</button>
+      <div class="bulk-lead">${lead}</div>
       <div id="bulk-list">${groups.map(cardHtml).join('')}</div>
-      ${saveButtonHtml()}`;
-    document.getElementById('bulk-cancel').onclick = close;
-    wireCards(); // Task 5-6 で実装（この時点では空でよい）
+      ${groups.length ? saveButtonHtml() : ''}`;
+    document.getElementById('bulk-cancel').onclick = hide;
+    document.getElementById('bulk-add').onclick = pickFiles;
+    wireCards();
   }
+
+  // ×：閉じるだけ（未保存カードは保持）
+  function hide() { document.getElementById('bulk-overlay').hidden = true; }
 
   // 保存ボタン。場所を選んだグループが0なら無効化して促す。
   function saveButtonHtml() {
@@ -164,7 +176,7 @@ App.bulk = (function () {
       btn.onclick = () => {
         const i = Number(btn.dataset.i), act = btn.dataset.act;
         if (act === 'merge') mergeUp(i);
-        else if (act === 'del') { groups.splice(i, 1); renderReview(); }
+        else if (act === 'del') { for (const p of groups[i].photos) URL.revokeObjectURL(p.url); groups.splice(i, 1); renderReview(); }
         else if (act === 'split') doSplit(i);
       };
     });
@@ -364,6 +376,7 @@ App.bulk = (function () {
           lat: loc.lat, lng: loc.lng, photos,
           ...(g.placeId ? { placeId: g.placeId } : {}),
         });
+        for (const p of g.photos) URL.revokeObjectURL(p.url); // 保存済みのプレビューURL解放
         done++;
       } catch (err) {
         console.error('bulk save failed', err);
@@ -372,13 +385,9 @@ App.bulk = (function () {
     }
     // 保存できたグループを除き、失敗＋位置なしを残す
     groups = failed.concat(skipped);
-    if (!groups.length) {
-      close();
-      alert(`${done}件を保存しました。`);
-    } else {
-      renderReview();
-      alert(`${done}件を保存しました。残り${groups.length}件（場所未選択 or 失敗）を確認してください。`);
-    }
+    renderReview();
+    if (!groups.length) alert(`${done}件を保存しました。`);
+    else alert(`${done}件を保存しました。残り${groups.length}件（場所未選択 or 失敗）を確認してください。`);
   }
 
   function init() {
