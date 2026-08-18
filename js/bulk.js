@@ -1,11 +1,13 @@
 window.App = window.App || {};
 // 一括アップロード＋自動グループ化の入口・確認UI・保存。
 App.bulk = (function () {
-  let groups = [];          // 下書きグループ（下記 shape）
+  let groups = [];          // いま表示中の下書きグループ
+  let pending = [];         // 退避中の未保存カード（別バッチ作業中は隠すが消さない）
   let fileInput = null;
 
-  // 「まとめて追加」画面を開く（未保存カードがあれば残ったまま表示。写真選択はしない）
+  // 「まとめて追加」画面を開く。退避していた未保存カードを表示に戻す（写真選択はしない）
   function open() {
+    if (pending.length) { groups = groups.concat(pending); pending = []; }
     renderReview();
   }
   // 実際のファイル選択（「＋写真を追加」から呼ぶ）
@@ -56,8 +58,8 @@ App.bulk = (function () {
       name: '',        // 店名（紐付け／手入力で入る）
       genre: 'food',
     }));
-    for (const g of groups) for (const p of g.photos) URL.revokeObjectURL(p.url); // 新しく追加＝前の未保存/失敗カードは持ち越さない
-    groups = added;
+    pending = pending.concat(groups); // 表示中の未保存カードは退避（消さない）
+    groups = added;                    // 今回追加したぶんだけを表示
     renderReview();
   }
 
@@ -70,8 +72,8 @@ App.bulk = (function () {
   function close() {
     const ov = document.getElementById('bulk-overlay');
     ov.hidden = true; ov.innerHTML = '';
-    for (const g of groups) for (const p of g.photos) URL.revokeObjectURL(p.url);
-    groups = [];
+    for (const g of groups.concat(pending)) for (const p of g.photos) URL.revokeObjectURL(p.url);
+    groups = []; pending = [];
   }
 
   function esc(s) {
@@ -138,8 +140,11 @@ App.bulk = (function () {
     wireCards();
   }
 
-  // ×：閉じるだけ（未保存カードは保持）
-  function hide() { document.getElementById('bulk-overlay').hidden = true; }
+  // ×：閉じるだけ。表示中の未保存カードは退避して保持（再オープンで戻る）
+  function hide() {
+    pending = pending.concat(groups); groups = [];
+    document.getElementById('bulk-overlay').hidden = true;
+  }
 
   // 保存ボタン。場所を選んだグループが0なら無効化して促す。
   function saveButtonHtml() {
@@ -386,6 +391,7 @@ App.bulk = (function () {
     }
     // 保存できたグループを除き、失敗＋位置なしを残す
     groups = failed.concat(skipped);
+    if (!groups.length && pending.length) { groups = pending; pending = []; } // このバッチ完了→退避中の前カードを表示
     renderReview();
     if (!groups.length) alert(`${done}件を保存しました。`);
     else alert(`${done}件を保存しました。残り${groups.length}件（場所未選択 or 失敗）を確認してください。`);
