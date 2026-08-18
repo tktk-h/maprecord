@@ -101,22 +101,53 @@ App.bulk = (function () {
     return App.genres.list.map((g) => `<option value="${g.key}" ${g.key === sel ? 'selected' : ''}>${g.label}</option>`).join('');
   }
 
+  // 個別保存ボタン。isSaveable でない間は押せない。wide=開いた状態用の全幅。
+  function saveCardBtnHtml(g, i, label, wide) {
+    const ok = isSaveable(g);
+    return `<button class="bulk-savecard${wide ? ' wide' : ''}${ok ? '' : ' off'}" data-i="${i}"${ok ? '' : ' disabled'}>💾 ${esc(label)}</button>`;
+  }
   function cardHtml(g, i) {
     const first = g.photos[0], last = g.photos[g.photos.length - 1];
     const cover = g.photos[0].url;
     const timeRange = g.photos.length > 1 ? `${hhmm(first.time)}〜${hhmm(last.time)}` : hhmm(first.time);
+    const mergeBtn = i > 0 ? `<button class="bulk-act" data-act="merge" data-i="${i}">↑ 前と結合</button>` : '';
+
+    // --- 畳んだ状態 ---
+    if (g.collapsed) {
+      const nameLine = g.aiState === 'loading'
+        ? `<div class="bulk-ai-loading"><span class="bulk-spin"></span>AI判定中…</div>`
+        : `<div class="bulk-headname${(g.name && g.name.trim()) ? '' : ' empty'}">${esc((g.name && g.name.trim()) ? g.name : '（店名未入力）')}</div>`;
+      return `
+      <div class="bulk-card collapsed${isSaveable(g) ? '' : ' incomplete'}" data-i="${i}">
+        <div class="bulk-cardhead" data-i="${i}">
+          <div class="bulk-cover sm" style="background-image:url(${cover})"></div>
+          <div class="bulk-headinfo">
+            ${nameLine}
+            <div class="bulk-date">${g.date} <span class="bulk-count">${timeRange} ・ ${g.photos.length}枚</span></div>
+            <div class="bulk-badge">${esc(missingMsg(g))}</div>
+          </div>
+          <span class="bulk-chev">▾</span>
+        </div>
+        <div class="bulk-collapsed-acts">
+          ${mergeBtn}
+          <button class="bulk-act warn" data-act="del" data-i="${i}">🗑 削除</button>
+          ${saveCardBtnHtml(g, i, '保存')}
+        </div>
+      </div>`;
+    }
+
+    // --- 開いた状態 ---
     const strip = g.photos.map((p, j) =>
       `<div class="bulk-ph" data-i="${i}" data-j="${j}" style="background-image:url(${p.url})"></div>`).join('');
-    const mergeBtn = i > 0 ? `<button class="bulk-act" data-act="merge" data-i="${i}">↑ 前と結合</button>` : '';
     return `
       <div class="bulk-card${isSaveable(g) ? '' : ' incomplete'}" data-i="${i}">
         <div class="bulk-top">
-          <div class="bulk-cover" style="background-image:url(${cover})"><span>${g.photos.length}枚</span></div>
+          <div class="bulk-cover" data-act="collapse" data-i="${i}" style="background-image:url(${cover})"><span>${g.photos.length}枚</span></div>
           <div class="bulk-meta">
             <div class="bulk-date">${g.date} <span class="bulk-count">${timeRange} ・ ${g.photos.length}枚</span></div>
             <div class="bulk-badge">${esc(missingMsg(g))}</div>
             <input class="bulk-name" type="text" placeholder="場所の名前（必須）" value="${esc(g.name || '')}" data-i="${i}">
-            ${aiAreaHtml(g, i)}
+            <div class="bulk-aiwrap" data-i="${i}">${aiAreaHtml(g, i)}</div>
             <div class="bulk-locrow">
               <button class="bulk-locbtn" data-act="search" data-i="${i}">🔍 店名で検索</button>
               <button class="bulk-locbtn" data-act="pin" data-i="${i}">🗺 地図でピン</button>
@@ -126,6 +157,7 @@ App.bulk = (function () {
               <select class="bulk-genre" data-i="${i}">${genreOptions(g.genre)}</select>
               <input class="bulk-datefld" type="date" value="${g.date}" data-i="${i}">
             </div>
+            <label class="bulk-memolabel">メモ・感想<textarea class="bulk-memo" rows="3" placeholder="今日はどんな一日だった？" data-i="${i}">${esc(g.memo || '')}</textarea></label>
           </div>
         </div>
         <div class="bulk-strip">${strip}</div>
@@ -135,6 +167,7 @@ App.bulk = (function () {
           <button class="bulk-act" data-act="split" data-i="${i}" disabled>✂️ ここで分割</button>
           <button class="bulk-act warn" data-act="del" data-i="${i}">🗑 削除</button>
         </div>
+        ${saveCardBtnHtml(g, i, 'この1件を保存', true)}
       </div>`;
   }
 
