@@ -144,7 +144,7 @@ App.bulk = (function () {
         <div class="bulk-top">
           <div class="bulk-cover" data-act="collapse" data-i="${i}" style="background-image:url(${cover})"><span>${g.photos.length}枚</span></div>
           <div class="bulk-meta">
-            <div class="bulk-date">${g.date} <span class="bulk-count">${timeRange} ・ ${g.photos.length}枚</span></div>
+            <div class="bulk-date">${g.date} <span class="bulk-count">${timeRange} ・ ${g.photos.length}枚</span><button class="bulk-collapsebtn" data-act="collapse" data-i="${i}">▲ 閉じる</button></div>
             <div class="bulk-badge">${esc(missingMsg(g))}</div>
             <input class="bulk-name" type="text" placeholder="場所の名前（必須）" value="${esc(g.name || '')}" data-i="${i}">
             <div class="bulk-aiwrap" data-i="${i}">${aiAreaHtml(g, i)}</div>
@@ -460,7 +460,7 @@ App.bulk = (function () {
     list.querySelectorAll('.bulk-cardhead').forEach((h) => {
       h.onclick = () => { const i = Number(h.dataset.i); groups[i].collapsed = false; refreshCard(i); };
     });
-    list.querySelectorAll('.bulk-cover[data-act="collapse"]').forEach((c) => {
+    list.querySelectorAll('[data-act="collapse"]').forEach((c) => {
       c.onclick = () => { const i = Number(c.dataset.i); groups[i].collapsed = true; refreshCard(i); };
     });
     list.querySelectorAll('.bulk-memo').forEach((t) => {

@@ -806,3 +806,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .bulk-memo { width: 100%; margin-top: 5px; box-sizing: border-box; resize: vertical;
   border: 1px solid rgba(127,127,127,.3); border-radius: 9px; padding: 8px 10px;
   font-size: 13px; font-family: inherit; background: transparent; color: inherit; }
+
+.bulk-collapsebtn { float: right; border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text-muted); border-radius: 999px; padding: 3px 11px; font-size: 12px;
+  font-weight: 600; cursor: pointer; }
