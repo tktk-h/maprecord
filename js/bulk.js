@@ -312,9 +312,10 @@ App.bulk = (function () {
     await aiSuggest(i, loc);
   }
 
-  // 開いた直後：位置があり・未提案・名前空 のグループを最大3件ずつ並行でAI提案（全体の待ち時間を短縮）
+  // 開いた直後：位置があり・未提案・名前空 のグループをAI提案。
+  // 無料枠の分間リクエスト上限(429)を避けるため直列(1件ずつ)。※他の高速化は維持。
   async function autoSuggestAll() {
-    const CONCURRENCY = 3;
+    const CONCURRENCY = 1;
     const targets = [];
     for (let i = 0; i < groups.length; i++) {
       const g = groups[i];
