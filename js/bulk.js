@@ -434,6 +434,18 @@ App.bulk = (function () {
         }
       };
     });
+    list.querySelectorAll('.bulk-cardhead').forEach((h) => {
+      h.onclick = () => { const i = Number(h.dataset.i); groups[i].collapsed = false; refreshCard(i); };
+    });
+    list.querySelectorAll('.bulk-cover[data-act="collapse"]').forEach((c) => {
+      c.onclick = () => { const i = Number(c.dataset.i); groups[i].collapsed = true; refreshCard(i); };
+    });
+    list.querySelectorAll('.bulk-memo').forEach((t) => {
+      t.oninput = () => { groups[Number(t.dataset.i)].memo = t.value; };
+    });
+    list.querySelectorAll('.bulk-savecard').forEach((b) => {
+      b.onclick = () => saveOne(Number(b.dataset.i));
+    });
     wireStrip(); // 分割の写真選択
     const save = document.getElementById('bulk-save');
     if (save) save.onclick = doSave; // Task 7
