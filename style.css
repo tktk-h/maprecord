@@ -759,3 +759,16 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   #topbar.filters-open ~ #layout #bulk-btn { display: none; }
   #layout:has(#panel:not([hidden])) #bulk-btn { display: none; }
 }
+
+/* --- 一括AI提案（bulk / Gemini） --- */
+.bulk-ai-loading { display: flex; align-items: center; gap: 8px; margin-top: 9px;
+  color: #7a63a8; font-size: 13px; font-weight: 600; }
+.bulk-spin { width: 14px; height: 14px; border: 2px solid #d8cce8; border-top-color: #7a63a8;
+  border-radius: 50%; display: inline-block; animation: bulk-sp 1s linear infinite; }
+@keyframes bulk-sp { to { transform: rotate(360deg); } }
+.bulk-locbtn.ai { border-color: #a48fc9; color: #5b4785; background: #efe9f6; margin-top: 8px; }
+.bulk-cands { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 8px; }
+.bulk-cand { border: 1px solid rgba(127,127,127,.3); background: transparent; color: inherit;
+  border-radius: 999px; padding: 6px 12px; font-size: 12.5px; cursor: pointer; }
+.bulk-cand.pick { border: 1.5px solid #a48fc9; background: #efe9f6; color: #5b4785; font-weight: 700; }
+.bulk-cand.sel { outline: 2px solid var(--accent-strong); outline-offset: 1px; }

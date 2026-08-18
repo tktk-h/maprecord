@@ -2,6 +2,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { getStorage } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js';
 
 // 公開してよい設定（保護はセキュリティルールで行う）
 const firebaseConfig = {
@@ -15,5 +16,9 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 window.App = window.App || {};
-window.App.fb = { app, auth: getAuth(app), db: getFirestore(app), storage: getStorage(app) };
+const functions = getFunctions(app);
+window.App.fb = {
+  app, auth: getAuth(app), db: getFirestore(app), storage: getStorage(app),
+  functions, suggestPlace: httpsCallable(functions, 'suggestPlace'),
+};
 export const fb = window.App.fb;
