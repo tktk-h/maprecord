@@ -22,7 +22,7 @@ exports.suggestPlace = onCall(
     if (!images.length) return { name: null };
 
     const genAI = new GoogleGenerativeAI(GEMINI_KEY.value());
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
     const parts = images
       .slice(0, 3)
       .map((b) => ({ inlineData: { mimeType: 'image/jpeg', data: b } }));
