@@ -362,7 +362,6 @@ App.bulk = (function () {
       }
       console.log('[aiSuggest]', i, JSON.stringify(dbg));
     } catch (e) { dbg.err = String((e && e.message) || e); console.warn('ai suggest failed', e && e.message); }
-    g.aiDebug = dbg;
     g.aiState = 'done'; applyAiUpdate(i);
   }
 
@@ -411,16 +410,7 @@ App.bulk = (function () {
             + `${c.placeId === g.aiPickId ? '✨ ' : ''}${esc(c.name)}</button>`;
         }).join('')}</div>`
       : '';
-    const d = g.aiDebug;
-    const dbg = d
-      ? `<div class="bulk-dbg">🔎 候補${d.n}件 ／ 画像${d.imgs || 0}枚 ／ 住所: ${esc(d.addr || '（なし）')}<br>`
-        + `Gemini生返答: ${esc(d.raw || '（空）')}<br>`
-        + `採用名: ${esc(d.guess || 'UNKNOWN')}<br>`
-        + `裏取り: ${esc(d.hit || '（見つからず）')}`
-        + `${d.gerr ? '<br>Geminiエラー: ' + esc(d.gerr) : ''}`
-        + `${d.err ? '<br>err: ' + esc(d.err) : ''}</div>`
-      : '';
-    return `<button class="bulk-locbtn ai" data-act="ai" data-i="${i}">✨ AIで店名を提案</button>${chips}${dbg}`;
+    return `<button class="bulk-locbtn ai" data-act="ai" data-i="${i}">✨ AIで店名を提案</button>${chips}`;
   }
   function wireCards() {
     const list = document.getElementById('bulk-list');
