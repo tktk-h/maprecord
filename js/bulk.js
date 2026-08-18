@@ -238,7 +238,7 @@ App.bulk = (function () {
     const badge = el.querySelector('.bulk-badge');
     if (badge) badge.textContent = missingMsg(groups[i]);
     const saveBtn = el.querySelector('.bulk-savecard');
-    if (saveBtn) { saveBtn.disabled = !ok; saveBtn.classList.toggle('off', !ok); }
+    if (saveBtn) { const dis = !ok || groups[i].saving; saveBtn.disabled = dis; saveBtn.classList.toggle('off', dis); }
   }
   function saveableCount() { return groups.filter(isSaveable).length; }
   // 位置の由来を1行で
@@ -642,7 +642,8 @@ App.bulk = (function () {
   // カードiだけを保存。成功したらそのカードを一覧から除く。
   async function saveOne(i) {
     const g = groups[i];
-    if (!isSaveable(g)) return;
+    if (!isSaveable(g) || g.saving) return; // 二重保存を防ぐ
+    g.saving = true;
     const btn = document.querySelector(`.bulk-savecard[data-i="${i}"]`);
     if (btn) { btn.disabled = true; btn.textContent = '保存中…'; }
     try {
@@ -650,13 +651,16 @@ App.bulk = (function () {
       const order = all.filter((r) => r.date === g.date).length;
       await saveGroup(g, order);
       for (const p of g.photos) URL.revokeObjectURL(p.url); // プレビューURL解放
-      groups.splice(i, 1);
+      const idx = groups.indexOf(g); // await中にindexがずれても正しく除去
+      if (idx !== -1) groups.splice(idx, 1);
       if (!groups.length && pending.length) { groups = pending; pending = []; } // 退避中の前カードを表示
       renderReview();
     } catch (err) {
       console.error('save one failed', err);
+      g.saving = false;
       alert('保存に失敗しました。もう一度お試しください。');
-      refreshCard(i); // ボタン表示を元に戻す
+      const idx = groups.indexOf(g);
+      if (idx !== -1) refreshCard(idx); // ボタン表示を元に戻す
     }
   }
 
