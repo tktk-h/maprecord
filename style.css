@@ -766,7 +766,7 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .bulk-spin { width: 14px; height: 14px; border: 2px solid #d8cce8; border-top-color: #7a63a8;
   border-radius: 50%; display: inline-block; animation: bulk-sp 1s linear infinite; }
 @keyframes bulk-sp { to { transform: rotate(360deg); } }
-.bulk-locbtn.ai { border-color: #a48fc9; color: #5b4785; background: #efe9f6; margin-top: 8px; }
+.bulk-locbtn.ai { border-color: rgba(181,103,95,.5); color: var(--accent-strong); background: var(--accent-soft); margin-top: 8px; }
 .bulk-cands { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 8px; }
 .bulk-cand { border: 1px solid rgba(127,127,127,.3); background: transparent; color: inherit;
   border-radius: 999px; padding: 6px 12px; font-size: 12.5px; cursor: pointer; }
@@ -797,12 +797,12 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .bulk-collapsed-acts .bulk-act,
 .bulk-collapsed-acts .bulk-savecard { flex: 1; }
 
-.bulk-savecard { border: 1px solid #9ec9a0; background: #e7f2e6; color: #3f7a44;
+.bulk-savecard { border: 1px solid var(--accent-strong); background: var(--accent-strong); color: #fff;
   font-weight: 700; border-radius: 10px; padding: 8px 10px; font-size: 13px; cursor: pointer; }
 .bulk-savecard.wide { width: 100%; margin-top: 8px; padding: 11px; font-size: 14px; }
-.bulk-savecard.off { border-color: #d9cdbb; background: #efe9de; color: #b3a891; cursor: default; }
+.bulk-savecard.off { border-color: var(--border); background: var(--surface-2); color: var(--text-muted); cursor: default; }
 
 .bulk-memolabel { display: block; margin-top: 10px; font-size: 12.5px; color: #7a715c; font-weight: 600; }
 .bulk-memo { width: 100%; margin-top: 5px; box-sizing: border-box; resize: vertical;
   border: 1px solid rgba(127,127,127,.3); border-radius: 9px; padding: 8px 10px;
-  font-size: 13px; font-family: inherit; }
+  font-size: 13px; font-family: inherit; background: transparent; color: inherit; }
