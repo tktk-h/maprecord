@@ -772,3 +772,9 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   border-radius: 999px; padding: 6px 12px; font-size: 12.5px; cursor: pointer; }
 .bulk-cand.pick { border: 1.5px solid #a48fc9; background: #efe9f6; color: #5b4785; font-weight: 700; }
 .bulk-cand.sel { outline: 2px solid var(--accent-strong); outline-offset: 1px; }
+
+/* --- 一括：未入力カードを目立たせる --- */
+.bulk-card.incomplete { border-color: #e0a43b; box-shadow: 0 0 0 2px rgba(224,164,59,.28); }
+.bulk-badge { display: inline-block; margin: 2px 0 7px; padding: 4px 11px; border-radius: 999px;
+  background: #fbeccd; color: #8a5a12; font-size: 12px; font-weight: 700; line-height: 1.4; }
+.bulk-badge:empty { display: none; }

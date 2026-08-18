@@ -97,11 +97,12 @@ App.bulk = (function () {
       `<div class="bulk-ph" data-i="${i}" data-j="${j}" style="background-image:url(${p.url})"></div>`).join('');
     const mergeBtn = i > 0 ? `<button class="bulk-act" data-act="merge" data-i="${i}">↑ 前と結合</button>` : '';
     return `
-      <div class="bulk-card" data-i="${i}">
+      <div class="bulk-card${isSaveable(g) ? '' : ' incomplete'}" data-i="${i}">
         <div class="bulk-top">
           <div class="bulk-cover" style="background-image:url(${cover})"><span>${g.photos.length}枚</span></div>
           <div class="bulk-meta">
             <div class="bulk-date">${g.date} <span class="bulk-count">${timeRange} ・ ${g.photos.length}枚</span></div>
+            <div class="bulk-badge">${esc(missingMsg(g))}</div>
             <input class="bulk-name" type="text" placeholder="場所の名前（必須）" value="${esc(g.name || '')}" data-i="${i}">
             ${aiAreaHtml(g, i)}
             <div class="bulk-locrow">
@@ -172,6 +173,25 @@ App.bulk = (function () {
   function groupLatLng(g) { return g.manualLoc || (g.hasGps ? g.center : g.place) || null; }
   // 保存できるのは「名前あり かつ 位置あり」のグループだけ（名無しピンを作らない）
   function isSaveable(g) { return !!(g.name && g.name.trim()) && !!groupLatLng(g); }
+
+  // 保存に足りない項目のメッセージ（揃っていれば空文字）
+  function missingMsg(g) {
+    const noName = !(g.name && g.name.trim());
+    const noLoc = !groupLatLng(g);
+    if (noName && noLoc) return '⚠️ 店名と場所が未入力';
+    if (noName) return '⚠️ 店名を入力してください';
+    if (noLoc) return '⚠️ 場所を設定してください';
+    return '';
+  }
+
+  // カードi の「未入力」表示（枠色＋バッジ）を再描画せずに更新（入力フォーカスを保つ）
+  function updateCardStatus(i) {
+    const el = document.querySelector(`.bulk-card[data-i="${i}"]`);
+    if (!el) return;
+    el.classList.toggle('incomplete', !isSaveable(groups[i]));
+    const badge = el.querySelector('.bulk-badge');
+    if (badge) badge.textContent = missingMsg(groups[i]);
+  }
   function saveableCount() { return groups.filter(isSaveable).length; }
   // 位置の由来を1行で
   function locStatus(g) {
@@ -285,7 +305,7 @@ App.bulk = (function () {
       inp.onchange = () => { groups[Number(inp.dataset.i)].date = inp.value; };
     });
     list.querySelectorAll('.bulk-name').forEach((inp) => {
-      inp.oninput = () => { groups[Number(inp.dataset.i)].name = inp.value; refreshSaveButton(); };
+      inp.oninput = () => { const i = Number(inp.dataset.i); groups[i].name = inp.value; updateCardStatus(i); refreshSaveButton(); };
     });
     list.querySelectorAll('.bulk-locbtn').forEach((btn) => {
       btn.onclick = () => {
