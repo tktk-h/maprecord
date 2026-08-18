@@ -57,6 +57,9 @@ App.bulk = (function () {
       manualLoc: null, // {lat,lng} 地図で手動に置いたピン（最優先）
       name: '',        // 店名（紐付け／手入力で入る）
       genre: 'food',
+      candidates: [],  // 近くの店候補（AI提案で入る）
+      aiState: 'idle', // 'idle' | 'loading' | 'done'
+      aiPickId: null,  // Geminiが選んだ placeId（チップの✨用）
     }));
     pending = pending.concat(groups); // 表示中の未保存カードは退避（消さない）
     groups = added;                    // 今回追加したぶんだけを表示
@@ -175,6 +178,91 @@ App.bulk = (function () {
     if (g.hasGps) return '📍 写真のGPS';
     return '⚠️ 位置なし';
   }
+
+  // Blob → base64本体（data:...;base64, の後ろだけ）
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result).split(',')[1] || '');
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+  }
+
+  // カードi の DOM だけを差し替える（全再描画せず、入力フォーカスを保つ）
+  function refreshCard(i) {
+    const el = document.querySelector(`.bulk-card[data-i="${i}"]`);
+    if (!el) return;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = cardHtml(groups[i], i);
+    el.replaceWith(tmp.firstElementChild);
+    wireCards();
+    refreshSaveButton();
+  }
+
+  // グループiにAI提案。loc=保存座標（近くの候補を取る中心）。失敗は静かに「該当なし」。
+  async function aiSuggest(i, loc) {
+    const g = groups[i];
+    g.aiState = 'loading'; refreshCard(i);
+    try {
+      const cands = await App.places.nearbyPlaces(loc.lat, loc.lng, { radius: 200, max: 8 });
+      g.candidates = cands || [];
+      if (g.candidates.length) {
+        const thumb = await App.photos.compressToBlob(g.photos[0].file, 400);
+        const imageBase64 = await blobToBase64(thumb);
+        const r = await App.fb.suggestPlace({
+          imageBase64,
+          candidates: g.candidates.map((c) => ({ placeId: c.placeId, name: c.name, genre: c.genre })),
+        });
+        const pid = r && r.data && r.data.placeId;
+        if (pid) {
+          g.aiPickId = pid;
+          const c = g.candidates.find((x) => x.placeId === pid);
+          // 既に名前が入っていたら上書きしない（ユーザー入力/検索を尊重）
+          if (c && !(g.name && g.name.trim())) {
+            g.name = c.name; g.placeId = c.placeId; g.place = { lat: c.lat, lng: c.lng };
+            if (c.genre) g.genre = c.genre;
+          }
+        }
+      }
+    } catch (e) { console.warn('ai suggest failed', e && e.message); }
+    g.aiState = 'done'; refreshCard(i);
+  }
+
+  // 手動ボタン：そのグループに位置があればAI提案。無ければ促す。
+  async function runAiFor(i) {
+    const loc = groupLatLng(groups[i]);
+    if (!loc) { alert('先に位置（GPS/検索/地図ピン）を決めてください'); return; }
+    await aiSuggest(i, loc);
+  }
+
+  // 開いた直後：位置があり・未提案・名前空 のグループを順にAI提案（バースト回避）
+  async function autoSuggestAll() {
+    for (let i = 0; i < groups.length; i++) {
+      const g = groups[i];
+      const loc = groupLatLng(g);
+      if (loc && g.aiState === 'idle' && !(g.name && g.name.trim())) {
+        await aiSuggest(i, loc); // 直列
+      }
+    }
+  }
+
+  // カードのAIエリア（名前欄の下）：判定中／候補チップ／手動ボタン
+  function aiAreaHtml(g, i) {
+    if (g.aiState === 'loading') {
+      return `<div class="bulk-ai-loading"><span class="bulk-spin"></span>AI判定中…</div>`;
+    }
+    const cands = (g.candidates || []).slice(0, 6);
+    const chips = cands.length
+      ? `<div class="bulk-cands">${cands.map((c) => {
+          const pick = c.placeId === g.aiPickId ? ' pick' : '';
+          const sel = c.placeId === g.placeId ? ' sel' : '';
+          return `<button class="bulk-cand${pick}${sel}" data-i="${i}" data-pid="${esc(c.placeId)}">`
+            + `${c.placeId === g.aiPickId ? '✨ ' : ''}${esc(c.name)}</button>`;
+        }).join('')}</div>`
+      : '';
+    return `<button class="bulk-locbtn ai" data-act="ai" data-i="${i}">✨ AIで店名を提案</button>${chips}`;
+  }
   function wireCards() {
     const list = document.getElementById('bulk-list');
     if (!list) return;
@@ -245,6 +333,7 @@ App.bulk = (function () {
     const newG = {
       photos: tail, date: App.grouping.dateOf(tail[0].time),
       center: null, hasGps: false, placeId: null, place: null, manualLoc: null, name: '', genre: g.genre,
+      candidates: [], aiState: 'idle', aiPickId: null,
     };
     // 新グループのGPS再計算（tailにGPSがあれば）
     const pts = tail.filter((p) => p.gps).map((p) => p.gps);
