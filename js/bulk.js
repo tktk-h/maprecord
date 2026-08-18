@@ -302,15 +302,25 @@ App.bulk = (function () {
     await aiSuggest(i, loc);
   }
 
-  // 開いた直後：位置があり・未提案・名前空 のグループを順にAI提案（バースト回避）
+  // 開いた直後：位置があり・未提案・名前空 のグループを最大3件ずつ並行でAI提案（全体の待ち時間を短縮）
   async function autoSuggestAll() {
+    const CONCURRENCY = 3;
+    const targets = [];
     for (let i = 0; i < groups.length; i++) {
       const g = groups[i];
       const loc = groupLatLng(g);
-      if (loc && g.aiState === 'idle' && !(g.name && g.name.trim())) {
-        await aiSuggest(i, loc); // 直列
+      if (loc && g.aiState === 'idle' && !(g.name && g.name.trim())) targets.push({ i, loc });
+    }
+    let cursor = 0;
+    async function worker() {
+      while (cursor < targets.length) {
+        const t = targets[cursor++]; // 空いたワーカーが次の1件を取る
+        await aiSuggest(t.i, t.loc);
       }
     }
+    const workers = [];
+    for (let k = 0; k < Math.min(CONCURRENCY, targets.length); k++) workers.push(worker());
+    await Promise.all(workers);
   }
 
   // カードのAIエリア（名前欄の下）：判定中／候補チップ／手動ボタン
