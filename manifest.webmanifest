@@ -1,6 +1,6 @@
 {
-  "name": "デート記録",
-  "short_name": "デート記録",
+  "name": "あしあと",
+  "short_name": "あしあと",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

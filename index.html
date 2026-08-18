@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>デート記録</title>
+  <title>あしあと</title>
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#b5675f">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="デート記録">
+  <meta name="apple-mobile-web-app-title" content="あしあと">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Maru+Gothic:wght@500;700&display=swap">
-  <link rel="stylesheet" href="style.css?v=20260819e">
+  <link rel="stylesheet" href="style.css?v=20260819f">
   <script>
     (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
       key: "AIzaSyC0686dd3grl_KMmLDwTAx1UHomoLgMhDo",
@@ -27,7 +27,7 @@
   <div id="splash">
     <div class="splash-inner">
       <div class="splash-logo"><i class="ph ph-map-pin"></i></div>
-      <h1 class="splash-title">デート記録</h1>
+      <h1 class="splash-title">あしあと</h1>
       <p class="splash-tag">ふたりの思い出を、地図に。</p>
       <div class="splash-spinner"></div>
     </div>
@@ -36,7 +36,7 @@
   <div id="gate" hidden>
     <div class="gate-card">
       <div class="gate-logo"><i class="ph ph-map-pin"></i></div>
-      <h1 class="gate-title">デート記録</h1>
+      <h1 class="gate-title">あしあと</h1>
       <div id="gate-login" hidden>
         <p class="gate-lead">二人で行った場所を残して、いつでも思い出をたどれる</p>
         <button id="gate-google" class="gate-btn google"><i class="ph ph-google-logo"></i>Googleでログイン</button>
@@ -99,7 +99,7 @@
           <button id="anniv-btn"><i class="ph ph-heart"></i><span>記念日</span></button>
           <button id="logout-btn"><i class="ph ph-sign-out"></i><span>ログアウト</span></button>
         </div>
-        <div class="app-ver">ver. 20260819e</div>
+        <div class="app-ver">ver. 20260819f</div>
       </div>
     </div>
   </header>
@@ -120,19 +120,19 @@
     <div id="bulk-overlay" hidden></div>
   </main>
 
-  <script src="js/genres.js?v=20260819e"></script>
-  <script src="js/filters.js?v=20260819e"></script>
-  <script src="js/map.js?v=20260819e"></script>
-  <script src="js/places.js?v=20260819e"></script>
-  <script src="js/grouping.js?v=20260819e"></script>
-  <script src="js/records.js?v=20260819e"></script>
-  <script src="js/bulk.js?v=20260819e"></script>
-  <script src="js/lightbox.js?v=20260819e"></script>
-  <script src="js/sheet.js?v=20260819e"></script>
-  <script src="js/calendar.js?v=20260819e"></script>
-  <script src="js/backup.js?v=20260819e"></script>
-  <script src="js/memories.js?v=20260819e"></script>
-  <script src="js/search.js?v=20260819e"></script>
-  <script type="module" src="js/app.js?v=20260819e"></script>
+  <script src="js/genres.js?v=20260819f"></script>
+  <script src="js/filters.js?v=20260819f"></script>
+  <script src="js/map.js?v=20260819f"></script>
+  <script src="js/places.js?v=20260819f"></script>
+  <script src="js/grouping.js?v=20260819f"></script>
+  <script src="js/records.js?v=20260819f"></script>
+  <script src="js/bulk.js?v=20260819f"></script>
+  <script src="js/lightbox.js?v=20260819f"></script>
+  <script src="js/sheet.js?v=20260819f"></script>
+  <script src="js/calendar.js?v=20260819f"></script>
+  <script src="js/backup.js?v=20260819f"></script>
+  <script src="js/memories.js?v=20260819f"></script>
+  <script src="js/search.js?v=20260819f"></script>
+  <script type="module" src="js/app.js?v=20260819f"></script>
 </body>
 </html>
