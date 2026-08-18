@@ -233,9 +233,12 @@ App.bulk = (function () {
   function updateCardStatus(i) {
     const el = document.querySelector(`.bulk-card[data-i="${i}"]`);
     if (!el) return;
-    el.classList.toggle('incomplete', !isSaveable(groups[i]));
+    const ok = isSaveable(groups[i]);
+    el.classList.toggle('incomplete', !ok);
     const badge = el.querySelector('.bulk-badge');
     if (badge) badge.textContent = missingMsg(groups[i]);
+    const saveBtn = el.querySelector('.bulk-savecard');
+    if (saveBtn) { saveBtn.disabled = !ok; saveBtn.classList.toggle('off', !ok); }
   }
   function saveableCount() { return groups.filter(isSaveable).length; }
   // 位置の由来を1行で
@@ -267,6 +270,26 @@ App.bulk = (function () {
     refreshSaveButton();
   }
 
+  // AIの状態更新をカードiに反映。畳んでいるカードは全描画、開いているカードは
+  // 差分更新（名前値・AIエリア・場所状態・ジャンル・枠/バッジのみ）でメモ編集を壊さない。
+  function applyAiUpdate(i) {
+    const g = groups[i];
+    if (g.collapsed) { refreshCard(i); return; }
+    const el = document.querySelector(`.bulk-card[data-i="${i}"]`);
+    if (!el) { refreshCard(i); return; }
+    const nameInp = el.querySelector('.bulk-name');
+    if (nameInp && nameInp.value !== (g.name || '')) nameInp.value = g.name || '';
+    const aiwrap = el.querySelector('.bulk-aiwrap');
+    if (aiwrap) aiwrap.innerHTML = aiAreaHtml(g, i);
+    const locstat = el.querySelector('.bulk-locstat');
+    if (locstat) locstat.innerHTML = locStatus(g);
+    const genreSel = el.querySelector('.bulk-genre');
+    if (genreSel) genreSel.value = g.genre;
+    updateCardStatus(i); // 枠/バッジ＋個別保存ボタンのdisabledはwireCards再配線で反映
+    wireCards();         // 差し替えたAIエリアのボタン/チップを再配線
+    refreshSaveButton();
+  }
+
   // 座標→住所（逆ジオコーディング）。Geocoding API 未有効などで失敗したら空文字。
   async function addressOf(lat, lng) {
     try {
@@ -292,7 +315,7 @@ App.bulk = (function () {
   // loc=保存座標。候補チップ（手動選択用）は従来通り近くの店から用意。失敗は静かに「不明」。
   async function aiSuggest(i, loc) {
     const g = groups[i];
-    g.aiState = 'loading'; refreshCard(i);
+    g.aiState = 'loading'; applyAiUpdate(i);
     const dbg = { n: 0, addr: '', guess: '', hit: '', err: '', raw: '', gerr: '', imgs: 0 }; // ← 診断用（各段の中身）
     try {
       // 速度優先：写真圧縮（代表1枚）と近くの店取得を並行実行
@@ -337,7 +360,7 @@ App.bulk = (function () {
       console.log('[aiSuggest]', i, JSON.stringify(dbg));
     } catch (e) { dbg.err = String((e && e.message) || e); console.warn('ai suggest failed', e && e.message); }
     g.aiDebug = dbg;
-    g.aiState = 'done'; refreshCard(i);
+    g.aiState = 'done'; applyAiUpdate(i);
   }
 
   // 手動ボタン：そのグループに位置があればAI提案。無ければ促す。
