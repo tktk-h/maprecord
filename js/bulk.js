@@ -70,6 +70,8 @@ App.bulk = (function () {
       candidates: [],  // 近くの店候補（AI提案で入る）
       aiState: 'idle', // 'idle' | 'loading' | 'done'
       aiPickId: null,  // Geminiが選んだ placeId（チップの✨用）
+      collapsed: true, // 既定は畳んだ状態
+      memo: '',        // メモ・感想
     }));
     pending = pending.concat(groups); // 表示中の未保存カードは退避（消さない）
     groups = added;                    // 今回追加したぶんだけを表示
@@ -442,7 +444,7 @@ App.bulk = (function () {
     const newG = {
       photos: tail, date: App.grouping.dateOf(tail[0].time),
       center: null, hasGps: false, placeId: null, place: null, manualLoc: null, name: '', genre: g.genre,
-      candidates: [], aiState: 'idle', aiPickId: null,
+      candidates: [], aiState: 'idle', aiPickId: null, collapsed: true, memo: '',
     };
     // 新グループのGPS再計算（tailにGPSがあれば）
     const pts = tail.filter((p) => p.gps).map((p) => p.gps);
