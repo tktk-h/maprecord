@@ -1,0 +1,128 @@
+# 設計：年間ふりかえり（あしあと / maprecord）
+
+- 日付: 2026-08-19
+- 方針: 世界観「温かみ・エモい思い出・自分だけの地図・カップル控えめ」に沿う。基本機能（記録/検索/写真/カレンダー/フィルタ/思い出カード）が一通り完成した次の一手＝データが溜まってきた「今」いちばん感情的な見返りが大きい振り返り機能。
+- 実装方式: 案A（集計＝純粋関数を別ファイルに分離＋テスト）。
+
+## 1. 体験の骨子
+
+1年を **スライドショー（Stories風）で"見せて"** → 見切ったら **スクロール総集編で"じっくり"** 読む、の2段構成。
+
+- 期間の区切り: **暦年**（1/1〜12/31）。**年を選べる**（過去年も振り返れる）。
+- 入口: **常設入口（メニューの「ふりかえり」＝年ピッカー）** ＋ **年末の自動お知らせカード**（`memories.js` 相乗り）。
+- 共有/画像保存: **v1では入れない**（自分だけの地図・控えめ方針）。将来必要になれば追加。
+
+## 2. コンポーネント構成（案A）
+
+- **`js/review-stats.js`** — 純粋な集計のみ。
+  - `computeYearReview(allRecords, year, anniversary, today)` → 数字オブジェクトを返す。
+  - `_selfTest()` を持つ（`js/memories.js` の `pickMemories`＋`_selfTest` と同じ流儀）。
+  - `window.App.reviewStats` グローバルに公開（既存の非ESM `window.App` 方式）。
+- **`js/review-ui.js`** — 描画。
+  - ①全画面スライドショー overlay、②スクロール総集編ページ、③年ピッカー、の描画と開閉。
+  - `App.reviewStats` / `App.records` / `App.genres` / `App.photos` / `App.filters` を再利用。
+  - `window.App.review` グローバルに公開（`open(year)`, `showPicker()`, `showSlides(data)`, `showPage(data)` 等）。
+- **`index.html`** — スライドショー overlay・総集編ページ・年ピッカーのビューを追加。`?v=` 付き `<script src="js/review-stats.js?v=VER">` `<script src="js/review-ui.js?v=VER">` を追加。
+  - 既存の `window.App` グローバル方式（ESMではない）なので `?v=` が付き、Service Worker の版キャッシュに自動で乗る（[[maprecord-offline-sw]]）。
+
+## 3. 集計仕様（`computeYearReview`）
+
+入力: `allRecords`（全期間・全記録）, `year`(number), `anniversary`('YYYY-MM-DD'|null), `today`('YYYY-MM-DD')。
+
+`yearRecs` = `allRecords` のうち `date` の先頭4桁が `year` に一致するもの。
+
+出力オブジェクトのフィールド:
+
+- `year`
+- `count` … `yearRecs.length`（おでかけ回数）
+- `daysTogether` … anniversary があるとき、`anniversary` から **基準日** までの日数（両端含む/含まないは実装で確定、下記メモ）。基準日 `asOf` = `year === todayの年` なら `today`、過去年なら `year-12-31`。anniversary が無ければ `null`。
+- `newPlaces` … 全期間で **最初の訪問がその年** の場所の数。場所キー = `placeId` があればそれ、無ければ丸めた緯度経度（`lat.toFixed(6)+','+lng.toFixed(6)`、`js/records.js` の `coordKey` に合わせる）。ある場所キーの全記録の最小 `date` が `year` 内なら「新規」。
+- `topSpot` … `yearRecs` を場所キーで集計し訪問回数が最大のもの `{ name, count, key }`。同数は最新日を優先。
+- `topGenre` … `yearRecs` を `genre` で集計し最多 `{ key, label, count }` ＋ `genreBreakdown`（全ジャンルの件数、多い順）。
+- `busiestMonth` … `yearRecs` を月(1..12)で集計し最多 `{ month, count }` ＋ `monthlyCounts`（長さ12の配列）。
+- `photoCount` … `yearRecs` の `photos` 合計枚数。
+- `pins` … `yearRecs` のうち `lat`/`lng` を持つもの（地図描画用。`{lat,lng,genre,name,date}` の軽量配列）。
+- `best3` … 訪問回数トップ3スポット（総集編用）。
+- `firstOuting` / `lastOuting` … その年の最古・最新の記録（総集編用）。
+- `isSparse` … `count < 3` のとき true。
+- `isEmpty` … `count === 0` のとき true。
+
+**メモ（実装時に確定）**: `daysTogether` の両端の数え方は「付き合った日=1日目」で人が読んで自然な値にする（例: 記念日当日=1日）。テストで固定値を確認する。
+
+## 4. スライドショー（Stories風・overlay）
+
+- 全画面 overlay（`#review-show` 等）。**右半分タップ=次 / 左半分タップ=戻る**。上部に進捗バー（枚数ぶん）。**×ボタン or 下スワイプで閉じる**。
+- **自動送りはしない**（タイミング由来のバグ・不快な急かしを避ける。純粋にタップ駆動）。
+- トランジションは軽いフェード/スライド。`prefers-reduced-motion` を尊重。
+- **スライド構成（中身のあるものだけ自動表示）**:
+  1. **開幕**（常に表示 / `count>=1`）: anniversary があれば「付き合って ◯日」、続けて「今年 ◯回 おでかけ」。anniversary 無しなら日数行を省略し回数のみ。
+  2. **はじめての場所**: `newPlaces >= 1` のとき表示。
+  3. **最多スポット**: `topSpot.count >= 2` のとき表示（1回ずつしか無い年は寂しいので出さない）。
+  4. **いちばんのジャンル**: `count >= 2` のとき表示（内訳ミニバー）。
+  5. **いちばん濃かった月**: `busiestMonth.count >= 2` のとき表示。
+  6. **あしあと地図**: `pins.length >= 2` のとき表示（SVG星座、§6）。
+  7. **締め**（常に表示）: 「また来年も、ふたりのあしあとを。」＋ **↓ 総集編を見る** ボタン → スライドを閉じて総集編ページを開く。
+- **sparse（`count < 3`）**: スライドショーは出さず、優しい一言カード（例「まだ2026年のあしあとは少なめ。これからだね」）＋総集編リンク。
+- **empty（`count === 0`）**: 「この年のあしあとはまだないよ」。年ピッカーからは記録のある年しか選べないので通常起こらないが安全側で用意。
+
+## 5. スクロール総集編ページ（本編・永続表示）
+
+上から順に:
+
+1. ヒーロー（年・付き合って◯日・おでかけ◯回）
+2. 統計タイル（はじめての場所 / いちばんのジャンル / 写真枚数 / いちばん濃かった月）
+3. **あしあと地図**（SVG星座、§6）＋ **「本物の地図でこの年を見る」ボタン**（メインマップに年フィルタをかけて着地。`App.filters` 再利用）
+4. 月別件数バーグラフ（`monthlyCounts`）
+5. ジャンル内訳（`genreBreakdown`、ジャンル色）
+6. 写真ハイライト（`yearRecs` の写真から数枚。`App.photos.thumbOf` 利用）
+7. ベスト3スポット（`best3`）
+8. 最初と最後のおでかけ（`firstOuting`/`lastOuting`、タップで該当日へ＝`App.records.focusDay`）
+
+各行は既存の温かみ配色（`js/genres.js` の色、クリーム地）。
+
+## 6. 地図の描き方＝SVG「あしあと星座」
+
+スライド／総集編内の地図は **Google Maps ではなく軽量 SVG** でピンを打つ。
+
+- 理由: Maps 課金が発生しない・オフラインで動く（[[maprecord-offline-sw]]）・"自分だけの地図"の世界観に合う抽象表現。
+- 方法: `pins` の緯度経度をその年の bounding box に正規化して viewBox 内に配置。点はジャンル色（`App.genres.color`）。必要に応じ点を線で薄くつなぐ（あしあとの軌跡感）。
+- 「本物の地図で見たい」需要は総集編の **「本物の地図でこの年を見る」ボタン**（メインマップ＋年フィルタ）で満たす。スライドショー内では素の Maps は開かない。
+
+## 7. 入口の詳細
+
+- **常設入口**: メニュー（既存の設定/メニュー領域）に「ふりかえり」項目。押すと **年ピッカー**（`allRecords` から記録のある年を新しい順に列挙）→ 年を選ぶと `App.review.open(year)` でスライドショー開始。
+- **年末カード**（`js/memories.js` 相乗り）:
+  - 表示ウィンドウ: **12/20〜翌1/10**。
+  - 対象年: 現在が **12月なら今年** / **1月なら前年**。
+  - 条件: 対象年の件数 `>= 3` かつ その年のカードを未 dismiss。
+  - 表示: 「◯年のふりかえりができました → タップで再生」。既存カードと同じ×で閉じる（`memoryDismissed:` と別キー、例 `reviewDismissed:<year>`）。
+  - 既存の記念日/1年前カードとの優先: 年末ウィンドウ内はふりかえりカードを優先候補として扱う（詳細順序は実装時に確定。1日1カードの枠を尊重）。
+
+## 8. テスト
+
+`js/review-stats.js` の `_selfTest()`（`memories.js` と同様、`index.html` 読み込み時にコンソールで PASS/FAIL）:
+
+- `count`（年フィルタが効くか。前後年・未来年を無視）
+- `newPlaces`（複数年横断で「最初の訪問年」を正しく判定。前年に来た場所は新規に数えない）
+- `topSpot`（回数最大・同数は最新優先・`count<2` の扱い）
+- `topGenre` / `genreBreakdown`（最多と並び）
+- `busiestMonth` / `monthlyCounts`
+- `daysTogether`（固定日付で数え方を確認 / anniversary null で null）
+- `isSparse`（`count<3`） / `isEmpty`（`count===0`）
+- 場所キーが `placeId` 優先・無ければ丸め座標
+
+UI は既存同様、実機/実Chrome で目視確認（プレビュー用ブラウザの制約は [[maprecord-offline-sw]] 参照。ただし本機能は SW 非依存なので Maps を使わない SVG 部分はプレビューでも確認しやすい）。
+
+## 9. リリース手順
+
+- 版上げ: `index.html` 内の `20260819q` を **`20260819r`** へ全置換（`.app-ver` と `sw.js?v=` を含む）。関数変更が無くても版は上げる（[[maprecord-report-version]]）。
+- 新 `<script>` に `?v=20260819r` を付与。`js/` 配下なので SW の `isStatic`＝cache-first 対象（追加設定不要）。
+- デプロイ: push → GitHub Pages（[[maprecord-deploy]]）。Functions 変更なし。
+- 返信末尾に本番 ver を明記。
+
+## 10. やらないこと（YAGNI）
+
+- 画像として保存/SNS共有（v1見送り）。
+- スライドの自動再生・BGM。
+- 相手との共有以上の外部公開。
+- ローリング1年/記念日基準の期間（暦年に一本化）。
