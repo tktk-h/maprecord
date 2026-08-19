@@ -814,3 +814,101 @@ body.picking #panel { display: none !important; }
 .bulk-collapsebtn { float: right; border: 1px solid var(--border); background: var(--surface-2);
   color: var(--text-muted); border-radius: 999px; padding: 3px 11px; font-size: 12px;
   font-weight: 600; cursor: pointer; }
+
+/* ===== 年間ふりかえり ===== */
+.review-overlay { position: fixed; inset: 0; z-index: 60; overflow: auto; background: var(--bg); color: var(--text); }
+.review-overlay[hidden] { display: none; }
+#review-show { background: linear-gradient(170deg, #3a2a2a, #4a2f3f); color: #fff; overflow: hidden; }
+.rv-x, .rv-card-x { position: absolute; top: 14px; right: 14px; z-index: 3; background: rgba(0,0,0,.2);
+  color: #fff; border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; }
+.review-overlay:not(#review-show) .rv-x { background: var(--surface-2); color: var(--text-muted); }
+
+/* スライドショー */
+.rv-progress { position: absolute; top: 12px; left: 12px; right: 56px; display: flex; gap: 4px; z-index: 2; }
+.rv-progress span { flex: 1; height: 3px; border-radius: 2px; background: rgba(255,255,255,.3); }
+.rv-progress span.on { background: #fff; }
+.rv-nav { position: absolute; top: 0; bottom: 0; width: 50%; z-index: 1; cursor: pointer; }
+.rv-prev { left: 0; } .rv-next { right: 0; }
+.rv-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.rv-slide { width: 100%; max-width: 420px; padding: 24px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+.rv-cap { font-size: 14px; letter-spacing: .08em; opacity: .85; }
+.rv-big { font-size: 64px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; font-family: var(--font-display); }
+.rv-big .rv-u { font-size: 22px; font-weight: 800; margin-left: 4px; opacity: .9; }
+.rv-mid { font-size: 26px; font-weight: 800; font-family: var(--font-display); }
+.rv-accent { color: #e6b17a; }
+.rv-count { display: inline-block; }
+.rv-map-wrap { width: 86%; max-width: 360px; aspect-ratio: 1 / 1; margin: 14px auto 0; border-radius: 16px;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); position: relative; overflow: hidden; }
+.rv-map { position: absolute; inset: 0; width: 100%; height: 100%; }
+.rv-bars { display: flex; gap: 6px; align-items: flex-end; height: 60px; margin-top: 10px; }
+.rv-bar { width: 12px; border-radius: 3px; }
+.rv-closing { line-height: 1.6; }
+.rv-btn { margin-top: 16px; background: var(--cta-grad); color: #fff; border: none; border-radius: var(--radius-pill);
+  padding: 10px 20px; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: var(--cta-shadow); }
+#review-show .rv-btn { background: rgba(255,255,255,.2); box-shadow: none; }
+.rv-sparse { color: #fff; } .rv-sparse-emoji { font-size: 44px; }
+
+/* 年ピッカー */
+.rv-picker { max-width: 420px; margin: 0 auto; padding: 32px 20px; }
+.rv-picker-head { font-size: 18px; font-weight: 800; margin-bottom: 16px; font-family: var(--font-display); }
+.rv-years { display: flex; flex-wrap: wrap; gap: 10px; }
+.rv-year { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 14px 18px; font-size: 16px; font-weight: 700; color: var(--text); cursor: pointer; }
+.rv-empty { color: var(--text-muted); }
+.rv-close { display: block; margin-top: 22px; background: none; border: 1px solid var(--border);
+  border-radius: var(--radius-pill); padding: 8px 18px; color: var(--text); cursor: pointer; }
+
+/* 総集編 */
+.rv-page { max-width: 480px; margin: 0 auto; padding: 0 0 48px; }
+.rv-hero { background: var(--cta-grad); color: #fff; padding: 40px 20px 24px; text-align: center; }
+.rv-hero-sub { font-size: 12px; letter-spacing: .1em; opacity: .85; }
+.rv-hero-days { font-size: 15px; margin-top: 6px; opacity: .95; }
+.rv-hero-count { font-size: 26px; font-weight: 800; margin-top: 4px; font-family: var(--font-display); }
+.rv-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 16px; }
+.rv-tile { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px; }
+.rv-tile-n { font-size: 22px; font-weight: 800; color: var(--accent-strong); }
+.rv-tile-u { font-size: 13px; margin-left: 2px; }
+.rv-tile-l { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.rv-section { padding: 8px 16px 16px; }
+.rv-h { font-size: 13px; font-weight: 800; color: var(--text-muted); margin: 12px 0 8px; }
+.rv-map-page { width: 100%; max-width: none; aspect-ratio: 4 / 3; background: var(--surface-2); border: 1px solid var(--border); }
+.rv-months { display: flex; gap: 4px; align-items: flex-end; height: 90px; }
+.rv-mb { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
+.rv-mb span { width: 70%; background: var(--accent); border-radius: 3px 3px 0 0; min-height: 2px; }
+.rv-mb small { font-size: 9px; color: var(--text-muted); margin-top: 3px; }
+.rv-grow { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.rv-glabel { width: 56px; font-size: 12px; color: var(--text); }
+.rv-gbar { height: 12px; border-radius: 6px; min-width: 4px; }
+.rv-gcount { font-size: 12px; color: var(--text-muted); }
+.rv-photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.rv-photo { aspect-ratio: 1 / 1; border-radius: 10px; background-size: cover; background-position: center; background-color: var(--surface-2); }
+.rv-best { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.rv-best-rank { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+.rv-best-name { flex: 1; font-weight: 700; }
+.rv-best-count { color: var(--text-muted); font-size: 13px; }
+.rv-outing { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin: 6px 0; cursor: pointer; }
+.rv-outing-l { font-size: 11px; color: var(--text-muted); width: 88px; }
+.rv-outing-name { flex: 1; font-weight: 700; color: var(--text); }
+.rv-outing-date { font-size: 12px; color: var(--text-muted); }
+
+/* 年末カード（#memory-card と同じ位置・見た目） */
+#review-card { position: absolute; top: 66px; left: 12px; right: 12px; z-index: 45; max-width: 380px; }
+#review-card[hidden] { display: none; }
+.rv-card-inner { display: flex; align-items: center; gap: 11px; background: var(--surface);
+  border-radius: 14px; box-shadow: var(--shadow-md); padding: 10px; position: relative; }
+.rv-card-icon { width: 52px; height: 52px; border-radius: 11px; flex: 0 0 auto; background: var(--accent);
+  color: #fff; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+.rv-card-open { flex: 1; min-width: 0; text-align: left; background: none; border: none; padding: 0; cursor: pointer; }
+.rv-card-label { color: var(--accent-strong); font-size: 11px; font-weight: 600; margin-bottom: 2px; }
+.rv-card-title { font-size: 14px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rv-card-sub { font-size: 11px; color: var(--text-muted); }
+.rv-card-x { position: static; background: var(--surface-2); color: var(--text-muted);
+  width: 24px; height: 24px; font-size: 13px; flex: 0 0 auto; }
+@media (max-width: 700px) {
+  #review-card { top: 116px; right: 64px; }
+}
