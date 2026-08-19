@@ -108,7 +108,7 @@ App.review = (function () {
   function slideHTML(id, data) {
     if (id === 'days') return '<div class="rv-cap">付き合って</div>' +
       '<div class="rv-big"><span class="rv-count" data-to="' + data.daysTogether + '">0</span><span class="rv-u">日目</span></div>' +
-      '<div class="rv-cap">今日まで、ふたりで</div>';
+      '<div class="rv-cap">ふたりで歩いてきた</div>';
     if (id === 'places') return '<div class="rv-cap">今年訪れた場所</div>' +
       '<div class="rv-big"><span class="rv-count rv-places-num">0</span><span class="rv-u">回</span></div>' +
       '<div class="rv-map-wrap"><svg class="rv-map"></svg></div>';
