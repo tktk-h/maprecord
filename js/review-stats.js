@@ -25,8 +25,8 @@ App.reviewStats = (function () {
 
     // 付き合って◯日：基準日は今年なら today、過去年なら 12/31
     let daysTogether = null;
-    if (anniversary) {
-      const asOf = (year >= yearOf(today)) ? today : (year + '-12-31');
+    if (anniversary && year <= yearOf(today)) {
+      const asOf = (year === yearOf(today)) ? today : (year + '-12-31');
       const d = daysBetweenInclusive(anniversary, asOf);
       daysTogether = (d != null && d >= 1) ? d : null;
     }
@@ -54,7 +54,7 @@ App.reviewStats = (function () {
       if (r.date >= byKey[k].lastDate) { byKey[k].lastDate = r.date; byKey[k].name = r.name || byKey[k].name; }
     }
     const spots = Object.keys(byKey).map((k) => byKey[k])
-      .sort((a, b) => b.count - a.count || (a.lastDate < b.lastDate ? 1 : -1));
+      .sort((a, b) => b.count - a.count || (a.lastDate === b.lastDate ? 0 : (a.lastDate < b.lastDate ? 1 : -1)));
     const topSpot = (spots[0] && spots[0].count >= 2)
       ? { name: spots[0].name, count: spots[0].count, key: spots[0].key } : null;
     const best3 = spots.slice(0, 3).map((s) => ({ name: s.name, count: s.count, key: s.key }));
@@ -156,6 +156,9 @@ App.reviewStats = (function () {
     // anniversary 無し → null
     const dna = computeYearReview(recs, 2026, null, '2026-08-19');
     eq('noAnniv-days', dna.daysTogether, null);
+
+    // 未来年は daysTogether を出さない（付き合って日数は無意味）
+    eq('future-year-days', computeYearReview(recs, 2027, '2024-05-10', '2026-08-19').daysTogether, null);
 
     // sparse / empty
     eq('sparse', computeYearReview([recs[0]], 2026, null, '2026-08-19').isSparse, true);
