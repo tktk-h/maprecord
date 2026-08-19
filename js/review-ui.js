@@ -207,12 +207,85 @@ App.review = (function () {
     host.querySelector('.rv-prev').onclick = function () { go(idx - 1); };
     go(0);
   }
+  function goToRealMap(year) {
+    // メインマップにその年の期間フィルタをかけて着地（既存フィルタUIを利用）
+    hideAll();
+    var ms = el('mode-select'); if (ms) ms.value = 'range';
+    var f = el('from-input'), t = el('to-input');
+    if (f) f.value = year + '-01-01';
+    if (t) t.value = year + '-12-31';
+    if (App.records && App.records.applyUiFilter) App.records.applyUiFilter();
+    var mapBtn = el('view-map'); if (mapBtn) mapBtn.click(); // 地図ビューへ
+  }
+
   function showPage(data) {
     var host = el('review-page');
-    host.innerHTML = '<div class="rv-page"><button class="rv-x" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
-      '<div class="rv-hero"><div class="rv-hero-year">' + data.year + '</div></div>' +
-      '<p style="padding:16px">総集編は準備中</p></div>';
+    var tiles = [
+      { n: data.newPlaces, l: 'はじめての場所', u: '軒' },
+      { n: data.topGenre ? App.genres.label(data.topGenre.key) : '—', l: 'いちばんのジャンル', u: '' },
+      { n: data.photoCount, l: '写真', u: '枚' },
+      { n: data.busiestMonth ? (MONTHS[data.busiestMonth.month - 1]) : '—', l: 'いちばん濃かった月', u: '' },
+    ].map(function (x) {
+      return '<div class="rv-tile"><div class="rv-tile-n">' + esc(String(x.n)) + '<span class="rv-tile-u">' + x.u + '</span></div><div class="rv-tile-l">' + x.l + '</div></div>';
+    }).join('');
+
+    var maxM = Math.max.apply(null, data.monthlyCounts.concat([1]));
+    var monthBars = data.monthlyCounts.map(function (c, i) {
+      return '<div class="rv-mb"><span style="height:' + Math.round(100 * c / maxM) + '%"></span><small>' + (i + 1) + '</small></div>';
+    }).join('');
+
+    var genreRows = data.genreBreakdown.map(function (g) {
+      var max = data.genreBreakdown[0].count || 1;
+      return '<div class="rv-grow"><span class="rv-glabel">' + esc(App.genres.label(g.key)) + '</span>' +
+        '<span class="rv-gbar" style="width:' + Math.round(100 * g.count / max) + '%;background:' + App.genres.color(g.key) + '"></span>' +
+        '<span class="rv-gcount">' + g.count + '</span></div>';
+    }).join('');
+
+    var photos = [];
+    App.records.getAll().forEach(function (r) {
+      if (String(r.date).slice(0, 4) === String(data.year) && r.photos) {
+        r.photos.forEach(function (p) { if (photos.length < 9) photos.push(App.photos.thumbOf(p)); });
+      }
+    });
+    var photoGrid = photos.length
+      ? '<div class="rv-photos">' + photos.map(function (u) { return '<div class="rv-photo" style="background-image:url(' + u + ')"></div>'; }).join('') + '</div>'
+      : '';
+
+    var best = data.best3.map(function (s, i) {
+      return '<div class="rv-best"><span class="rv-best-rank">' + (i + 1) + '</span><span class="rv-best-name">' + esc(s.name || '(名称未設定)') + '</span><span class="rv-best-count">' + s.count + '回</span></div>';
+    }).join('');
+
+    function outing(label, rec) {
+      if (!rec) return '';
+      return '<button class="rv-outing" data-date="' + rec.date + '"><span class="rv-outing-l">' + label + '</span>' +
+        '<span class="rv-outing-name">' + esc(rec.name || '(名称未設定)') + '</span>' +
+        '<span class="rv-outing-date">' + String(rec.date).replace(/-/g, '.') + '</span></button>';
+    }
+
+    var daysLine = data.daysTogether != null ? '<div class="rv-hero-days">付き合って ' + data.daysTogether + '日目</div>' : '';
+    host.innerHTML =
+      '<div class="rv-page">' +
+      '<button class="rv-x" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
+      '<div class="rv-hero"><div class="rv-hero-sub">' + data.year + '年のあしあと</div>' +
+      daysLine + '<div class="rv-hero-count">おでかけ ' + data.count + '回</div></div>' +
+      '<div class="rv-tiles">' + tiles + '</div>' +
+      '<div class="rv-section"><div class="rv-h">あしあと地図</div><div class="rv-map-wrap rv-map-page"><svg class="rv-map"></svg></div>' +
+      '<button class="rv-btn rv-realmap">本物の地図でこの年を見る</button></div>' +
+      '<div class="rv-section"><div class="rv-h">月別のおでかけ</div><div class="rv-months">' + monthBars + '</div></div>' +
+      '<div class="rv-section"><div class="rv-h">ジャンル</div>' + genreRows + '</div>' +
+      (photoGrid ? '<div class="rv-section"><div class="rv-h">写真</div>' + photoGrid + '</div>' : '') +
+      (best ? '<div class="rv-section"><div class="rv-h">よく行ったところ</div>' + best + '</div>' : '') +
+      '<div class="rv-section"><div class="rv-h">最初と最後</div>' + outing('最初のおでかけ', data.firstOuting) + outing('最後のおでかけ', data.lastOuting) + '</div>' +
+      '</div>';
+
     host.querySelector('.rv-x').onclick = hideAll;
+    var svg = host.querySelector('.rv-map');
+    if (data.pins.length) renderPinMap(svg, data.pins, { animate: false });
+    host.querySelector('.rv-realmap').onclick = function () { goToRealMap(data.year); };
+    host.querySelectorAll('.rv-outing').forEach(function (b) {
+      b.onclick = function () { hideAll(); App.records.focusDay(b.getAttribute('data-date')); };
+    });
+    host.scrollTop = 0;
     host.hidden = false;
   }
 
