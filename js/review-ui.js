@@ -44,14 +44,101 @@ App.review = (function () {
     return function () { if (raf) cancelAnimationFrame(raf); };
   }
 
-  // pins をSVGに描く。animate=true なら _pinSchedule の間隔で1本ずつ、numNode があれば同期カウント。
-  // 破棄用に停止関数を返す。
-  function renderPinMap(svg, pins, opts) {
+  // container(div) に本物の地図(Google Maps)を敷き、ピンを落とす。地図が使えない時は SVG にフォールバック。
+  // animate=true なら _pinSchedule の間隔で1本ずつ、numNode があれば同期カウント。破棄用に停止関数を返す。
+  function renderMap(container, pins, opts) {
+    opts = opts || {};
+    container.innerHTML = '';
+    if (!pins || !pins.length) {
+      if (opts.numNode) opts.numNode.textContent = '0';
+      if (opts.onDone) opts.onDone();
+      return function () {};
+    }
+    // オフライン等で Google Maps が無ければ SVG 星座にフォールバック
+    if (typeof google === 'undefined' || !google.maps || !google.maps.importLibrary) {
+      return renderSvgMap(container, pins, opts);
+    }
+    var animate = opts.animate && !prefersReduced();
+    var cancelled = false, timers = [], mapObj = null, AdvMarker = null;
+
+    function drop(p, withAnim) {
+      var el = pinMarkerEl(App.genres.color(p.genre));
+      var inner = el.firstChild;
+      new AdvMarker({ map: mapObj, position: { lat: p.lat, lng: p.lng }, content: el });
+      if (withAnim && inner && inner.animate) {
+        inner.animate(
+          [{ transform: 'translateY(-26px) scale(.6)', opacity: 0 },
+           { transform: 'translateY(3px) scale(1.12)', opacity: 1, offset: .7 },
+           { transform: 'translateY(0) scale(1)', opacity: 1 }],
+          { duration: 320, easing: 'cubic-bezier(.34,1.4,.5,1)', fill: 'backwards' });
+      }
+    }
+
+    Promise.all([google.maps.importLibrary('maps'), google.maps.importLibrary('marker')]).then(function (libs) {
+      if (cancelled) return;
+      var GMap = libs[0].Map;
+      AdvMarker = libs[1].AdvancedMarkerElement;
+      var mapDiv = document.createElement('div');
+      mapDiv.style.position = 'absolute'; mapDiv.style.inset = '0';
+      container.appendChild(mapDiv);
+      mapObj = new GMap(mapDiv, {
+        mapId: '453a543cb81d00c3bbdfb47d', // アプリのベクターMap ID（AdvancedMarker用・map.jsと共通）
+        disableDefaultUI: true, gestureHandling: 'none', keyboardShortcuts: false,
+        clickableIcons: false, disableDoubleClickZoom: true, zoomControl: false,
+      });
+      var bounds = new google.maps.LatLngBounds();
+      pins.forEach(function (p) { bounds.extend({ lat: p.lat, lng: p.lng }); });
+      if (pins.length === 1) { mapObj.setCenter({ lat: pins[0].lat, lng: pins[0].lng }); mapObj.setZoom(15); }
+      else { mapObj.fitBounds(bounds, 44); }
+      google.maps.event.addListenerOnce(mapObj, 'idle', function () {
+        if (cancelled) return;
+        if (!animate) {
+          pins.forEach(function (p) { drop(p, false); });
+          if (opts.numNode) opts.numNode.textContent = String(pins.length);
+          if (opts.onDone) opts.onDone();
+          return;
+        }
+        var times = _pinSchedule(pins.length);
+        pins.forEach(function (p, i) {
+          var id = setTimeout(function () {
+            if (cancelled) return;
+            drop(p, true);
+            if (opts.numNode) opts.numNode.textContent = String(i + 1);
+            if (i === pins.length - 1) {
+              if (opts.numNode && opts.numNode.animate) opts.numNode.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.25)' }, { transform: 'scale(1)' }], { duration: 420, easing: 'ease-out' });
+              if (opts.onDone) opts.onDone();
+            }
+          }, times[i]);
+          timers.push(id);
+        });
+      });
+    }).catch(function () {
+      if (!cancelled) renderSvgMap(container, pins, opts);
+    });
+
+    return function () { cancelled = true; timers.forEach(clearTimeout); };
+  }
+
+  // 地図マーカー用の雫ピン（tip が下端中央＝AdvancedMarker の既定アンカー位置）
+  function pinMarkerEl(color) {
+    var wrap = document.createElement('div');
+    wrap.style.width = '22px'; wrap.style.height = '28px';
+    wrap.innerHTML = '<svg width="22" height="28" viewBox="0 0 22 28" style="display:block;transform-origin:center bottom">' +
+      '<path d="M11 27 C5 18 1 13 1 8 A10 10 0 0 1 21 8 C21 13 17 18 11 27 Z" fill="' + color + '" stroke="#fff" stroke-width="1.5"/>' +
+      '<circle cx="11" cy="8" r="3.4" fill="#fff"/></svg>';
+    return wrap;
+  }
+
+  // SVG「あしあと星座」フォールバック（オフライン/地図読み込み失敗時）。container に svg を作って描く。
+  function renderSvgMap(container, pins, opts) {
     opts = opts || {};
     var NS = 'http://www.w3.org/2000/svg';
-    svg.innerHTML = '';
+    container.innerHTML = '';
+    var svg = document.createElementNS(NS, 'svg');
     svg.setAttribute('viewBox', '0 0 300 300');
     svg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+    svg.style.position = 'absolute'; svg.style.inset = '0'; svg.style.width = '100%'; svg.style.height = '100%';
+    container.appendChild(svg);
     var pad = 34, W = 300, H = 300;
     var lats = pins.map(function (p) { return p.lat; }), lngs = pins.map(function (p) { return p.lng; });
     var minLa = Math.min.apply(null, lats), maxLa = Math.max.apply(null, lats);
@@ -111,7 +198,7 @@ App.review = (function () {
       '<div class="rv-cap">ふたりで歩いてきた</div>';
     if (id === 'places') return '<div class="rv-cap">今年訪れた場所</div>' +
       '<div class="rv-big"><span class="rv-count rv-places-num">0</span><span class="rv-u">回</span></div>' +
-      '<div class="rv-map-wrap"><svg class="rv-map"></svg></div>';
+      '<div class="rv-map-wrap"><div class="rv-map"></div></div>';
     if (id === 'new') return '<div class="rv-cap">はじめての場所</div>' +
       '<div class="rv-big"><span class="rv-count" data-to="' + data.newPlaces + '">0</span><span class="rv-u">軒</span></div>' +
       '<div class="rv-cap">新しい世界を見つけた</div>';
@@ -194,9 +281,9 @@ App.review = (function () {
       var toPage = stage.querySelector('.rv-topage');
       if (toPage) toPage.onclick = function () { cleanup(); hideAll(); showPage(data); };
       if (id === 'places') {
-        var svg = stage.querySelector('.rv-map');
+        var mapEl = stage.querySelector('.rv-map');
         var num = stage.querySelector('.rv-places-num');
-        stopAnim = renderPinMap(svg, data.pins, { animate: true, numNode: num });
+        stopAnim = renderMap(mapEl, data.pins, { animate: true, numNode: num });
       } else {
         var c = stage.querySelector('.rv-count[data-to]');
         if (c) stopAnim = countUp(c, Number(c.getAttribute('data-to')), 900);
@@ -269,7 +356,7 @@ App.review = (function () {
       '<div class="rv-hero"><div class="rv-hero-sub">' + data.year + '年のあしあと</div>' +
       daysLine + '<div class="rv-hero-count">おでかけ ' + data.count + '回</div></div>' +
       '<div class="rv-tiles">' + tiles + '</div>' +
-      '<div class="rv-section"><div class="rv-h">あしあと地図</div><div class="rv-map-wrap rv-map-page"><svg class="rv-map"></svg></div>' +
+      '<div class="rv-section"><div class="rv-h">あしあと地図</div><div class="rv-map-wrap rv-map-page"><div class="rv-map"></div></div>' +
       '<button class="rv-btn rv-realmap">本物の地図でこの年を見る</button></div>' +
       '<div class="rv-section"><div class="rv-h">月別のおでかけ</div><div class="rv-months">' + monthBars + '</div></div>' +
       '<div class="rv-section"><div class="rv-h">ジャンル</div>' + genreRows + '</div>' +
@@ -279,8 +366,8 @@ App.review = (function () {
       '</div>';
 
     host.querySelector('.rv-x').onclick = hideAll;
-    var svg = host.querySelector('.rv-map');
-    if (data.pins.length) renderPinMap(svg, data.pins, { animate: false });
+    var mapEl = host.querySelector('.rv-map');
+    if (data.pins.length) renderMap(mapEl, data.pins, { animate: false });
     host.querySelector('.rv-realmap').onclick = function () { goToRealMap(data.year); };
     host.querySelectorAll('.rv-outing').forEach(function (b) {
       b.onclick = function () { hideAll(); App.records.focusDay(b.getAttribute('data-date')); };
