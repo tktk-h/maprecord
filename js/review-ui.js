@@ -46,11 +46,79 @@ App.review = (function () {
     return fails;
   }
 
-  // 後続タスクで実装する公開API（今は未実装のスタブ）
-  function open(year) { console.warn('review.open not implemented yet', year); }
-  function showPicker() { console.warn('review.showPicker not implemented yet'); }
+  // ---- 状態 ----
+  var anniversary = null;
+  function setAnniversary(d) { anniversary = d || null; }
+  function todayStr() { return new Date().toISOString().slice(0, 10); }
+  function esc(s) {
+    return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function el(id) { return document.getElementById(id); }
+  function hideAll() {
+    ['review-picker', 'review-show', 'review-page'].forEach(function (i) { var e = el(i); if (e) { e.hidden = true; e.innerHTML = ''; } });
+  }
+
+  // 暫定スタブ（Task5/6で本実装）
+  function showSlides(data) { showPage(data); }
+  function showPage(data) {
+    var host = el('review-page');
+    host.innerHTML = '<div class="rv-page"><button class="rv-x" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
+      '<div class="rv-hero"><div class="rv-hero-year">' + data.year + '</div></div>' +
+      '<p style="padding:16px">総集編は準備中</p></div>';
+    host.querySelector('.rv-x').onclick = hideAll;
+    host.hidden = false;
+  }
+
+  // 対象年のデータを作って開く
+  function open(year) {
+    var data = App.reviewStats.computeYearReview(App.records.getAll(), year, anniversary, todayStr());
+    hideAll();
+    if (data.isEmpty) { showPage(data); return; }
+    if (data.isSparse) { showSparse(data); return; }
+    showSlides(data);
+  }
+
+  // 年ピッカー
+  function showPicker() {
+    var years = App.reviewStats.yearsWithRecords(App.records.getAll());
+    var host = el('review-picker');
+    if (!years.length) {
+      host.innerHTML = '<div class="rv-picker"><div class="rv-picker-head">ふりかえり</div>' +
+        '<p class="rv-empty">まだ記録がありません。おでかけを記録するとここに出ます。</p>' +
+        '<button class="rv-btn rv-close">閉じる</button></div>';
+    } else {
+      var items = years.map(function (y) {
+        return '<button class="rv-year" data-year="' + y + '">' + y + '年</button>';
+      }).join('');
+      host.innerHTML = '<div class="rv-picker"><div class="rv-picker-head">どの年をふりかえる？</div>' +
+        '<div class="rv-years">' + items + '</div>' +
+        '<button class="rv-btn rv-close">閉じる</button></div>';
+      host.querySelectorAll('.rv-year').forEach(function (b) {
+        b.onclick = function () { open(Number(b.getAttribute('data-year'))); };
+      });
+    }
+    host.querySelector('.rv-close').onclick = hideAll;
+    host.hidden = false;
+  }
+
+  // 件数が少ない年
+  function showSparse(data) {
+    var host = el('review-show');
+    host.innerHTML = '<div class="rv-slide rv-sparse">' +
+      '<button class="rv-x" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
+      '<div class="rv-sparse-emoji">🌱</div>' +
+      '<div class="rv-mid">まだ' + data.year + '年のあしあとは少なめ</div>' +
+      '<div class="rv-cap">これからだね</div>' +
+      '<button class="rv-btn rv-topage">記録を見る</button></div>';
+    host.querySelector('.rv-x').onclick = hideAll;
+    host.querySelector('.rv-topage').onclick = function () { hideAll(); showPage(data); };
+    host.hidden = false;
+  }
+
   function maybeShowYearEndCard() { return false; }
 
-  return { open: open, showPicker: showPicker, maybeShowYearEndCard: maybeShowYearEndCard,
+  return { open: open, showPicker: showPicker, setAnniversary: setAnniversary,
+    showSlides: showSlides, showPage: showPage,
+    maybeShowYearEndCard: maybeShowYearEndCard,
     _pinSchedule: _pinSchedule, _selfTestSchedule: _selfTestSchedule, _TEMPO: TEMPO };
 })();

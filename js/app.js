@@ -85,10 +85,16 @@ function wireUI() {
       await space.setAnniversary(currentSpace.id, v);
       currentSpace.anniversary = v || null;
       App.memories.setAnniversary(currentSpace.anniversary);
+      App.review.setAnniversary(currentSpace.anniversary);
       alert(v ? '記念日を保存しました' : '記念日を解除しました');
     } catch (e) {
       alert('保存に失敗しました: ' + e.message);
     }
+  });
+
+  document.getElementById('review-btn').addEventListener('click', () => {
+    document.getElementById('topbar').classList.remove('filters-open'); // メニューを閉じる
+    App.review.showPicker();
   });
 }
 
@@ -111,6 +117,7 @@ async function startApp(sp) {
     started = true;
   }
   App.memories.setAnniversary(sp.anniversary || null);
+  App.review.setAnniversary(sp.anniversary || null);
   cloud.subscribe((records) => {
     App.records.setRecords(records);
     hideMapLoading();
