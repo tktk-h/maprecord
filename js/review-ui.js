@@ -199,7 +199,7 @@ App.review = (function () {
         stopAnim = renderPinMap(svg, data.pins, { animate: true, numNode: num });
       } else {
         var c = stage.querySelector('.rv-count[data-to]');
-        if (c) countUp(c, Number(c.getAttribute('data-to')), 900);
+        if (c) stopAnim = countUp(c, Number(c.getAttribute('data-to')), 900);
       }
     }
     host.querySelector('.rv-x').onclick = function () { cleanup(); hideAll(); };
