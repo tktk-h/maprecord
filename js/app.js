@@ -121,7 +121,11 @@ async function startApp(sp) {
   cloud.subscribe((records) => {
     App.records.setRecords(records);
     hideMapLoading();
-    if (!memoriesShown) { memoriesShown = true; App.memories.show(); } // 初回ロード後に一度だけ
+    if (!memoriesShown) {
+      memoriesShown = true;
+      // 年末は「ふりかえりカード」を優先。出なければ通常の思い出カード。
+      if (!App.review.maybeShowYearEndCard()) App.memories.show();
+    }
   });
 }
 

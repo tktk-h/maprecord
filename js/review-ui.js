@@ -335,7 +335,35 @@ App.review = (function () {
     host.hidden = false;
   }
 
-  function maybeShowYearEndCard() { return false; }
+  // 年末ウィンドウ(12/20〜翌1/10)に、対象年(12月=今年 / 1月=前年)の件数>=3 かつ未dismissなら
+  // #review-card を出す。出したら true。
+  function maybeShowYearEndCard() {
+    var host = el('review-card');
+    if (!host) return false;
+    var now = new Date();
+    var mo = now.getMonth() + 1, day = now.getDate();
+    var inWindow = (mo === 12 && day >= 20) || (mo === 1 && day <= 10);
+    if (!inWindow) { host.hidden = true; return false; }
+    var targetYear = (mo === 12) ? now.getFullYear() : now.getFullYear() - 1;
+    var key = 'reviewDismissed:' + targetYear;
+    try { if (localStorage.getItem(key)) { host.hidden = true; return false; } } catch (e) {}
+    var data = App.reviewStats.computeYearReview(App.records.getAll(), targetYear, null, todayStr());
+    if (data.count < 3) { host.hidden = true; return false; }
+    host.innerHTML =
+      '<div class="rv-card-inner">' +
+      '<div class="rv-card-icon"><i class="ph ph-sparkle"></i></div>' +
+      '<button class="rv-card-open"><div class="rv-card-label">ふりかえり</div>' +
+      '<div class="rv-card-title">' + targetYear + '年のふりかえりができました</div>' +
+      '<div class="rv-card-sub">タップで再生 ・ ' + data.count + '回のおでかけ</div></button>' +
+      '<button class="rv-card-x" aria-label="閉じる"><i class="ph ph-x"></i></button></div>';
+    host.querySelector('.rv-card-open').onclick = function () { host.hidden = true; open(targetYear); };
+    host.querySelector('.rv-card-x').onclick = function () {
+      try { localStorage.setItem(key, '1'); } catch (e) {}
+      host.hidden = true;
+    };
+    host.hidden = false;
+    return true;
+  }
 
   return { open: open, showPicker: showPicker, setAnniversary: setAnniversary,
     showSlides: showSlides, showPage: showPage,
