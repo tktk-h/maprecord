@@ -26,6 +26,116 @@ App.review = (function () {
     return times;
   }
 
+  function prefersReduced() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  // 数字を from→to までカウントアップ。onEach(v) 毎フレーム、done() 完了時。
+  function countUp(node, to, dur, done) {
+    if (prefersReduced() || dur <= 0) { node.textContent = String(to); if (done) done(); return function () {}; }
+    var t0 = null, raf;
+    function step(ts) {
+      if (t0 == null) t0 = ts;
+      var p = Math.min(1, (ts - t0) / dur);
+      node.textContent = String(Math.round(to * p));
+      if (p < 1) raf = requestAnimationFrame(step); else { node.textContent = String(to); if (done) done(); }
+    }
+    raf = requestAnimationFrame(step);
+    return function () { if (raf) cancelAnimationFrame(raf); };
+  }
+
+  // pins をSVGに描く。animate=true なら _pinSchedule の間隔で1本ずつ、numNode があれば同期カウント。
+  // 破棄用に停止関数を返す。
+  function renderPinMap(svg, pins, opts) {
+    opts = opts || {};
+    var NS = 'http://www.w3.org/2000/svg';
+    svg.innerHTML = '';
+    svg.setAttribute('viewBox', '0 0 300 300');
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+    var pad = 34, W = 300, H = 300;
+    var lats = pins.map(function (p) { return p.lat; }), lngs = pins.map(function (p) { return p.lng; });
+    var minLa = Math.min.apply(null, lats), maxLa = Math.max.apply(null, lats);
+    var minLo = Math.min.apply(null, lngs), maxLo = Math.max.apply(null, lngs);
+    function pos(p) {
+      var sx = (maxLo - minLo) || 1, sy = (maxLa - minLa) || 1;
+      var x = pad + (W - 2 * pad) * ((p.lng - minLo) / sx);
+      var y = pad + (H - 2 * pad) * (1 - (p.lat - minLa) / sy);
+      if (pins.length === 1) { x = W / 2; y = H / 2; }
+      return { x: x, y: y };
+    }
+    function makePin(p) {
+      var pt = pos(p);
+      var g = document.createElementNS(NS, 'g');
+      g.setAttribute('transform', 'translate(' + pt.x + ',' + pt.y + ')');
+      g.style.transformBox = 'fill-box'; g.style.transformOrigin = 'center bottom';
+      var path = document.createElementNS(NS, 'path');
+      path.setAttribute('d', 'M0,-14 C6,-14 9,-9 9,-5 C9,0 3,4 0,8 C-3,4 -9,0 -9,-5 C-9,-9 -6,-14 0,-14 Z');
+      path.setAttribute('fill', App.genres.color(p.genre));
+      var dot = document.createElementNS(NS, 'circle');
+      dot.setAttribute('r', '2.8'); dot.setAttribute('cy', '-6'); dot.setAttribute('fill', 'rgba(255,255,255,.85)');
+      g.appendChild(path); g.appendChild(dot);
+      return { g: g, pt: pt };
+    }
+    var cancels = [];
+    if (!opts.animate || prefersReduced()) {
+      pins.forEach(function (p) { svg.appendChild(makePin(p).g); });
+      if (opts.numNode) opts.numNode.textContent = String(pins.length);
+      if (opts.onDone) opts.onDone();
+      return function () {};
+    }
+    var times = _pinSchedule(pins.length);
+    pins.forEach(function (p, i) {
+      var id = setTimeout(function () {
+        var m = makePin(p); svg.appendChild(m.g);
+        m.g.animate(
+          [{ transform: 'translate(' + m.pt.x + 'px,' + (m.pt.y - 28) + 'px) scale(.6)', opacity: 0 },
+           { transform: 'translate(' + m.pt.x + 'px,' + (m.pt.y + 3) + 'px) scale(1.12)', opacity: 1, offset: .7 },
+           { transform: 'translate(' + m.pt.x + 'px,' + m.pt.y + 'px) scale(1)', opacity: 1 }],
+          { duration: 320, easing: 'cubic-bezier(.34,1.4,.5,1)', fill: 'forwards' });
+        if (opts.numNode) opts.numNode.textContent = String(i + 1);
+        if (i === pins.length - 1) {
+          if (opts.numNode) opts.numNode.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.25)' }, { transform: 'scale(1)' }], { duration: 420, easing: 'ease-out' });
+          if (opts.onDone) opts.onDone();
+        }
+      }, times[i]);
+      cancels.push(id);
+    });
+    return function () { cancels.forEach(clearTimeout); };
+  }
+
+  var MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+
+  function slideHTML(id, data) {
+    if (id === 'days') return '<div class="rv-cap">付き合って</div>' +
+      '<div class="rv-big"><span class="rv-count" data-to="' + data.daysTogether + '">0</span><span class="rv-u">日目</span></div>' +
+      '<div class="rv-cap">今日まで、ふたりで</div>';
+    if (id === 'places') return '<div class="rv-cap">今年訪れた場所</div>' +
+      '<div class="rv-big"><span class="rv-count rv-places-num">0</span><span class="rv-u">回</span></div>' +
+      '<div class="rv-map-wrap"><svg class="rv-map"></svg></div>';
+    if (id === 'new') return '<div class="rv-cap">はじめての場所</div>' +
+      '<div class="rv-big"><span class="rv-count" data-to="' + data.newPlaces + '">0</span><span class="rv-u">軒</span></div>' +
+      '<div class="rv-cap">新しい世界を見つけた</div>';
+    if (id === 'topspot') return '<div class="rv-cap">いちばん通ったのは</div>' +
+      '<div class="rv-mid">' + esc(data.topSpot.name || '(名称未設定)') + '</div>' +
+      '<div class="rv-big rv-accent">' + data.topSpot.count + '<span class="rv-u">回</span></div>';
+    if (id === 'genre') {
+      var g = data.topGenre;
+      var bars = data.genreBreakdown.slice(0, 5).map(function (x) {
+        var max = data.genreBreakdown[0].count || 1;
+        return '<span class="rv-bar" style="height:' + Math.round(100 * x.count / max) + '%;background:' + App.genres.color(x.key) + '"></span>';
+      }).join('');
+      return '<div class="rv-cap">いちばん多かったジャンル</div>' +
+        '<div class="rv-mid">' + esc(App.genres.label(g.key)) + '</div>' +
+        '<div class="rv-bars">' + bars + '</div>';
+    }
+    if (id === 'month') return '<div class="rv-cap">いちばん濃かった月</div>' +
+      '<div class="rv-big">' + MONTHS[data.busiestMonth.month - 1] + '</div>' +
+      '<div class="rv-cap">この月だけで ' + data.busiestMonth.count + '回</div>';
+    if (id === 'closing') return '<div class="rv-mid rv-closing">また来年も、<br>ふたりのあしあとを。</div>' +
+      '<button class="rv-btn rv-topage">総集編を見る ↓</button>';
+    return '';
+  }
+
   function _selfTestSchedule() {
     var fails = 0;
     var chk = function (name, cond) { if (!cond) fails++; console.log((cond ? 'PASS' : 'FAIL') + ' ' + name); };
@@ -58,8 +168,45 @@ App.review = (function () {
     ['review-picker', 'review-show', 'review-page'].forEach(function (i) { var e = el(i); if (e) { e.hidden = true; e.innerHTML = ''; } });
   }
 
-  // 暫定スタブ（Task5/6で本実装）
-  function showSlides(data) { showPage(data); }
+  function showSlides(data) {
+    var ids = App.reviewStats.planSlides(data);
+    var host = el('review-show');
+    var bars = ids.map(function () { return '<span></span>'; }).join('');
+    host.innerHTML =
+      '<div class="rv-progress">' + bars + '</div>' +
+      '<button class="rv-x" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
+      '<div class="rv-nav rv-prev"></div><div class="rv-nav rv-next"></div>' +
+      '<div class="rv-stage"></div>';
+    host.hidden = false;
+    var stage = host.querySelector('.rv-stage');
+    var progs = host.querySelectorAll('.rv-progress span');
+    var idx = -1, stopAnim = null;
+
+    function cleanup() { if (stopAnim) { stopAnim(); stopAnim = null; } }
+    function go(n) {
+      if (n < 0) return;
+      if (n >= ids.length) { cleanup(); hideAll(); showPage(data); return; }
+      cleanup();
+      idx = n;
+      for (var i = 0; i < progs.length; i++) progs[i].classList.toggle('on', i <= idx);
+      var id = ids[idx];
+      stage.innerHTML = '<div class="rv-slide rv-slide-' + id + '">' + slideHTML(id, data) + '</div>';
+      var toPage = stage.querySelector('.rv-topage');
+      if (toPage) toPage.onclick = function () { cleanup(); hideAll(); showPage(data); };
+      if (id === 'places') {
+        var svg = stage.querySelector('.rv-map');
+        var num = stage.querySelector('.rv-places-num');
+        stopAnim = renderPinMap(svg, data.pins, { animate: true, numNode: num });
+      } else {
+        var c = stage.querySelector('.rv-count[data-to]');
+        if (c) countUp(c, Number(c.getAttribute('data-to')), 900);
+      }
+    }
+    host.querySelector('.rv-x').onclick = function () { cleanup(); hideAll(); };
+    host.querySelector('.rv-next').onclick = function () { go(idx + 1); };
+    host.querySelector('.rv-prev').onclick = function () { go(idx - 1); };
+    go(0);
+  }
   function showPage(data) {
     var host = el('review-page');
     host.innerHTML = '<div class="rv-page"><button class="rv-x" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
