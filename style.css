@@ -819,16 +819,15 @@ body.picking #panel { display: none !important; }
 /* ===== 年間ふりかえり ===== */
 .review-overlay { position: fixed; inset: 0; z-index: 60; overflow: auto; background: var(--bg); color: var(--text); }
 .review-overlay[hidden] { display: none; }
-#review-show { background: linear-gradient(170deg, #3a2a2a, #4a2f3f); color: #fff; overflow: hidden; }
-.rv-x, .rv-card-x { position: absolute; top: 14px; right: 14px; z-index: 3; background: rgba(0,0,0,.2);
-  color: #fff; border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 16px; cursor: pointer;
+#review-show { background: #ece6db; color: var(--text); overflow: hidden; }
+.rv-x, .rv-card-x { position: absolute; top: 14px; right: 14px; z-index: 3; background: var(--surface-2);
+  color: var(--text-muted); border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 16px; cursor: pointer;
   display: flex; align-items: center; justify-content: center; }
-.review-overlay:not(#review-show) .rv-x { background: var(--surface-2); color: var(--text-muted); }
 
 /* スライドショー */
 .rv-progress { position: absolute; top: 12px; left: 12px; right: 56px; display: flex; gap: 4px; z-index: 2; }
-.rv-progress span { flex: 1; height: 3px; border-radius: 2px; background: rgba(255,255,255,.3); }
-.rv-progress span.on { background: #fff; }
+.rv-progress span { flex: 1; height: 3px; border-radius: 2px; background: rgba(51,48,43,.16); }
+.rv-progress span.on { background: var(--accent); }
 .rv-nav { position: absolute; top: 0; bottom: 0; width: 50%; z-index: 1; cursor: pointer; }
 .rv-prev { left: 0; } .rv-next { right: 0; }
 .rv-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
@@ -838,18 +837,17 @@ body.picking #panel { display: none !important; }
 .rv-big { font-size: 64px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; font-family: var(--font-display); }
 .rv-big .rv-u { font-size: 22px; font-weight: 800; margin-left: 4px; opacity: .9; }
 .rv-mid { font-size: 26px; font-weight: 800; font-family: var(--font-display); }
-.rv-accent { color: #e6b17a; }
+.rv-accent { color: var(--accent-strong); }
 .rv-count { display: inline-block; }
 .rv-map-wrap { width: 86%; max-width: 360px; aspect-ratio: 1 / 1; margin: 14px auto 0; border-radius: 16px;
-  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); position: relative; overflow: hidden; }
+  background: rgba(51,48,43,.05); border: 1px solid rgba(51,48,43,.09); position: relative; overflow: hidden; }
 .rv-map { position: absolute; inset: 0; width: 100%; height: 100%; }
 .rv-bars { display: flex; gap: 6px; align-items: flex-end; height: 60px; margin-top: 10px; }
 .rv-bar { width: 12px; border-radius: 3px; }
 .rv-closing { line-height: 1.6; }
 .rv-btn { margin-top: 16px; background: var(--cta-grad); color: #fff; border: none; border-radius: var(--radius-pill);
   padding: 10px 20px; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: var(--cta-shadow); }
-#review-show .rv-btn { background: rgba(255,255,255,.2); box-shadow: none; }
-.rv-sparse { color: #fff; } .rv-sparse-emoji { font-size: 44px; }
+.rv-sparse { color: var(--text); } .rv-sparse-emoji { font-size: 44px; }
 
 /* 年ピッカー */
 .rv-picker { max-width: 420px; margin: 0 auto; padding: 32px 20px; }
