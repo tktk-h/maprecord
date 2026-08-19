@@ -14,6 +14,7 @@ App.map = (function () {
   let onLongPress = null;      // (lat, lng) => void  ... 長押し（記録追加）
   let onUserPan = null;         // ユーザーが地図をドラッグしたとき
   let onTap = null;             // 地図を短くタップしたとき（Google click に頼らず pointer で検出）
+  let pickRecordSelect = null;  // 位置ピック中に記録ピンをタップしたとき (record)=>void。非nullかつピック中は詳細を出さず選択に回す
   let overlayProjection = null; // 画面ピクセル→緯度経度の変換用（長押し判定）
   let suppressClickUntil = 0;   // 長押し直後のクリックを無視する時刻
 
@@ -136,6 +137,7 @@ App.map = (function () {
   function setClickHandler(fn) { onMapClick = fn; }
   function setPlaceClickHandler(fn) { onPlaceClick = fn; }
   function getPlaceClickHandler() { return onPlaceClick; } // 一時差し替え→復元用
+  function setRecordPickHandler(fn) { pickRecordSelect = fn; } // 位置ピック中の記録ピンタップ挙動
   function setLongPressHandler(fn) { onLongPress = fn; }
   function setUserPanHandler(fn) { onUserPan = fn; }
   function setTapHandler(fn) { onTap = fn; }
@@ -297,12 +299,15 @@ App.map = (function () {
       const { content, centered } = markerContent(r, numbered ? i + 1 : null, countAt ? countAt(r) : 1);
       content.title = r.name || '(名称未設定)'; // ホバーで名前（Leaflet の tooltip 代替）
       const m = makeMarker(r.lat, r.lng, content, { centered });
-      m.addListener('click', () => onClick(r));
+      m.addListener('click', () => {
+        if (pickMarker && pickRecordSelect) { pickRecordSelect(r); return; } // 位置ピック中は選択に回す
+        onClick(r);
+      });
       markers.push(m);
     });
   }
 
-  return { init, setClickHandler, setPlaceClickHandler, getPlaceClickHandler, setLongPressHandler, setUserPanHandler, setTapHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
+  return { init, setClickHandler, setPlaceClickHandler, getPlaceClickHandler, setRecordPickHandler, setLongPressHandler, setUserPanHandler, setTapHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
            renderPlaceResults, clearPlaceResults, hideRecordPins,
            showTempMarker, clearTempMarker,
            startPickLocation, getPickedLatLng, stopPickLocation,
