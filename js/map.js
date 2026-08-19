@@ -135,6 +135,7 @@ App.map = (function () {
 
   function setClickHandler(fn) { onMapClick = fn; }
   function setPlaceClickHandler(fn) { onPlaceClick = fn; }
+  function getPlaceClickHandler() { return onPlaceClick; } // 一時差し替え→復元用
   function setLongPressHandler(fn) { onLongPress = fn; }
   function setUserPanHandler(fn) { onUserPan = fn; }
   function setTapHandler(fn) { onTap = fn; }
@@ -301,7 +302,7 @@ App.map = (function () {
     });
   }
 
-  return { init, setClickHandler, setPlaceClickHandler, setLongPressHandler, setUserPanHandler, setTapHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
+  return { init, setClickHandler, setPlaceClickHandler, getPlaceClickHandler, setLongPressHandler, setUserPanHandler, setTapHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
            renderPlaceResults, clearPlaceResults, hideRecordPins,
            showTempMarker, clearTempMarker,
            startPickLocation, getPickedLatLng, stopPickLocation,

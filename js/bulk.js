@@ -563,12 +563,36 @@ App.bulk = (function () {
     catch (_) { return { lat: 35.0116, lng: 135.7681 }; } // 京都あたり
   }
 
+  let prevPlaceClick = null; // ピック中に差し替えるPOIタップハンドラの退避先
+
   // グループiの位置を「地図にピンを置いて」決める。オーバーレイを一旦隠して地図を出す。
   function pickLocationFor(i) {
     const start = groupLatLng(groups[i]) || mapCenter();
     document.getElementById('bulk-overlay').hidden = true; // 地図を見せる
     App.map.startPickLocation(start.lat, start.lng);
+    // ピック中は「地図上の店(POI)タップ」でその店を選べるようにする（finishPickで元に戻す）
+    prevPlaceClick = App.map.getPlaceClickHandler ? App.map.getPlaceClickHandler() : null;
+    App.map.setPlaceClickHandler((placeId) => selectPoiForPick(i, placeId));
     showPickBar(i);
+  }
+
+  // ピック中に地図上の店(POI)をタップ＝検索候補を選んだのと同じ結果に（店名/placeId/座標/ジャンル＋ピン移動）
+  async function selectPoiForPick(i, placeId) {
+    const bar = document.getElementById('bulk-pickbar');
+    const msg = bar && bar.querySelector('.bulk-pickmsg');
+    if (msg) msg.textContent = '店の情報を取得中…';
+    try {
+      const p = await App.places.fetchPlace(placeId);
+      if (p.lat == null || p.lng == null) throw new Error('no location');
+      groups[i].name = p.name; groups[i].placeId = placeId; groups[i].place = { lat: p.lat, lng: p.lng };
+      if (p.genre) groups[i].genre = p.genre;
+      App.map.startPickLocation(p.lat, p.lng); // ピンをその店へ移動（さらにドラッグで微調整可）
+      const results = document.getElementById('bulk-pick-results'); if (results) results.innerHTML = '';
+      const q = document.getElementById('bulk-pick-q'); if (q) q.value = p.name;
+      if (msg) msg.textContent = `「${p.name}」を選びました。微調整はドラッグで。`;
+    } catch (_) {
+      if (msg) msg.textContent = '店の情報を取得できませんでした。もう一度タップしてください。';
+    }
   }
   function showPickBar(i) {
     let bar = document.getElementById('bulk-pickbar');
@@ -579,7 +603,7 @@ App.bulk = (function () {
         <button id="bulk-pick-search">検索</button>
       </div>
       <div id="bulk-pick-results" class="bulk-presults"></div>
-      <div class="bulk-pickmsg">ピンをドラッグ、または検索した店をタップして位置を決めます</div>
+      <div class="bulk-pickmsg">ピンをドラッグ／地図上の店をタップ／検索で位置を決めます</div>
       <div class="bulk-pickacts">
         <button id="bulk-pick-ok" class="bulk-pickok">この位置に決定</button>
         <button id="bulk-pick-cancel" class="bulk-pickcancel">キャンセル</button>
@@ -616,6 +640,8 @@ App.bulk = (function () {
   function finishPick(i, ok) {
     if (ok) { const p = App.map.getPickedLatLng(); if (p) groups[i].manualLoc = p; }
     App.map.stopPickLocation();
+    App.map.setPlaceClickHandler(prevPlaceClick); // 通常時のPOIタップ（店カード表示）へ復元
+    prevPlaceClick = null;
     const bar = document.getElementById('bulk-pickbar'); if (bar) bar.hidden = true;
     document.getElementById('bulk-overlay').hidden = false;
     renderReview();
