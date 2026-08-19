@@ -21,15 +21,28 @@ App.gate = (function () {
     show('gate-login', which === 'login');
     show('gate-space', which === 'space');
     show('gate-invite', which === 'invite');
+    show('gate-offline', which === 'offline');
   }
   function hideGate() { hideSplash(); show('gate', false); }
+
+  // オフライン かつ 過去にスペースを開けている＝作成画面ではなく「オフライン案内」を出す判定
+  function offlineWithSpace() {
+    try { return !navigator.onLine && !!localStorage.getItem('ashiato-space'); }
+    catch (_) { return false; }
+  }
 
   async function afterLogin(user) {
     try {
       const mine = await space.findMySpace(user.uid);
-      if (mine) { hideGate(); if (onReady) onReady(mine); return; }
+      if (mine) {
+        try { localStorage.setItem('ashiato-space', mine.id); } catch (_) { /* 印だけなので無視 */ }
+        hideGate(); if (onReady) onReady(mine); return;
+      }
+      // スペースが取れない：オフライン＋既存スペースありなら作成画面を出さずオフライン案内
+      if (offlineWithSpace()) { showGate('offline'); return; }
       showGate('space');
     } catch (e) {
+      if (offlineWithSpace()) { showGate('offline'); return; }
       showGate('space');
       $('gate-msg').textContent = '読み込みに失敗しました: ' + e.message;
     }
@@ -55,6 +68,7 @@ App.gate = (function () {
         hideGate(); if (onReady) onReady(s);
       } catch (e) { $('gate-msg').textContent = '参加に失敗しました: ' + e.message; }
     };
+    $('gate-retry').onclick = () => location.reload(); // 再接続して読み直す
     auth.onChange((user) => {
       if (!user) { showGate('login'); return; }
       afterLogin(user);
