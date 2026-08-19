@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>スライド2 プロトタイプ v3</title>
+<style>
+  :root{ --ink:#5a4a3a; --sub:#8a7a68; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:system-ui,-apple-system,"Hiragino Sans","Yu Gothic UI",sans-serif;
+    background:#efe7db; color:var(--ink); display:flex; flex-direction:column; align-items:center; padding:20px 12px 40px; }
+  h1{ font-size:16px; font-weight:800; margin:2px 0 4px; }
+  .hint{ color:var(--sub); font-size:12.5px; margin:0 0 14px; text-align:center; }
+  .phone{ width:300px; height:560px; border-radius:34px; overflow:hidden; position:relative;
+    background:linear-gradient(170deg,#3a2a2a,#5a3a4a); box-shadow:0 14px 40px rgba(40,20,20,.35);
+    color:#fff; display:flex; flex-direction:column; }
+  .bars{ display:flex; gap:4px; padding:14px 14px 0; }
+  .bars span{ flex:1; height:3px; border-radius:2px; background:rgba(255,255,255,.3); }
+  .bars span.on{ background:#fff; }
+  .cap{ text-align:center; font-size:13px; letter-spacing:.08em; opacity:.85; margin-top:22px; }
+  .num{ text-align:center; font-weight:900; font-size:70px; line-height:1; margin:6px 0 2px; font-variant-numeric:tabular-nums; }
+  .num .u{ font-size:22px; font-weight:800; margin-left:4px; opacity:.9; }
+  .caplow{ text-align:center; font-size:12px; opacity:.7; }
+  .mapwrap{ flex:1; margin:14px 16px 20px; border-radius:16px; position:relative;
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); overflow:hidden; }
+  svg{ position:absolute; inset:0; width:100%; height:100%; }
+  .pin{ transform-box:fill-box; transform-origin:center bottom; }
+  .ctrls{ margin-top:18px; display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:340px; }
+  button{ border:1px solid #d8ccb8; background:#fff; color:var(--ink); border-radius:20px; padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer; }
+  button.primary{ background:#c2703f; color:#fff; border-color:#c2703f; }
+  button.sel{ outline:2px solid #c2703f; }
+  .row{ display:flex; gap:8px; align-items:center; margin-top:10px; font-size:12.5px; color:var(--sub); }
+  input[type=range]{ width:130px; }
+</style>
+</head>
+<body>
+  <h1>スライド2「今年訪れた場所」プロトタイプ v3</h1>
+  <p class="hint">最初の3個はゆっくり → 4個目以降は間隔を少しずつ縮めて<b>なめらかに加速</b><br>件数を切り替えて確認してください</p>
+
+  <div class="phone">
+    <div class="bars"><span></span><span class="on"></span><span></span><span></span><span></span><span></span></div>
+    <div class="cap">今年訪れた場所</div>
+    <div class="num"><span id="n">0</span><span class="u">回</span></div>
+    <div class="caplow">ふたりで、いろんなところへ</div>
+    <div class="mapwrap"><svg id="map" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice"></svg></div>
+  </div>
+
+  <div class="ctrls">
+    <button data-n="5">5件</button>
+    <button data-n="12" class="sel">12件</button>
+    <button data-n="30">30件</button>
+    <button data-n="80">80件</button>
+    <button id="replay" class="primary">▶ もう一度</button>
+  </div>
+  <div class="row">序盤ゆっくり間隔 <input id="gap" type="range" min="450" max="1100" step="50" value="800"><span id="gapv">800</span>ms</div>
+  <div class="row">加速のなめらかさ <input id="r" type="range" min="0.62" max="0.9" step="0.02" value="0.8"><span id="rv">0.80</span> <span style="opacity:.7">（大きいほど緩やか）</span></div>
+
+<script>
+  const GENRES = ['#e0a45a','#8fd08f','#90b0e0','#d090c0','#c2703f','#b7ab99'];
+  const svg = document.getElementById('map');
+  const numEl = document.getElementById('n');
+  const NS = 'http://www.w3.org/2000/svg';
+  let N = 12, GAP = 800, R = 0.8, INTRO = 3, GMIN = 45, TMAX = 5500, timers = [];
+
+  function positions(n){
+    let s = 42; const rnd = ()=> (s = (s*1103515245+12345)&0x7fffffff)/0x7fffffff;
+    const pts=[];
+    for(let i=0;i<n;i++) pts.push({ x:24+rnd()*252, y:30+rnd()*230, c:GENRES[(rnd()*GENRES.length)|0] });
+    return pts;
+  }
+  function pinPath(x,y,c){
+    const g=document.createElementNS(NS,'g'); g.setAttribute('class','pin');
+    const p=document.createElementNS(NS,'path');
+    p.setAttribute('d','M0,-18 C7,-18 11,-12 11,-7 C11,-1 4,4 0,10 C-4,4 -11,-1 -11,-7 C-11,-12 -7,-18 0,-18 Z');
+    p.setAttribute('fill',c);
+    const dot=document.createElementNS(NS,'circle');
+    dot.setAttribute('r','3.4'); dot.setAttribute('cy','-8'); dot.setAttribute('fill','rgba(255,255,255,.85)');
+    g.appendChild(p); g.appendChild(dot);
+    g.setAttribute('transform','translate('+x+','+y+')');
+    return g;
+  }
+  function clear(){ timers.forEach(clearTimeout); timers=[]; svg.innerHTML=''; numEl.textContent='0'; }
+
+  // 序盤 INTRO 個は間隔 GAP。以降は間隔を GAP*R, GAP*R^2 … と少しずつ縮めて連続的に加速。
+  // 全体が TMAX を超える場合だけ加速区間を一律スケールして収める（序盤は保つ）。
+  function schedule(n){
+    const start = 350;
+    const intro = Math.min(INTRO, n);
+    const times = [];
+    for(let i=0;i<intro;i++) times.push(start + i*GAP);      // ぽつ…ぽつ…ぽつ…
+    let tPrev = times.length ? times[times.length-1] : start;
+    const gaps = [];
+    for(let i=intro;i<n;i++){
+      const step = i - intro;                                // 0,1,2,...
+      gaps.push(Math.max(GMIN, GAP * Math.pow(R, step + 1)));  // GAP*R, GAP*R^2 …（GAP から連続）
+    }
+    let sum = gaps.reduce((a,b)=>a+b, 0);
+    const room = TMAX - tPrev;
+    const scale = (sum > room && room > 0) ? room / sum : 1;
+    for(const g of gaps){ tPrev += g * scale; times.push(tPrev); }
+    return times;
+  }
+
+  function run(){
+    clear();
+    const pts = positions(N);
+    const times = schedule(N);
+    for(let i=0;i<N;i++){
+      timers.push(setTimeout(()=>{
+        const g = pinPath(pts[i].x, pts[i].y, pts[i].c);
+        svg.appendChild(g);
+        g.animate(
+          [ {transform:'translate('+pts[i].x+'px,'+(pts[i].y-34)+'px) scale(.6)', opacity:0},
+            {transform:'translate('+pts[i].x+'px,'+(pts[i].y+3)+'px) scale(1.12)', opacity:1, offset:.7},
+            {transform:'translate('+pts[i].x+'px,'+pts[i].y+'px) scale(1)', opacity:1} ],
+          {duration:340, easing:'cubic-bezier(.34,1.4,.5,1)', fill:'forwards'}
+        );
+        numEl.textContent = String(i+1);
+        if(i===N-1) numEl.animate([{transform:'scale(1)'},{transform:'scale(1.25)'},{transform:'scale(1)'}],{duration:420,easing:'ease-out'});
+      }, times[i]));
+    }
+  }
+
+  document.querySelectorAll('[data-n]').forEach(b=>b.onclick=()=>{
+    document.querySelectorAll('[data-n]').forEach(x=>x.classList.remove('sel'));
+    b.classList.add('sel'); N=+b.dataset.n; run();
+  });
+  document.getElementById('replay').onclick = run;
+  const gEl=document.getElementById('gap');
+  gEl.oninput=()=>{ GAP=+gEl.value; document.getElementById('gapv').textContent=GAP; run(); };
+  const rEl=document.getElementById('r');
+  rEl.oninput=()=>{ R=+rEl.value; document.getElementById('rv').textContent=R.toFixed(2); run(); };
+
+  run();
+</script>
+</body>
+</html>
