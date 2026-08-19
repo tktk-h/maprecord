@@ -47,10 +47,11 @@ Workbox（ビルド工程/依存増）・precache方式（版ごとに全アセ�
   1. **ナビゲーション/HTML**（`req.mode === 'navigate'` または `Accept: text/html`）→ **network-first**: 成功したらレスポンス複製を `CACHE` に保存して返す／失敗（オフライン）は `CACHE` のHTMLを返す。
   2. **静的アセット**（下記 `isStatic(url)` が真）→ **cache-first**: ヒットすれば即返す／無ければ fetch → `ok || opaque` のみ `CACHE` に保存 → 返す。
   3. それ以外 → **何もしない（素通し＝network）**。Firebase/Maps/Places/Gemini/データはキャッシュしない。
-- **`isStatic(url)`**（同一オリジン or 固定CDNの静的のみ・地図タイル/APIは除外）:
+- **`isStatic(url)`**（同一オリジン or 固定CDN or Firebase SDK本体の静的のみ・地図タイル/APIは除外）:
   - 同一オリジンで、パスが次のいずれか: `.css` / `/js/` を含む（`.js`）/ 画像（`.png .jpg .jpeg .svg .webp`）/ `.webmanifest`。
   - もしくはホストが**許可リスト**に一致: `unpkg.com`（Phosphor）/ `fonts.googleapis.com`・`fonts.gstatic.com`（Googleフォント）/ `cdn.jsdelivr.net`（exifr）。
-  - **除外**: `maps.googleapis.com` / `maps.gstatic.com` / `*.googleapis.com` の地図・API系、Firebase系（`firestore.googleapis.com`, `firebasestorage.googleapis.com`, `*.firebaseio.com` 等）。許可リストが完全一致ホストのみなので、これらは自動的に素通しになる。
+  - **Firebase SDK 本体**: `www.gstatic.com` かつパスに `/firebasejs/` を含む（版付き静的モジュール。app.js が `import` するのでオフラインのシェル初期化に必須）。データ系（`firestore.googleapis.com` / `firebasestorage.googleapis.com` / `identitytoolkit.googleapis.com` 等の別ホスト）は含めない＝素通し。
+  - **除外**: `maps.googleapis.com` / `maps.gstatic.com` / 地図タイル / `places.googleapis.com` / Cloud Functions（`*.cloudfunctions.net`）/ Firebaseデータ系。許可リストが完全一致ホスト＋パス条件なので自動的に素通しになる（実URL19件で分類テスト済み）。
 
 ### 更新挙動（自動・静か）
 - 版を上げてpush → 登録URL `sw.js?v=新` に変化 → ブラウザが新SWを取得・install（skipWaiting）→ activate（古キャッシュ削除・clients.claim）。
