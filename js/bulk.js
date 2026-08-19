@@ -69,7 +69,7 @@ App.bulk = (function () {
       name: '',        // 店名（紐付け／手入力で入る）
       genre: 'food',
       candidates: [],  // 近くの店候補（AI提案で入る）
-      aiState: 'idle', // 'idle' | 'loading' | 'done'
+      aiState: 'idle', // 'idle' | 'loading' | 'done' | 'error'（errorのとき aiErrKind='quota'|'error'）
       aiPickId: null,  // Geminiが選んだ placeId（チップの✨用）
       collapsed: true, // 既定は畳んだ状態
       memo: '',        // メモ・感想
@@ -318,6 +318,7 @@ App.bulk = (function () {
     const g = groups[i];
     g.aiState = 'loading'; applyAiUpdate(i);
     const dbg = { n: 0, addr: '', guess: '', hit: '', err: '', raw: '', gerr: '', imgs: 0 }; // ← 診断用（各段の中身）
+    let errKind = null; // 'quota'(429/枠オーバー) | 'error'(その他エラー) | null。エラー時のみ「失敗」表示を出す
     try {
       // 速度優先：写真圧縮（代表1枚）と近くの店取得を並行実行
       const imgPromise = (async () => {
@@ -343,6 +344,7 @@ App.bulk = (function () {
       dbg.gerr = (r && r.data && r.data.err) || '';  // Gemini呼び出しエラー
       dbg.imgs = (r && r.data && r.data.imgs) || 0;  // 送れた画像枚数
       // 枠切れ(429/quota)なら、残りカードの無駄打ちを止める
+      if (dbg.gerr) errKind = /429|quota|exceeded|too many requests/i.test(dbg.gerr) ? 'quota' : 'error';
       if (/429|quota|exceeded|too many requests/i.test(dbg.gerr)) quotaHit = true;
       if (guess) {
         // 自由回答を実在店に裏取り。見つからなければ近くの候補名と一致すればそれを採用。
@@ -361,8 +363,13 @@ App.bulk = (function () {
         }
       }
       console.log('[aiSuggest]', i, JSON.stringify(dbg));
-    } catch (e) { dbg.err = String((e && e.message) || e); console.warn('ai suggest failed', e && e.message); }
-    g.aiState = 'done'; applyAiUpdate(i);
+    } catch (e) {
+      dbg.err = String((e && e.message) || e); console.warn('ai suggest failed', e && e.message);
+      errKind = /429|quota|exceeded|too many requests/i.test(dbg.err) ? 'quota' : 'error';
+    }
+    if (errKind) { g.aiState = 'error'; g.aiErrKind = errKind; } // エラー時のみ「失敗」表示
+    else { g.aiState = 'done'; g.aiErrKind = null; }             // 成功（店が特定できない=UNKNOWNも含む）
+    applyAiUpdate(i);
   }
 
   // 手動ボタン：そのグループに位置があればAI提案。無ければ促す。
@@ -410,6 +417,14 @@ App.bulk = (function () {
             + `${c.placeId === g.aiPickId ? '✨ ' : ''}${esc(c.name)}</button>`;
         }).join('')}</div>`
       : '';
+    // エラー時（Gemini呼び出し失敗・通信・枠オーバー）＝「失敗」と分かる表示＋再試行。候補チップは手動選択用に残す。
+    if (g.aiState === 'error') {
+      const msg = g.aiErrKind === 'quota'
+        ? 'AIの無料枠オーバー（時間をおくと回復します）'
+        : 'AI判定に失敗しました';
+      return `<div class="bulk-ai-error"><span class="bulk-ai-errmsg">⚠️ ${msg}</span>`
+        + `<button class="bulk-locbtn ai retry" data-act="ai" data-i="${i}">🔄 再試行</button></div>${chips}`;
+    }
     return `<button class="bulk-locbtn ai" data-act="ai" data-i="${i}">✨ AIで店名を提案</button>${chips}`;
   }
   function wireCards() {

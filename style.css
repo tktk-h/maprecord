@@ -770,6 +770,11 @@ body.picking #panel { display: none !important; }
   border-radius: 50%; display: inline-block; animation: bulk-sp 1s linear infinite; }
 @keyframes bulk-sp { to { transform: rotate(360deg); } }
 .bulk-locbtn.ai { border-color: rgba(181,103,95,.5); color: var(--accent-strong); background: var(--accent-soft); margin-top: 8px; }
+/* AI判定の失敗（エラー／枠オーバー）＝はっきり分かる警告表示＋再試行 */
+.bulk-ai-error { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 9px;
+  color: #b4463a; font-size: 13px; font-weight: 600; }
+.bulk-locbtn.ai.retry { border-color: rgba(180,70,58,.5); color: #b4463a; background: rgba(180,70,58,.08); margin-top: 0; }
+@media (prefers-color-scheme: dark) { .bulk-ai-error, .bulk-locbtn.ai.retry { color: #f0a79c; } }
 .bulk-cands { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 8px; }
 .bulk-cand { border: 1px solid rgba(127,127,127,.3); background: transparent; color: inherit;
   border-radius: 999px; padding: 6px 12px; font-size: 12.5px; cursor: pointer; }
