@@ -723,6 +723,11 @@ body.picking #panel { display: none !important; }
 /* ふりかえり再生中は地図画面用ボタンを隠す（重なり防止） */
 body.reviewing #locate-btn,
 body.reviewing #bulk-btn { display: none !important; }
+
+/* hidden 属性を効かせる（#locate-btn/#bulk-btn は display:inline-flex 指定があり素の[hidden]が負けるため）。
+   ＝カレンダー表示時などボタンを非表示にできるようにする */
+#locate-btn[hidden],
+#bulk-btn[hidden] { display: none !important; }
 .bulk-picksearch { display: flex; gap: 8px; }
 #bulk-pick-q { flex: 1; min-width: 0; border: 1px solid rgba(127,127,127,.35); border-radius: 10px;
   padding: 9px 11px; font-size: 14px; background: transparent; color: inherit; }
