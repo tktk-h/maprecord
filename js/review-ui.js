@@ -65,13 +65,14 @@ App.review = (function () {
 
   // 通常マーカー用の雫ピン（data URI）。tip を anchor に合わせて座標に立てる。
   function pinIcon(color) {
-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="28" viewBox="0 0 22 28">' +
-      '<path d="M11 27 C5 18 1 13 1 8 A10 10 0 0 1 21 8 C21 13 17 18 11 27 Z" fill="' + color + '" stroke="#fff" stroke-width="1.5"/>' +
-      '<circle cx="11" cy="8" r="3.4" fill="#fff"/></svg>';
+    // viewBox に上下の余白を確保（頭の丸が切れないように）。tip=(12,31) を anchor に。
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32">' +
+      '<path d="M12 31 C6 21 3 17 3 12 A9 9 0 1 1 21 12 C21 17 18 21 12 31 Z" fill="' + color + '" stroke="#fff" stroke-width="1.5"/>' +
+      '<circle cx="12" cy="12" r="3.5" fill="#fff"/></svg>';
     return {
       url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-      scaledSize: new google.maps.Size(22, 28),
-      anchor: new google.maps.Point(11, 27),
+      scaledSize: new google.maps.Size(24, 32),
+      anchor: new google.maps.Point(12, 31),
     };
   }
 
@@ -270,9 +271,11 @@ App.review = (function () {
   function el(id) { return document.getElementById(id); }
   function hideAll() {
     ['review-picker', 'review-show', 'review-page'].forEach(function (i) { var e = el(i); if (e) { e.hidden = true; e.innerHTML = ''; } });
+    document.body.classList.remove('reviewing'); // 現在地/写真追加ボタンの抑制を解除
   }
 
   function showSlides(data) {
+    document.body.classList.add('reviewing'); // 地図画面用ボタンを隠す
     var ids = App.reviewStats.planSlides(data);
     var host = el('review-show');
     var bars = ids.map(function () { return '<span></span>'; }).join('');
@@ -323,6 +326,7 @@ App.review = (function () {
   }
 
   function showPage(data) {
+    document.body.classList.add('reviewing'); // 地図画面用ボタンを隠す
     var host = el('review-page');
     var tiles = [
       { n: data.newPlaces, l: 'はじめての場所', u: '軒' },
@@ -404,6 +408,7 @@ App.review = (function () {
 
   // 年ピッカー
   function showPicker() {
+    document.body.classList.add('reviewing'); // 地図画面用ボタンを隠す
     var years = App.reviewStats.yearsWithRecords(App.records.getAll());
     var host = el('review-picker');
     if (!years.length) {
@@ -427,6 +432,7 @@ App.review = (function () {
 
   // 件数が少ない年
   function showSparse(data) {
+    document.body.classList.add('reviewing'); // 地図画面用ボタンを隠す
     var host = el('review-show');
     host.innerHTML = '<div class="rv-slide rv-sparse">' +
       '<button class="rv-x" aria-label="閉じる"><i class="ph ph-x"></i></button>' +

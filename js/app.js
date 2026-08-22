@@ -18,6 +18,7 @@ function wireUI() {
     mapBtn.classList.add('active');
     calBtn.classList.remove('active');
     document.getElementById('locate-btn').hidden = false;
+    document.getElementById('bulk-btn').hidden = false;
     App.map.refresh();
   }
   function showCalendar() {
@@ -28,6 +29,7 @@ function wireUI() {
     calBtn.classList.add('active');
     mapBtn.classList.remove('active');
     document.getElementById('locate-btn').hidden = true;
+    document.getElementById('bulk-btn').hidden = true;
   }
   mapBtn.addEventListener('click', showMap);
   calBtn.addEventListener('click', showCalendar);
