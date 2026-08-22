@@ -44,7 +44,38 @@ App.review = (function () {
     return function () { if (raf) cancelAnimationFrame(raf); };
   }
 
-  // container(div) に本物の地図(Google Maps)を敷き、ピンを落とす。地図が使えない時は SVG にフォールバック。
+  // 静かな地図スタイル（POI/路線/余計なラベルを消し、暖色にミュート＝ピンが映える）。ラスター地図に適用。
+  var MAP_STYLE = [
+    { elementType: 'geometry', stylers: [{ color: '#efe9df' }] },
+    { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+    { elementType: 'labels.text.fill', stylers: [{ color: '#a89b8a' }] },
+    { elementType: 'labels.text.stroke', stylers: [{ color: '#f3efe7' }] },
+    { featureType: 'administrative', elementType: 'geometry', stylers: [{ visibility: 'off' }] },
+    { featureType: 'administrative.land_parcel', stylers: [{ visibility: 'off' }] },
+    { featureType: 'administrative.neighborhood', stylers: [{ visibility: 'off' }] },
+    { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+    { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+    { featureType: 'road', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+    { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#f0e0cf' }] },
+    { featureType: 'landscape.natural', elementType: 'geometry', stylers: [{ color: '#e8dfce' }] },
+    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#cdd8d5' }] },
+    { featureType: 'water', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+  ];
+
+  // 通常マーカー用の雫ピン（data URI）。tip を anchor に合わせて座標に立てる。
+  function pinIcon(color) {
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="28" viewBox="0 0 22 28">' +
+      '<path d="M11 27 C5 18 1 13 1 8 A10 10 0 0 1 21 8 C21 13 17 18 11 27 Z" fill="' + color + '" stroke="#fff" stroke-width="1.5"/>' +
+      '<circle cx="11" cy="8" r="3.4" fill="#fff"/></svg>';
+    return {
+      url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+      scaledSize: new google.maps.Size(22, 28),
+      anchor: new google.maps.Point(11, 27),
+    };
+  }
+
+  // container(div) に本物の地図(ラスター・静かなスタイル)を敷き、ピンを落とす。地図が使えない時は SVG にフォールバック。
   // animate=true なら _pinSchedule の間隔で1本ずつ、numNode があれば同期カウント。破棄用に停止関数を返す。
   function renderMap(container, pins, opts) {
     opts = opts || {};
@@ -59,30 +90,26 @@ App.review = (function () {
       return renderSvgMap(container, pins, opts);
     }
     var animate = opts.animate && !prefersReduced();
-    var cancelled = false, timers = [], mapObj = null, AdvMarker = null;
+    var cancelled = false, timers = [], mapObj = null;
 
     function drop(p, withAnim) {
-      var el = pinMarkerEl(App.genres.color(p.genre));
-      var inner = el.firstChild;
-      new AdvMarker({ map: mapObj, position: { lat: p.lat, lng: p.lng }, content: el });
-      if (withAnim && inner && inner.animate) {
-        inner.animate(
-          [{ transform: 'translateY(-26px) scale(.6)', opacity: 0 },
-           { transform: 'translateY(3px) scale(1.12)', opacity: 1, offset: .7 },
-           { transform: 'translateY(0) scale(1)', opacity: 1 }],
-          { duration: 320, easing: 'cubic-bezier(.34,1.4,.5,1)', fill: 'backwards' });
-      }
+      new google.maps.Marker({
+        map: mapObj,
+        position: { lat: p.lat, lng: p.lng },
+        icon: pinIcon(App.genres.color(p.genre)),
+        animation: withAnim ? google.maps.Animation.DROP : null,
+        optimized: false,
+      });
     }
 
-    Promise.all([google.maps.importLibrary('maps'), google.maps.importLibrary('marker')]).then(function (libs) {
+    google.maps.importLibrary('maps').then(function (lib) {
       if (cancelled) return;
-      var GMap = libs[0].Map;
-      AdvMarker = libs[1].AdvancedMarkerElement;
+      var GMap = lib.Map;
       var mapDiv = document.createElement('div');
       mapDiv.style.position = 'absolute'; mapDiv.style.inset = '0';
       container.appendChild(mapDiv);
       mapObj = new GMap(mapDiv, {
-        mapId: '453a543cb81d00c3bbdfb47d', // アプリのベクターMap ID（AdvancedMarker用・map.jsと共通）
+        styles: MAP_STYLE, // ラスター地図（mapId無し）＝JSONスタイルが効く
         disableDefaultUI: true, gestureHandling: 'none', keyboardShortcuts: false,
         clickableIcons: false, disableDoubleClickZoom: true, zoomControl: false,
       });
@@ -117,16 +144,6 @@ App.review = (function () {
     });
 
     return function () { cancelled = true; timers.forEach(clearTimeout); };
-  }
-
-  // 地図マーカー用の雫ピン（tip が下端中央＝AdvancedMarker の既定アンカー位置）
-  function pinMarkerEl(color) {
-    var wrap = document.createElement('div');
-    wrap.style.width = '22px'; wrap.style.height = '28px';
-    wrap.innerHTML = '<svg width="22" height="28" viewBox="0 0 22 28" style="display:block;transform-origin:center bottom">' +
-      '<path d="M11 27 C5 18 1 13 1 8 A10 10 0 0 1 21 8 C21 13 17 18 11 27 Z" fill="' + color + '" stroke="#fff" stroke-width="1.5"/>' +
-      '<circle cx="11" cy="8" r="3.4" fill="#fff"/></svg>';
-    return wrap;
   }
 
   // SVG「あしあと星座」フォールバック（オフライン/地図読み込み失敗時）。container に svg を作って描く。
