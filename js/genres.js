@@ -45,5 +45,5 @@ App.genres = (function () {
     console.log(fails === 0 ? '✅ genres ALL PASS' : ('❌ genres ' + fails + ' FAIL'));
     return fails;
   }
-  return { list: list, DEFAULTS: DEFAULTS, color: color, label: label, setList: setList, _selfTest: _selfTest };
+  return { list: list, DEFAULTS: clone(DEFAULTS), color: color, label: label, setList: setList, _selfTest: _selfTest };
 })();
