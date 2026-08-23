@@ -103,6 +103,7 @@ App.backup = (function () {
   }
 
   function doImport(toAdd) {
+    if (!toAdd || !toAdd.length) return;
     running = true;
     let ok = 0, ng = 0, done = 0;
     const finish = () => {
