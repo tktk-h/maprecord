@@ -36,7 +36,7 @@ App.backup = (function () {
 
   // fileRecords のうち existingRecords に id が無いものだけ → { toAdd, addCount, keepCount }
   function diffMissing(fileRecords, existingRecords) {
-    const have = {};
+    const have = Object.create(null);
     (existingRecords || []).forEach((r) => { if (r && r.id) have[r.id] = true; });
     const toAdd = (fileRecords || []).filter((r) => r && r.id && !have[r.id]);
     return { toAdd, addCount: toAdd.length, keepCount: (fileRecords ? fileRecords.length : 0) - toAdd.length };
