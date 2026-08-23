@@ -67,20 +67,27 @@ App.genreEdit = (function () {
     if (!host) return;
     var rows = App.genres.list.map(function (g) { return { key: g.key, label: g.label, color: g.color }; }); // 作業用コピー
     var records = (App.records && App.records.getAll) ? App.records.getAll() : [];
+    var busy = false, closed = false;
 
-    function close() { host.hidden = true; host.innerHTML = ''; }
+    function close() { closed = true; host.hidden = true; host.innerHTML = ''; }
     function showErr(msg) { var e = host.querySelector('.ge-err'); if (e) { e.textContent = msg; e.hidden = false; } }
     function save() {
+      if (busy) return;
       var v = App.genreEdit.validate(rows);
       if (!v.ok) { showErr(v.error); return; }
       var list = App.genreEdit.normalize(rows);
       var saveBtn = host.querySelector('.ge-save');
       if (saveBtn) saveBtn.disabled = true;
+      busy = true;
       Promise.resolve(App.space.setGenres(spaceId, list)).then(function () {
+        busy = false;
+        if (closed) return; // 保存中にキャンセル/×されたら適用しない
         App.genres.setList(list);
         if (App.records && App.records.refreshGenres) App.records.refreshGenres();
         close();
       }).catch(function (e) {
+        busy = false;
+        if (closed) return;
         if (saveBtn) saveBtn.disabled = false;
         showErr('保存に失敗しました: ' + ((e && e.message) || ''));
       });
