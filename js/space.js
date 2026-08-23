@@ -64,6 +64,10 @@ App.space = (function () {
     await updateDoc(doc(fb.db, SPACES, spaceId), { anniversary: date || '' });
   }
 
+  async function setGenres(spaceId, genres) {
+    await updateDoc(doc(fb.db, SPACES, spaceId), { genres: genres || [] });
+  }
+
   function _selfTest() {
     const eq = (n, got, want) => console.log((got === want ? 'PASS' : 'FAIL') + ' ' + n, got);
     const c = genInviteCode();
@@ -75,6 +79,6 @@ App.space = (function () {
   }
 
   return { genInviteCode, normalizeCode, findMySpace, createSpace, joinSpace,
-           touchLastSeen, setAnniversary, _selfTest };
+           touchLastSeen, setAnniversary, setGenres, _selfTest };
 })();
 export const space = App.space;
