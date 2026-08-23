@@ -54,5 +54,83 @@ App.genreEdit = (function () {
     return fails;
   }
 
-  return { validate: validate, usageCount: usageCount, newKey: newKey, normalize: normalize, _selfTest: _selfTest };
+  var spaceId = null;
+  function setSpaceId(id) { spaceId = id || null; }
+  var PALETTE = ['#c2703f', '#a07850', '#6b8299', '#7a9471', '#9a7099', '#928b80', '#b76e64', '#8f9e6a'];
+  function el(id) { return document.getElementById(id); }
+  function esc(s) {
+    return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function open() {
+    var host = el('genre-editor');
+    if (!host) return;
+    var rows = App.genres.list.map(function (g) { return { key: g.key, label: g.label, color: g.color }; }); // 作業用コピー
+    var records = (App.records && App.records.getAll) ? App.records.getAll() : [];
+
+    function close() { host.hidden = true; host.innerHTML = ''; }
+    function showErr(msg) { var e = host.querySelector('.ge-err'); if (e) { e.textContent = msg; e.hidden = false; } }
+    function save() {
+      var v = App.genreEdit.validate(rows);
+      if (!v.ok) { showErr(v.error); return; }
+      var list = App.genreEdit.normalize(rows);
+      var saveBtn = host.querySelector('.ge-save');
+      if (saveBtn) saveBtn.disabled = true;
+      Promise.resolve(App.space.setGenres(spaceId, list)).then(function () {
+        App.genres.setList(list);
+        if (App.records && App.records.refreshGenres) App.records.refreshGenres();
+        close();
+      }).catch(function (e) {
+        if (saveBtn) saveBtn.disabled = false;
+        showErr('保存に失敗しました: ' + ((e && e.message) || ''));
+      });
+    }
+
+    function render() {
+      host.innerHTML =
+        '<div class="ge-panel">' +
+        '<div class="ge-head"><div class="ge-title">ジャンル編集</div>' +
+        '<button class="ge-x" aria-label="閉じる"><i class="ph ph-x"></i></button></div>' +
+        '<div class="ge-rows"></div>' +
+        '<button class="ge-add" type="button"><i class="ph ph-plus"></i> 種類を追加</button>' +
+        '<div class="ge-err" hidden></div>' +
+        '<div class="ge-actions"><button class="ge-cancel" type="button">キャンセル</button>' +
+        '<button class="ge-save" type="button">保存</button></div>' +
+        '</div>';
+      var rowsBox = host.querySelector('.ge-rows');
+      rows.forEach(function (row, i) {
+        var used = App.genreEdit.usageCount(records, row.key);
+        var safeColor = /^#[0-9a-fA-F]{6}$/.test(row.color) ? row.color : '#928b80';
+        var r = document.createElement('div');
+        r.className = 'ge-row';
+        r.innerHTML =
+          '<input type="color" class="ge-color" value="' + safeColor + '">' +
+          '<input type="text" class="ge-label" value="' + esc(row.label) + '" placeholder="名前" maxlength="12">' +
+          '<button type="button" class="ge-up" ' + (i === 0 ? 'disabled' : '') + ' aria-label="上へ"><i class="ph ph-caret-up"></i></button>' +
+          '<button type="button" class="ge-down" ' + (i === rows.length - 1 ? 'disabled' : '') + ' aria-label="下へ"><i class="ph ph-caret-down"></i></button>' +
+          '<button type="button" class="ge-del" ' + (used > 0 ? 'disabled' : '') + ' aria-label="削除">' +
+          (used > 0 ? ('<span class="ge-used">' + used + '件</span>') : '<i class="ph ph-trash"></i>') + '</button>';
+        r.querySelector('.ge-color').oninput = function () { row.color = this.value; };
+        r.querySelector('.ge-label').oninput = function () { row.label = this.value; };
+        r.querySelector('.ge-up').onclick = function () { if (i > 0) { var t = rows[i - 1]; rows[i - 1] = rows[i]; rows[i] = t; render(); } };
+        r.querySelector('.ge-down').onclick = function () { if (i < rows.length - 1) { var t = rows[i + 1]; rows[i + 1] = rows[i]; rows[i] = t; render(); } };
+        if (used === 0) { r.querySelector('.ge-del').onclick = function () { rows.splice(i, 1); render(); }; }
+        rowsBox.appendChild(r);
+      });
+      host.querySelector('.ge-add').onclick = function () {
+        var keys = rows.map(function (x) { return x.key; });
+        rows.push({ key: App.genreEdit.newKey(keys), label: '', color: PALETTE[rows.length % PALETTE.length] });
+        render();
+      };
+      host.querySelector('.ge-x').onclick = close;
+      host.querySelector('.ge-cancel').onclick = close;
+      host.querySelector('.ge-save').onclick = save;
+    }
+
+    render();
+    host.hidden = false;
+  }
+
+  return { validate: validate, usageCount: usageCount, newKey: newKey, normalize: normalize,
+    open: open, setSpaceId: setSpaceId, _selfTest: _selfTest };
 })();
