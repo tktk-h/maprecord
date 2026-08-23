@@ -72,5 +72,50 @@ App.backup = (function () {
     return fails;
   }
 
-  return { exportJson, parseBackup, diffMissing, _selfTest };
+  let running = false;
+  function importFlow() {
+    if (running) return;
+    const input = document.getElementById('import-file');
+    if (!input) return;
+    input.value = ''; // 同じファイルを連続で選べるように
+    input.onchange = () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => handleText(String(reader.result || ''));
+      reader.onerror = () => alert('ファイルの読み込みに失敗しました');
+      reader.readAsText(file);
+    };
+    input.click();
+  }
+
+  function handleText(text) {
+    const p = parseBackup(text);
+    if (!p.ok) { alert(p.error); return; }
+    const existing = (App.records && App.records.getAll) ? App.records.getAll() : [];
+    const d = diffMissing(p.records, existing);
+    if (d.addCount === 0) { alert('追加する新しい記録はありませんでした（すべて既存です）'); return; }
+    let msg = 'このファイル: ' + p.records.length + '件\n新しく追加: ' + d.addCount + '件\n既存はそのまま: ' + d.keepCount + '件';
+    if (p.skipped) msg += '\n読めなかった: ' + p.skipped + '件';
+    msg += '\n\n追加しますか？';
+    if (!window.confirm(msg)) return;
+    doImport(d.toAdd);
+  }
+
+  function doImport(toAdd) {
+    running = true;
+    let ok = 0, ng = 0, done = 0;
+    const finish = () => {
+      running = false;
+      alert(ok + '件を追加しました' + (ng ? '（' + ng + '件は失敗）' : ''));
+    };
+    toAdd.forEach((r) => {
+      Promise.resolve(App.cloud.put(r))
+        .then(() => { ok++; })
+        .catch(() => { ng++; })
+        .then(() => { done++; if (done === toAdd.length) finish(); });
+    });
+  }
+
+  return { exportJson, importFlow, parseBackup, diffMissing, _selfTest };
 })();
