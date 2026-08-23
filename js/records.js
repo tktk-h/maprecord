@@ -884,6 +884,9 @@ App.records = (function () {
     syncModeSegment(); // focusDay/resetFilters 経由でもセグメント表示を合わせる
   }
 
+  // ジャンル編集の保存後に呼ぶ：フィルタチップを作り直し、現在の絞り込みで再描画（ピン色も更新）。
+  function refreshGenres() { buildGenreFilters(); applyUiFilter(); }
+
   // カレンダーで日付を選んだとき：その日で絞り込み、最初の記録へ移動
   function focusDay(dateStr) {
     routeEditMode = false; // 新しい日を開くときは閲覧モードから
@@ -943,6 +946,7 @@ App.records = (function () {
   }
 
   return { init, reload, setRecords, render, getAll, setFilterState, applyUiFilter, focusDay,
+           refreshGenres,
            searchTag, clearTag, searchByName, clearSearch,
            showDetail, showEditForm, showAddForm, showQuickLog, showPlaceCard, suggestRecords,
            _clearPanel: clearPanel, _selfTest };
