@@ -2,16 +2,26 @@ window.App = window.App || {};
 // Places（店・施設）情報の取得。将来ここに検索(autocomplete/textSearch)も足す想定。
 // UI は Google 固有型に依存しないよう、正規化したオブジェクトを返す。
 App.places = (function () {
-  // Google の place types 配列 → App.genres の key を推定
+  // 推定キーが現在のジャンル一覧に無い（＝デフォルトを削除済み等）なら妥当なキーへ寄せる。
+  // ジャンル未ロード時は素の推定を返す（従来動作）。改名はkey維持なので影響なし＝削除時のみ効く。
+  function fallbackGenreKey(key) {
+    const list = (App.genres && App.genres.list) || [];
+    if (!list.length) return key;
+    if (list.some((x) => x.key === key)) return key;
+    return list.some((x) => x.key === 'other') ? 'other' : list[0].key;
+  }
+
+  // Google の place types 配列 → App.genres の key を推定（現在の一覧に無ければフォールバック）
   function genreFromTypes(types) {
     const t = new Set(types || []);
     const has = (...ks) => ks.some((k) => t.has(k));
-    if (has('cafe', 'coffee_shop')) return 'cafe';
-    if (has('restaurant', 'food', 'meal_takeaway', 'meal_delivery', 'bakery', 'bar')) return 'food';
-    if (has('tourist_attraction', 'park', 'museum', 'aquarium', 'zoo', 'art_gallery', 'landmark')) return 'sightsee';
-    if (has('store', 'shopping_mall', 'clothing_store', 'department_store', 'supermarket', 'convenience_store')) return 'shopping';
-    if (has('lodging', 'spa', 'gym', 'movie_theater', 'amusement_park', 'stadium')) return 'facility';
-    return 'other';
+    let g = 'other';
+    if (has('cafe', 'coffee_shop')) g = 'cafe';
+    else if (has('restaurant', 'food', 'meal_takeaway', 'meal_delivery', 'bakery', 'bar')) g = 'food';
+    else if (has('tourist_attraction', 'park', 'museum', 'aquarium', 'zoo', 'art_gallery', 'landmark')) g = 'sightsee';
+    else if (has('store', 'shopping_mall', 'clothing_store', 'department_store', 'supermarket', 'convenience_store')) g = 'shopping';
+    else if (has('lodging', 'spa', 'gym', 'movie_theater', 'amusement_park', 'stadium')) g = 'facility';
+    return fallbackGenreKey(g);
   }
 
   // LatLng or LatLngLiteral → { lat, lng }
@@ -73,6 +83,8 @@ App.places = (function () {
   }
 
   function _selfTest() {
+    let fails = 0;
+    const eq = (name, got, want) => { const ok = got === want; if (!ok) fails++; console.log((ok ? 'PASS' : 'FAIL') + ' ' + name, got); };
     const raw = [
       { placePrediction: { placeId: 'a', mainText: { text: 'スカイツリー' }, secondaryText: { text: '東京都墨田区' } } },
       { placePrediction: { placeId: 'b', mainText: { text: 'マクドナルド 渋谷' }, secondaryText: { text: '東京都渋谷区' } } },
@@ -80,11 +92,26 @@ App.places = (function () {
       { queryPrediction: { text: { text: 'クエリ候補' } } },
     ];
     const out = _normalizePredictions(raw);
-    const eq = (name, got, want) => console.log((got === want ? 'PASS' : 'FAIL') + ' ' + name, got);
     eq('normalize-count', out.length, 2);
     eq('normalize-main', out[0].mainText, 'スカイツリー');
     eq('normalize-sub', out[0].secondaryText, '東京都墨田区');
     eq('normalize-drops-empty-id', out.every((x) => x.placeId), true);
+    // ジャンル推定＋削除時フォールバック（App.genres がある時のみ）
+    if (App.genres && App.genres.setList) {
+      App.genres.setList(null); // デフォルト6個
+      eq('genre-cafe', genreFromTypes(['cafe']), 'cafe');
+      eq('genre-restaurant', genreFromTypes(['restaurant']), 'food');
+      eq('genre-unknown', genreFromTypes(['xyz']), 'other');
+      // food を削除した一覧 → restaurant は other へフォールバック
+      App.genres.setList([{ key: 'cafe', label: 'c', color: '#111111' }, { key: 'other', label: 'o', color: '#222222' }]);
+      eq('genre-fallback-other', genreFromTypes(['restaurant']), 'other');
+      // other も無い → 先頭へ
+      App.genres.setList([{ key: 'cafe', label: 'c', color: '#111111' }]);
+      eq('genre-fallback-first', genreFromTypes(['restaurant']), 'cafe');
+      App.genres.setList(null); // 後始末（デフォルトへ戻す）
+    }
+    console.log(fails === 0 ? '✅ places ALL PASS' : ('❌ places ' + fails + ' FAIL'));
+    return fails;
   }
 
   async function newSessionToken() {
