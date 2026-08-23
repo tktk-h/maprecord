@@ -68,6 +68,7 @@ function wireUI() {
 
   // バックアップ（書き出しのみ。クラウド版は読み込み復元なし）
   document.getElementById('export-btn').addEventListener('click', () => App.backup.exportJson());
+  document.getElementById('import-btn').addEventListener('click', () => App.backup.importFlow());
 
   // シートの×ボタン：閉じる（選択解除）
   document.getElementById('sheet-close').addEventListener('click', () => App.records._clearPanel());
