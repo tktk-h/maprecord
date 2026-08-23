@@ -185,8 +185,8 @@ App.records = (function () {
         ? `<span class="result-thumb" style="background-image:url(${App.photos.thumbOf(g.photo)})"></span>`
         : `<span class="result-thumb" style="background:${App.genres.color(r.genre)}"></span>`;
       const sub = g.count > 1
-        ? `${App.genres.label(r.genre)} ・ ${g.count}回訪問`
-        : `${App.genres.label(r.genre)} ・ ${r.date}`;
+        ? `${esc(App.genres.label(r.genre))} ・ ${g.count}回訪問`
+        : `${esc(App.genres.label(r.genre))} ・ ${r.date}`;
       return `<li><button type="button" class="result-row" data-id="${r.id}">
         ${thumb}
         <span class="result-text">
@@ -228,7 +228,7 @@ App.records = (function () {
         <span class="flow-no">${i + 1}</span>
         <button type="button" class="route-name" data-id="${r.id}">
           <span class="flow-name">${esc(r.name) || '(名称未設定)'}</span>
-          <span class="flow-genre">${App.genres.label(r.genre)}</span>
+          <span class="flow-genre">${esc(App.genres.label(r.genre))}</span>
         </button>
         ${move}
       </li>`;
@@ -291,7 +291,7 @@ App.records = (function () {
 
   function genreOptions(selected) {
     return App.genres.list.map((g) =>
-      `<option value="${g.key}" ${g.key === selected ? 'selected' : ''}>${g.label}</option>`
+      `<option value="${g.key}" ${g.key === selected ? 'selected' : ''}>${esc(g.label)}</option>`
     ).join('');
   }
 
@@ -300,7 +300,7 @@ App.records = (function () {
   function genrePicker(selected, selId) {
     const idAttr = selId ? ` id="${selId}"` : '';
     const chips = App.genres.list.map((g) =>
-      `<button type="button" class="gp-chip${g.key === selected ? ' active' : ''}" data-key="${g.key}" style="--gc:${g.color}"><span class="gp-dot"></span>${g.label}</button>`).join('');
+      `<button type="button" class="gp-chip${g.key === selected ? ' active' : ''}" data-key="${g.key}" style="--gc:${g.color}"><span class="gp-dot"></span>${esc(g.label)}</button>`).join('');
     return `<div class="gpick"><select name="genre"${idAttr} class="gpick-select">${genreOptions(selected)}</select>${chips}</div>`;
   }
   // .gpick 内のチップを配線：クリックで隠しselectを更新＋active切替＋change発火
@@ -546,7 +546,7 @@ App.records = (function () {
       <button type="button" id="pc-back" class="back-btn"><i class="ph ph-arrow-left"></i>戻る</button>
       ${photos}
       <h2>${esc(p.name)}</h2>
-      <p class="meta">${App.genres.label(p.genre)}</p>
+      <p class="meta">${esc(App.genres.label(p.genre))}</p>
       <div class="pc-sub">${rating}${openHtml}${hours}</div>
       <div class="pc-actions">${actions}</div>
       <button type="button" id="pc-add" class="revisit-btn"><i class="ph ph-plus"></i>この店を記録に追加</button>
@@ -625,7 +625,7 @@ App.records = (function () {
         <div class="dt-body">
           <div class="dt-date">${formatVisitDate(record.date)}</div>
           <h2 class="dt-title">${esc(record.name) || '(名称未設定)'}</h2>
-          <div class="dt-genre"><span class="dt-dot" style="background:${genreColor}"></span>${App.genres.label(record.genre)}</div>
+          <div class="dt-genre"><span class="dt-dot" style="background:${genreColor}"></span>${esc(App.genres.label(record.genre))}</div>
           ${visitsHtml}
           <div class="dt-rule"></div>
           <p class="dt-memo">${esc(record.memo).replace(/\n/g, '<br>') || '<span class="hint">メモなし</span>'}</p>
@@ -819,7 +819,7 @@ App.records = (function () {
     box.innerHTML = App.genres.list.map((g) =>
       `<label class="gf" style="--gc:${g.color}">
         <input type="checkbox" value="${g.key}" checked>
-        <span class="gf-dot"></span>${g.label}
+        <span class="gf-dot"></span>${esc(g.label)}
       </label>`
     ).join('');
     box.querySelectorAll('input').forEach((cb) => cb.addEventListener('change', applyUiFilter));

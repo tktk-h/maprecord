@@ -99,7 +99,7 @@ App.bulk = (function () {
   // 'HH:MM'
   function hhmm(ms) { const d = new Date(ms); const p = (n) => String(n).padStart(2, '0'); return `${p(d.getHours())}:${p(d.getMinutes())}`; }
   function genreOptions(sel) {
-    return App.genres.list.map((g) => `<option value="${g.key}" ${g.key === sel ? 'selected' : ''}>${g.label}</option>`).join('');
+    return App.genres.list.map((g) => `<option value="${g.key}" ${g.key === sel ? 'selected' : ''}>${esc(g.label)}</option>`).join('');
   }
 
   // 個別保存ボタン。isSaveable でない間は押せない。wide=開いた状態用の全幅。
