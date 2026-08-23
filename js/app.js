@@ -98,6 +98,10 @@ function wireUI() {
     document.getElementById('topbar').classList.remove('filters-open'); // メニューを閉じる
     App.review.showPicker();
   });
+  document.getElementById('genre-btn').addEventListener('click', () => {
+    document.getElementById('topbar').classList.remove('filters-open'); // メニューを閉じる
+    App.genreEdit.open();
+  });
 }
 
 function showMapLoading() { const el = document.getElementById('map-loading'); if (el) el.hidden = false; }
@@ -120,6 +124,8 @@ async function startApp(sp) {
   }
   App.memories.setAnniversary(sp.anniversary || null);
   App.review.setAnniversary(sp.anniversary || null);
+  App.genres.setList(sp.genres || null);
+  App.genreEdit.setSpaceId(sp.id);
   cloud.subscribe((records) => {
     App.records.setRecords(records);
     hideMapLoading();
