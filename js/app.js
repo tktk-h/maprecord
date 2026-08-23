@@ -7,6 +7,7 @@ import { photos } from './photos.js'; // 読み込みで window.App.photos を�
 let started = false;
 let currentSpace = null;
 let memoriesShown = false;
+let recordsLoaded = false; // 初回の記録スナップショットが届いたか（ジャンル編集の使用件数判定に必要）
 
 function wireUI() {
   const mapBtn = document.getElementById('view-map');
@@ -100,6 +101,7 @@ function wireUI() {
   });
   document.getElementById('genre-btn').addEventListener('click', () => {
     document.getElementById('topbar').classList.remove('filters-open'); // メニューを閉じる
+    if (!recordsLoaded) { alert('記録を読み込み中です。少し待ってからもう一度お試しください。'); return; }
     App.genreEdit.open();
   });
 }
@@ -128,6 +130,7 @@ async function startApp(sp) {
   App.genreEdit.setSpaceId(sp.id);
   cloud.subscribe((records) => {
     App.records.setRecords(records);
+    recordsLoaded = true;
     hideMapLoading();
     if (!memoriesShown) {
       memoriesShown = true;
