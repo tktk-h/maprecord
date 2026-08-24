@@ -534,7 +534,6 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 .cluster-pin { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: #fff;
   font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center;
   border: 2px solid #fff; box-shadow: var(--shadow-md); cursor: pointer; }
-.cluster-pin:hover { transform: scale(1.06); transition: transform .1s; }
 
 /* ===== 一日の流れ（ルートシート） ===== */
 .sheet-handle { display: block; width: 40px; height: 5px; border-radius: 3px; background: #d8d2c8; }

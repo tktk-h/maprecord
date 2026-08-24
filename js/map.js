@@ -208,7 +208,11 @@ App.map = (function () {
     searchMarkers = [];
     if (keepPinsHidden) return;
     if (clusterWanted) { // クラスタ表示へ復帰（すでに動いているなら触らない）
-      if (!clusterer) { markers.forEach((m) => { m.map = null; }); startClusterer(); }
+      if (!clusterer) {
+        markers.forEach((m) => { m.map = null; });
+        // 束ねられなければ素のまま出す（renderPins と同じ後始末）
+        if (!startClusterer()) markers.forEach((m) => { m.map = map; });
+      }
       return;
     }
     markers.forEach((m) => { if (m.map !== map) m.map = map; }); // 隠していた記録ピンを戻す
@@ -272,6 +276,7 @@ App.map = (function () {
     render(cluster) {
       const c = el('<div class="cluster-pin"></div>');
       c.textContent = String(cluster.count); // 件数（注入防止で textContent）
+      c.title = cluster.count + '件'; // 読み上げ・ホバー用（バッジの数字だけでは伝わらない）
       c.style.transform = 'translateY(50%)'; // 円の中心を座標に合わせる
       return new AdvancedMarkerElement({
         position: cluster.position,
@@ -282,10 +287,25 @@ App.map = (function () {
     },
   };
 
+  // クラスタをタップ：その範囲に寄せる。同じ地点だけの束は範囲がゼロで最大ズームまで
+  // 飛んでしまうので、個別ピンが出る16で止める（fitTo と同じ考え方）。
+  function onClusterClick(_event, cluster) {
+    if (!cluster || !cluster.bounds) return;
+    map.fitBounds(cluster.bounds, 60);
+    google.maps.event.addListenerOnce(map, 'idle', () => {
+      if (map.getZoom() > 16) map.setZoom(16);
+    });
+  }
+
   // markers をクラスタラに預けて束ねる。起動できたら true。CDN未読込などで無理なら false。
   function startClusterer() {
     if (!window.markerClusterer || clusterer || !map) return false;
-    clusterer = new markerClusterer.MarkerClusterer({ map, markers, renderer: clusterRenderer });
+    clusterer = new markerClusterer.MarkerClusterer({
+      map, markers, renderer: clusterRenderer, onClusterClick,
+      // 既定16だと「ズーム16でもまだ束ねる」。flyTo/fitTo が16まで寄せるので、
+      // 16では必ず個別ピンが見えるよう15で束ねを終わりにする。
+      algorithmOptions: { maxZoom: 15 },
+    });
     return true;
   }
   // 束ねを止めて素の個別ピン制御に戻す。setMap(null) で管理下のマーカーは全て map=null になる。
