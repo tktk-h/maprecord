@@ -19,6 +19,7 @@ App.map = (function () {
   let suppressClickUntil = 0;   // 長押し直後のクリックを無視する時刻
 
   const VIEW_KEY = 'date-recorder-view';
+  const CLUSTER_KEY = 'date-recorder-cluster'; // ピンまとめ(クラスタ)のON/OFF
 
   function loadView() {
     try {
@@ -34,6 +35,33 @@ App.map = (function () {
     const c = map.getCenter();
     if (!c) return;
     localStorage.setItem(VIEW_KEY, JSON.stringify({ lat: c.lat(), lng: c.lng(), zoom: map.getZoom() }));
+  }
+
+  // 保存値 → 真偽。'off' のときだけOFF（未設定・壊れた値は既定ON）
+  function parseClusterPref(raw) { return raw !== 'off'; }
+  function clusterEnabled() {
+    try { return parseClusterPref(localStorage.getItem(CLUSTER_KEY)); } catch (e) { return true; }
+  }
+  function setClusterEnabled(on) {
+    try { localStorage.setItem(CLUSTER_KEY, on ? 'on' : 'off'); } catch (e) { /* 保存できなくても動作は続ける */ }
+  }
+
+  function _selfTest() {
+    let fails = 0;
+    const eq = (n, got, want) => {
+      const ok = JSON.stringify(got) === JSON.stringify(want);
+      if (!ok) fails++;
+      console.log((ok ? 'PASS' : 'FAIL') + ' ' + n, ok ? '' : ('got=' + JSON.stringify(got) + ' want=' + JSON.stringify(want)));
+    };
+    eq('cluster-pref-default', parseClusterPref(null), true);
+    eq('cluster-pref-on', parseClusterPref('on'), true);
+    eq('cluster-pref-off', parseClusterPref('off'), false);
+    eq('cluster-pref-broken', parseClusterPref('xxx'), true);
+    eq('same-spot-near', sameSpot({ lat: 35, lng: 139 }, { lat: 35.0001, lng: 139.0001 }), true);
+    eq('same-spot-far', sameSpot({ lat: 35, lng: 139 }, { lat: 35.01, lng: 139 }), false);
+    eq('same-spot-null', sameSpot(null, { lat: 35, lng: 139 }), false);
+    console.log(fails === 0 ? 'ALL PASS (map)' : (fails + ' FAILED (map)'));
+    return fails;
   }
 
   // html文字列 → 最初の要素ノード
@@ -308,8 +336,9 @@ App.map = (function () {
   }
 
   return { init, setClickHandler, setPlaceClickHandler, getPlaceClickHandler, setRecordPickHandler, setLongPressHandler, setUserPanHandler, setTapHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
+           clusterEnabled, setClusterEnabled,
            renderPlaceResults, clearPlaceResults, hideRecordPins,
            showTempMarker, clearTempMarker,
            startPickLocation, getPickedLatLng, stopPickLocation,
-           _getMap: () => map, _sameSpot: sameSpot };
+           _getMap: () => map, _sameSpot: sameSpot, _selfTest };
 })();
