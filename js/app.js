@@ -105,6 +105,15 @@ function wireUI() {
     if (!recordsLoaded) { alert('記録を読み込み中です。少し待ってからもう一度お試しください。'); return; }
     App.genreEdit.open();
   });
+  // ピンをまとめる（クラスタ）ON/OFF。端末ごとの設定で、既定はON。
+  const clusterBtn = document.getElementById('cluster-btn');
+  function paintClusterBtn() { clusterBtn.classList.toggle('on', App.map.clusterEnabled()); }
+  clusterBtn.addEventListener('click', () => {
+    App.map.setClusterEnabled(!App.map.clusterEnabled());
+    paintClusterBtn();
+    App.records.render(); // 束ね方が変わるので描き直す
+  });
+  paintClusterBtn();
 }
 
 function showMapLoading() { const el = document.getElementById('map-loading'); if (el) el.hidden = false; }

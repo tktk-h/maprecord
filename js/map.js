@@ -6,6 +6,8 @@ App.map = (function () {
   let AdvancedMarkerElement;   // marker ライブラリのクラス（init で読み込む）
   let markers = [];            // renderPins で出したマーカー
   let searchMarkers = [];      // 場所検索の結果ピン（記録ピン markers とは別レイヤー）
+  let clusterer = null;        // MarkerClusterer（クラスタON時のみ）
+  let clusterWanted = false;   // 直近の renderPins がクラスタ指定だったか（検索からの復帰判定に使う）
   let routeLine = null;        // ルートの点線（numbered 表示時）
   let tempMarker = null;       // 追加フォーム中の目印
   let pickMarker = null;       // 位置修正のドラッグ用
@@ -19,6 +21,7 @@ App.map = (function () {
   let suppressClickUntil = 0;   // 長押し直後のクリックを無視する時刻
 
   const VIEW_KEY = 'date-recorder-view';
+  const CLUSTER_KEY = 'date-recorder-cluster'; // ピンまとめ(クラスタ)のON/OFF
 
   function loadView() {
     try {
@@ -34,6 +37,44 @@ App.map = (function () {
     const c = map.getCenter();
     if (!c) return;
     localStorage.setItem(VIEW_KEY, JSON.stringify({ lat: c.lat(), lng: c.lng(), zoom: map.getZoom() }));
+  }
+
+  // 保存値 → 真偽。'off' のときだけOFF（未設定・壊れた値は既定ON）
+  function parseClusterPref(raw) { return raw !== 'off'; }
+  function clusterEnabled() {
+    try { return parseClusterPref(localStorage.getItem(CLUSTER_KEY)); } catch (e) { return true; }
+  }
+  function setClusterEnabled(on) {
+    try { localStorage.setItem(CLUSTER_KEY, on ? 'on' : 'off'); } catch (e) { /* 保存できなくても動作は続ける */ }
+  }
+
+  // クラスタを使うか。opts.cluster 指定かつCDN読込済みのときだけ true（未読込なら通常描画）
+  function wantsCluster(opts) { return !!(opts && opts.cluster) && !!window.markerClusterer; }
+
+  function _selfTest() {
+    let fails = 0;
+    const eq = (n, got, want) => {
+      const ok = JSON.stringify(got) === JSON.stringify(want);
+      if (!ok) fails++;
+      console.log((ok ? 'PASS' : 'FAIL') + ' ' + n, ok ? '' : ('got=' + JSON.stringify(got) + ' want=' + JSON.stringify(want)));
+    };
+    eq('cluster-pref-default', parseClusterPref(null), true);
+    eq('cluster-pref-on', parseClusterPref('on'), true);
+    eq('cluster-pref-off', parseClusterPref('off'), false);
+    eq('cluster-pref-broken', parseClusterPref('xxx'), true);
+    eq('same-spot-near', sameSpot({ lat: 35, lng: 139 }, { lat: 35.0001, lng: 139.0001 }), true);
+    eq('same-spot-far', sameSpot({ lat: 35, lng: 139 }, { lat: 35.01, lng: 139 }), false);
+    eq('same-spot-null', sameSpot(null, { lat: 35, lng: 139 }), false);
+    const savedMC = window.markerClusterer;
+    window.markerClusterer = undefined;                     // CDN未読込を再現
+    eq('wants-cluster-no-cdn', wantsCluster({ cluster: true }), false);
+    window.markerClusterer = {};                            // CDN読込済みを再現
+    eq('wants-cluster-on', wantsCluster({ cluster: true }), true);
+    eq('wants-cluster-off', wantsCluster({ cluster: false }), false);
+    eq('wants-cluster-no-opts', wantsCluster(null), false);
+    window.markerClusterer = savedMC;
+    console.log(fails === 0 ? 'ALL PASS (map)' : (fails + ' FAILED (map)'));
+    return fails;
   }
 
   // html文字列 → 最初の要素ノード
@@ -143,6 +184,8 @@ App.map = (function () {
   function setTapHandler(fn) { onTap = fn; }
 
   function clearPins() {
+    stopClusterer();   // 先に破棄しないと idle リスナーが残ってマーカーが復活する
+    clusterWanted = false;
     markers.forEach((m) => { m.map = null; });
     markers = [];
     if (routeLine) { routeLine.setMap(null); routeLine = null; }
@@ -159,22 +202,34 @@ App.map = (function () {
     return !!(a && b && Math.abs(a.lat - b.lat) < SAME_SPOT_TOL && Math.abs(a.lng - b.lng) < SAME_SPOT_TOL);
   }
 
-  function clearPlaceResults() {
+  // keepPinsHidden=true のときは記録ピンの表示を戻さない（直後に呼び出し側が決める）
+  function clearPlaceResults(keepPinsHidden) {
     searchMarkers.forEach((m) => { m.map = null; });
     searchMarkers = [];
+    if (keepPinsHidden) return;
+    if (clusterWanted) { // クラスタ表示へ復帰（すでに動いているなら触らない）
+      if (!clusterer) {
+        markers.forEach((m) => { m.map = null; });
+        // 束ねられなければ素のまま出す（renderPins と同じ後始末）
+        if (!startClusterer()) markers.forEach((m) => { m.map = map; });
+      }
+      return;
+    }
     markers.forEach((m) => { if (m.map !== map) m.map = map; }); // 隠していた記録ピンを戻す
   }
 
   // 記録ピンを即座に全部隠す（検索の通信待ち中に一瞬表示されるのを防ぐ）
-  function hideRecordPins() { markers.forEach((m) => { m.map = null; }); }
+  // クラスタON中はバッジがクラスタラ所有の別マーカーなので、先に束ねを止めないと消えない
+  function hideRecordPins() { stopClusterer(); markers.forEach((m) => { m.map = null; }); }
 
   // places=[{placeId,name,lat,lng,genre}] を検索ピンとして表示。タップで onSelect(placeId)
   // opts.hideRecords=true：検索結果に一致しない記録ピンを隠す（一致する記録ピンは残し、赤ピンは出さない）
   function renderPlaceResults(places, onSelect, opts) {
     opts = opts || {};
-    clearPlaceResults();
+    clearPlaceResults(!!opts.hideRecords);
     places = places || [];
     if (opts.hideRecords) {
+      stopClusterer(); // 束ねたままだと idle 再描画に表示状態を上書きされる
       markers.forEach((m) => {
         const c = markerLatLng(m);
         m.map = places.some((p) => sameSpot(p, c)) ? map : null;
@@ -213,12 +268,60 @@ App.map = (function () {
     });
   }
 
+  // クラスタ（束ねたピン）のバッジ。件数を白文字で出す。
+  // gmpClickable が必須：AdvancedMarkerElement のクラスタをライブラリは 'gmp-click' で
+  // 待ち受けるため、これが無いとバッジをタップしても何も起きない。
+  // 座標が LatLng で来るため makeMarker（lat,lng を取る）は使わず直接組む。
+  const clusterRenderer = {
+    render(cluster) {
+      const c = el('<div class="cluster-pin"></div>');
+      c.textContent = String(cluster.count); // 件数（注入防止で textContent）
+      c.title = cluster.count + '件'; // 読み上げ・ホバー用（バッジの数字だけでは伝わらない）
+      c.style.transform = 'translateY(50%)'; // 円の中心を座標に合わせる
+      return new AdvancedMarkerElement({
+        position: cluster.position,
+        content: c,
+        zIndex: 900,
+        gmpClickable: true,
+      });
+    },
+  };
+
+  // クラスタをタップ：その範囲に寄せる。同じ地点だけの束は範囲がゼロで最大ズームまで
+  // 飛んでしまうので、個別ピンが出る16で止める（fitTo と同じ考え方）。
+  function onClusterClick(_event, cluster) {
+    if (!cluster || !cluster.bounds) return;
+    map.fitBounds(cluster.bounds, 60);
+    google.maps.event.addListenerOnce(map, 'idle', () => {
+      if (map.getZoom() > 16) map.setZoom(16);
+    });
+  }
+
+  // markers をクラスタラに預けて束ねる。起動できたら true。CDN未読込などで無理なら false。
+  function startClusterer() {
+    if (!window.markerClusterer || clusterer || !map) return false;
+    clusterer = new markerClusterer.MarkerClusterer({
+      map, markers, renderer: clusterRenderer, onClusterClick,
+      // 既定16だと「ズーム16でもまだ束ねる」。flyTo/fitTo が16まで寄せるので、
+      // 16では必ず個別ピンが見えるよう15で束ねを終わりにする。
+      algorithmOptions: { maxZoom: 15 },
+    });
+    return true;
+  }
+  // 束ねを止めて素の個別ピン制御に戻す。setMap(null) で管理下のマーカーは全て map=null になる。
+  function stopClusterer() {
+    if (!clusterer) return;
+    clusterer.setMap(null);
+    clusterer = null;
+  }
+
   // AdvancedMarker を作る。centered=true の content は中心を座標に合わせる（既定は下端中央アンカー）
+  // noMap=true は地図に出さない（クラスタに預ける前に一瞬表示されるのを防ぐ）
   function makeMarker(lat, lng, content, opts) {
     opts = opts || {};
     if (opts.centered) content.style.transform = 'translateY(50%)';
     return new AdvancedMarkerElement({
-      map,
+      map: opts.noMap ? null : map,
       position: { lat, lng },
       content,
       zIndex: opts.zIndex,
@@ -280,10 +383,12 @@ App.map = (function () {
 
   // records: [{id, lat, lng, name, genre, photos, ...}], onClick: (record)=>void
   // opts.numbered=true で順番バッジ＋ルート点線を描く（records は表示順に並んでいる前提）
+  // opts.cluster=true で近接ピンを束ねる（通常のマップ表示のみ。ルート・検索結果では使わない）
   function renderPins(records, onClick, opts) {
     clearPins();
     const numbered = !!(opts && opts.numbered);
     const countAt = opts && opts.countAt;
+    clusterWanted = wantsCluster(opts);
     if (numbered && records.length > 1) {
       routeLine = new google.maps.Polyline({
         path: records.map((r) => ({ lat: r.lat, lng: r.lng })),
@@ -298,18 +403,21 @@ App.map = (function () {
     records.forEach((r, i) => {
       const { content, centered } = markerContent(r, numbered ? i + 1 : null, countAt ? countAt(r) : 1);
       content.title = r.name || '(名称未設定)'; // ホバーで名前（Leaflet の tooltip 代替）
-      const m = makeMarker(r.lat, r.lng, content, { centered });
+      const m = makeMarker(r.lat, r.lng, content, { centered, noMap: clusterWanted });
       m.addListener('click', () => {
         if (pickMarker && pickRecordSelect) { pickRecordSelect(r); return; } // 位置ピック中は選択に回す
         onClick(r);
       });
       markers.push(m);
     });
+    // 束ねられなかったら、伏せてあるマーカーを素のまま出す（真っ白な地図にしない）
+    if (clusterWanted && !startClusterer()) markers.forEach((m) => { m.map = map; });
   }
 
   return { init, setClickHandler, setPlaceClickHandler, getPlaceClickHandler, setRecordPickHandler, setLongPressHandler, setUserPanHandler, setTapHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
+           clusterEnabled, setClusterEnabled,
            renderPlaceResults, clearPlaceResults, hideRecordPins,
            showTempMarker, clearTempMarker,
            startPickLocation, getPickedLatLng, stopPickLocation,
-           _getMap: () => map, _sameSpot: sameSpot };
+           _getMap: () => map, _sameSpot: sameSpot, _selfTest };
 })();

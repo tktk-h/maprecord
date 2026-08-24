@@ -78,6 +78,7 @@ App.records = (function () {
     App.map.renderPins(visible, showDetail, {
       numbered: dayMode,
       countAt: (r) => counts[coordKey(r)] || 1,
+      cluster: !dayMode && App.map.clusterEnabled(), // 通常表示のみ束ねる（ルート表示は順番が要るので除外）
     });
     // 1日を選んでいる間は、サイドパネルにルート（順番編集）を表示
     if (dayMode) showDayRoute(visible);

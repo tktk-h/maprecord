@@ -412,6 +412,8 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   padding: 9px 8px; font-size: 14px; text-align: left; }
 #backup-bar button .ph { font-size: 18px; color: var(--text-muted); }
 #backup-bar button:hover { background: var(--surface-2); }
+#backup-bar button.on { background: var(--accent-soft); color: var(--accent-strong); }
+#backup-bar button.on .ph { color: var(--accent-strong); }
 #anniv-btn .ph { color: var(--accent); }
 #logout-btn { color: #a86a62; }
 #logout-btn .ph { color: #a86a62; }
@@ -527,6 +529,11 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   padding: 0 5px; border-radius: 10px; background: var(--text); color: #fff;
   font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
   border: 2px solid #fff; box-shadow: var(--shadow-sm); }
+
+/* クラスタ（近くのピンを束ねたバッジ）。件数を白文字で出す */
+.cluster-pin { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: #fff;
+  font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  border: 2px solid #fff; box-shadow: var(--shadow-md); cursor: pointer; }
 
 /* ===== 一日の流れ（ルートシート） ===== */
 .sheet-handle { display: block; width: 40px; height: 5px; border-radius: 3px; background: #d8d2c8; }
