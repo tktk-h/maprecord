@@ -975,3 +975,10 @@ body.reviewing #bulk-btn { display: none !important; }
 .ge-save { flex: 1; border: none; background: var(--cta-grad); color: #fff;
   border-radius: var(--radius-pill); padding: 10px; font-weight: 700; cursor: pointer; box-shadow: var(--cta-shadow); }
 .ge-save:disabled { opacity: .6; cursor: default; }
+
+/* ふりかえりの画像保存ボタン */
+.rv-save-wrap { text-align: center; }
+.rv-save { padding: 13px 26px; border-radius: var(--radius-pill); border: 1px solid var(--accent);
+  background: var(--surface); color: var(--accent-strong); font-size: 15px; font-weight: 600; }
+.rv-save:hover { background: var(--accent-soft); }
+.rv-save:disabled { opacity: .6; }

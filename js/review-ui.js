@@ -328,6 +328,57 @@ App.review = (function () {
     var mapBtn = el('view-map'); if (mapBtn) mapBtn.click(); // 地図ビューへ
   }
 
+  // その年の写真URLを日付昇順で集める。並べ替えを忘れると「1年に散らす」が効かない。
+  // thumbOf はサムネ(400px)を返す。タイルは45×48しか使わないので、これで十分かつ軽い。
+  function yearPhotoUrls(year) {
+    var urls = [];
+    App.records.getAll()
+      .filter(function (r) { return String(r.date).slice(0, 4) === String(year); })
+      .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; })
+      .forEach(function (r) {
+        (r.photos || []).forEach(function (p) {
+          var u = App.photos.thumbOf(p);
+          if (u) urls.push(u);
+        });
+      });
+    return urls;
+  }
+
+  // 画像を共有シートに渡す。使えなければダウンロードに落とす。
+  async function sharePoster(blob, year) {
+    var name = 'ashiato-' + year + '.png';
+    var file = new File([blob], name, { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: year + '年のあしあと' });
+        return;
+      } catch (e) {
+        if (e && e.name === 'AbortError') return; // 本人が閉じただけ。何もしない
+        // それ以外は保存に落とす
+      }
+    }
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // ボタンから呼ぶ。生成中は押せなくする。
+  async function savePoster(btn, data) {
+    var label = btn.textContent;
+    btn.disabled = true; btn.textContent = '作成中…';
+    try {
+      var blob = await App.reviewPoster.build(data, yearPhotoUrls(data.year));
+      await sharePoster(blob, data.year);
+    } catch (e) {
+      console.error('poster failed', e);
+      alert('画像を作れませんでした');
+    } finally {
+      btn.disabled = false; btn.textContent = label;
+    }
+  }
+
   function showPage(data) {
     document.body.classList.add('reviewing'); // 地図画面用ボタンを隠す
     var host = el('review-page');
@@ -388,12 +439,15 @@ App.review = (function () {
       (photoGrid ? '<div class="rv-section"><div class="rv-h">写真</div>' + photoGrid + '</div>' : '') +
       (best ? '<div class="rv-section"><div class="rv-h">よく行ったところ</div>' + best + '</div>' : '') +
       '<div class="rv-section"><div class="rv-h">最初と最後</div>' + outing('最初のおでかけ', data.firstOuting) + outing('最後のおでかけ', data.lastOuting) + '</div>' +
+      (data.isEmpty ? '' : '<div class="rv-section rv-save-wrap"><button class="rv-save">画像で保存・共有</button></div>') +
       '</div>';
 
     host.querySelector('.rv-x').onclick = hideAll;
     var mapEl = host.querySelector('.rv-map');
     if (data.pins.length) renderMap(mapEl, data.pins, { animate: false });
     host.querySelector('.rv-realmap').onclick = function () { goToRealMap(data.year); };
+    var saveBtn = host.querySelector('.rv-save');
+    if (saveBtn) saveBtn.onclick = function () { savePoster(saveBtn, data); };
     host.querySelectorAll('.rv-outing').forEach(function (b) {
       b.onclick = function () { hideAll(); App.records.focusDay(b.getAttribute('data-date')); };
     });
