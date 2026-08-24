@@ -7,6 +7,7 @@ App.map = (function () {
   let markers = [];            // renderPins で出したマーカー
   let searchMarkers = [];      // 場所検索の結果ピン（記録ピン markers とは別レイヤー）
   let clusterer = null;        // MarkerClusterer（クラスタON時のみ）
+  let clusterEndListener = null; // 束ね直し完了リスナー（stopClusterer で外す）
   let clusterWanted = false;   // 直近の renderPins がクラスタ指定だったか（検索からの復帰判定に使う）
   let routeLine = null;        // ルートの点線（numbered 表示時）
   let tempMarker = null;       // 追加フォーム中の目印
@@ -284,6 +285,8 @@ App.map = (function () {
         + '</div>');
       // 束ねた中から写真を1枚借りる。無ければ先頭のジャンル色で塗る。
       const marks = cluster.markers || [];
+      // 束ねが解けたとき「ここから散った」と分かるよう、今の束ね位置を控えておく
+      marks.forEach((m) => { m.__from = cluster.position; });
       const withPhoto = marks.find((m) => m.__rec && (m.__rec.photos || []).length);
       if (withPhoto) {
         const img = el('<img class="cl-face" alt="">');
@@ -309,6 +312,39 @@ App.map = (function () {
     },
   };
 
+  // 束ねが解けた瞬間、ピンが元のバッジ位置からそれぞれの場所へ散っていく動き。
+  // AdvancedMarkerElement は座標そのものを動かせないので、content を「元の位置ぶん」
+  // ずらして置いてから 0 に戻す（見た目だけ動かす）。
+  const SPREAD_MS = 420;
+  function spreadFrom(m) {
+    // まだ束ねられている（map=null）間は控えを持ち続ける。ほどけて出てきた回だけ消費する。
+    if (!m.__from || !m.map) return;
+    const from = m.__from;
+    m.__from = null;
+    if (!overlayProjection || !m.content) return;
+    const to = markerLatLng(m);
+    if (!to) return;
+    const a = overlayProjection.fromLatLngToContainerPixel(from);
+    const b = overlayProjection.fromLatLngToContainerPixel(new google.maps.LatLng(to.lat, to.lng));
+    if (!a || !b) return;
+    const dx = Math.round(a.x - b.x), dy = Math.round(a.y - b.y); // 端数はCSSに出さない
+    if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return; // ほぼ同じ場所なら動かさない
+    const base = m.content.style.transform || ''; // centered の translateY(50%) を壊さない
+    const st = m.content.style;
+    st.transition = 'none';
+    st.transform = `translate(${dx}px, ${dy}px) ${base}`;
+    st.opacity = '0';
+    // 1フレーム置いてから戻すと、ブラウザが差分を見てアニメーションしてくれる
+    requestAnimationFrame(() => {
+      st.transition = `transform ${SPREAD_MS}ms cubic-bezier(.22,.72,.3,1), opacity ${Math.round(SPREAD_MS * 0.6)}ms ease-out`;
+      st.transform = base;
+      st.opacity = '1';
+      setTimeout(() => { st.transition = ''; }, SPREAD_MS + 60); // 後の操作に残さない
+    });
+  }
+  // 束ね直しが終わるたび、今回ほどけたピンだけを散らす（__from があるものだけ動く）
+  function spreadUnbundled() { markers.forEach(spreadFrom); }
+
   // クラスタをタップ：中身が見える方へ一定段数だけ寄る。
   // fitBounds は使わない——同じ地点だけの束は範囲がゼロで最大ズームまで飛び、その後
   // 引き戻す動きが「ドアップから広がる」ように見えるため。段数固定なら挙動が読める。
@@ -329,13 +365,17 @@ App.map = (function () {
       // 束ねず、14以下でだけ束ねることで「大づかみ→個別」の2段階にする。
       algorithmOptions: { maxZoom: CLUSTER_MAX_ZOOM, radius: 140, minPoints: 5 },
     });
+    // 束ね直しの直後に呼ばれる。ここでほどけたピンを散らす。
+    clusterEndListener = clusterer.addListener('clusteringend', spreadUnbundled);
     return true;
   }
   // 束ねを止めて素の個別ピン制御に戻す。setMap(null) で管理下のマーカーは全て map=null になる。
   function stopClusterer() {
     if (!clusterer) return;
+    if (clusterEndListener) { google.maps.event.removeListener(clusterEndListener); clusterEndListener = null; }
     clusterer.setMap(null);
     clusterer = null;
+    markers.forEach((m) => { m.__from = null; }); // 検索などで止めた分は散らさない
   }
 
   // AdvancedMarker を作る。centered=true の content は中心を座標に合わせる（既定は下端中央アンカー）
