@@ -46,6 +46,151 @@ App.reviewPoster = (function () {
     return out;
   }
 
+  const W = 1080, H = 1920;
+  const SHRINK = 8;                 // 1/8に縮小してから戻すことでぼかす
+  const CREAM = '#faf6ef';
+
+  // 画像を1枚読む。失敗しても reject せず null を返す（1枚の失敗で全体を止めない）。
+  // crossOrigin を付けないと canvas が汚染され、書き出しのときだけ SecurityError になる。
+  function loadImage(url) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  }
+
+  // 枠いっぱいに写真を敷く（はみ出す分は切る＝object-fit:cover 相当）
+  function drawCover(ctx, img, x, y, w, h) {
+    const s = Math.max(w / img.width, h / img.height);
+    const dw = img.width * s, dh = img.height * s;
+    ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+  }
+
+  // 写真が無い年の背景。暖色のグラデーションで成立させる。
+  function drawWarmField(ctx, w, h) {
+    const g = ctx.createLinearGradient(0, 0, w, h);
+    g.addColorStop(0, '#4a3527');
+    g.addColorStop(1, '#2c1e16');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    [[0.18, 0.12, '#b8825e'], [0.84, 0.26, '#8aa286'], [0.22, 0.78, '#c08a80'], [0.88, 0.9, '#9c92b8']]
+      .forEach(([px, py, color]) => {
+        const r = ctx.createRadialGradient(w * px, h * py, 0, w * px, h * py, w * 0.6);
+        r.addColorStop(0, color); r.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = r; ctx.fillRect(0, 0, w, h);
+      });
+  }
+
+  // 字間を空けて中央に描く。ctx.letterSpacing は対応がまちまちなので1文字ずつ置く。
+  function drawSpaced(ctx, text, cx, y, spacing) {
+    const chars = String(text).split('');
+    let total = 0;
+    chars.forEach((c) => { total += ctx.measureText(c).width + spacing; });
+    total -= spacing;
+    let x = cx - total / 2;
+    chars.forEach((c) => {
+      ctx.fillText(c, x + ctx.measureText(c).width / 2, y);
+      x += ctx.measureText(c).width + spacing;
+    });
+  }
+
+  // アプリと同じ書体で描くため、canvas に使う前にフォントを読み込ませる。
+  // 待たないと日本語が既定ゴシックになり、別物の見た目になる。
+  async function ensureFonts() {
+    try {
+      await Promise.all([
+        document.fonts.load('300 152px "Zen Kaku Gothic New"'),
+        document.fonts.load('400 30px "Zen Kaku Gothic New"'),
+      ]);
+      await document.fonts.ready;
+    } catch (e) { /* 読めなくても既定書体で続行する */ }
+  }
+
+  // data=computeYearReview の戻り値, photoUrls=その年の写真URL（日付昇順）
+  async function build(data, photoUrls) {
+    await ensureFonts();
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    // --- 背景：小さく描いて拡大＝ぼかし ---
+    const picked = pickPosterPhotos(photoUrls || [], TILES, COLS);
+    const imgs = await Promise.all(picked.map(loadImage));
+    const usable = imgs.filter(Boolean).length;
+
+    const sw = Math.round(W / SHRINK), sh = Math.round(H / SHRINK);
+    const small = document.createElement('canvas');
+    small.width = sw; small.height = sh;
+    const sctx = small.getContext('2d');
+
+    if (usable === 0) {
+      drawWarmField(sctx, sw, sh);
+    } else {
+      const rects = tileRects(sw, sh, COLS, ROWS);
+      rects.forEach((r, i) => {
+        const img = imgs[i];
+        if (img) { drawCover(sctx, img, r.x, r.y, r.w, r.h); }
+        else { sctx.fillStyle = '#8d5a3c'; sctx.fillRect(r.x, r.y, r.w, r.h); } // 読めなかった枠
+      });
+    }
+
+    // 一気に8倍すると角が立つので、2段階で戻して滑らかにする
+    const mid = document.createElement('canvas');
+    mid.width = Math.round(W / 2); mid.height = Math.round(H / 2);
+    const mctx = mid.getContext('2d');
+    mctx.imageSmoothingEnabled = true; mctx.imageSmoothingQuality = 'high';
+    mctx.drawImage(small, 0, 0, mid.width, mid.height);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(mid, 0, 0, W, H);
+
+    // --- 暗幕 ---
+    ctx.fillStyle = 'rgba(38, 26, 19, 0.55)';
+    ctx.fillRect(0, 0, W, H);
+
+    // --- 文字 ---
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.font = '400 20px "Zen Kaku Gothic New", sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    drawSpacedLeft(ctx, 'あしあと', 60, 66, 5);
+
+    ctx.textAlign = 'center';
+    ctx.font = '300 152px "Zen Kaku Gothic New", sans-serif';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(String(data.year), W / 2, H * 0.31);
+
+    ctx.font = '400 30px "Zen Kaku Gothic New", sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,.8)';
+    drawSpaced(ctx, '年のあしあと', W / 2, H * 0.31 + 118, 9);
+
+    const lines = statLines(data);
+    const lineH = 58;
+    const blockBottom = H - 120;                    // 下端からの位置は行数に関わらず固定
+    const firstY = blockBottom - (lines.length - 1) * lineH;
+    ctx.fillStyle = 'rgba(255,255,255,.4)';
+    ctx.fillRect(W / 2 - 26, firstY - 62, 52, 1);   // 区切り線
+    ctx.font = '400 30px "Zen Kaku Gothic New", sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,.88)';
+    lines.forEach((t, i) => { ctx.fillText(t, W / 2, firstY + i * lineH); });
+
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob); else reject(new Error('toBlob failed'));
+      }, 'image/png');
+    });
+  }
+
+  // 左揃えで字間を空ける（左上のロゴ用）
+  function drawSpacedLeft(ctx, text, x, y, spacing) {
+    let cx = x;
+    String(text).split('').forEach((c) => {
+      ctx.fillText(c, cx, y);
+      cx += ctx.measureText(c).width + spacing;
+    });
+  }
+
   function _selfTest() {
     let fails = 0;
     const eq = (n, got, want) => {
@@ -101,5 +246,5 @@ App.reviewPoster = (function () {
     return fails;
   }
 
-  return { pickPosterPhotos, statLines, tileRects, _selfTest };
+  return { build, pickPosterPhotos, statLines, tileRects, _selfTest };
 })();
