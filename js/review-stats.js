@@ -23,6 +23,9 @@ App.reviewStats = (function () {
       .slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
     const count = yearRecs.length;
 
+    // おでかけ＝記録がある「日」の数（同じ日に何か所まわっても1日）
+    const outingDays = new Set(yearRecs.map((r) => r.date)).size;
+
     // 付き合って◯日：基準日は今年なら today、過去年なら 12/31
     let daysTogether = null;
     if (anniversary && year <= yearOf(today)) {
@@ -66,9 +69,11 @@ App.reviewStats = (function () {
       .sort((a, b) => b.count - a.count);
     const topGenre = genreBreakdown[0] ? { key: genreBreakdown[0].key, count: genreBreakdown[0].count } : null;
 
-    // 月別
-    const monthlyCounts = new Array(12).fill(0);
-    for (const r of yearRecs) { const mm = monthOf(r.date); if (mm >= 1 && mm <= 12) monthlyCounts[mm - 1]++; }
+    // 月ごとの「おでかけ日数」。同じ日に複数件あっても1日として数える。
+    const monthDays = [];
+    for (let i = 0; i < 12; i++) monthDays.push(new Set());
+    for (const r of yearRecs) { const mm = monthOf(r.date); if (mm >= 1 && mm <= 12) monthDays[mm - 1].add(r.date); }
+    const monthlyCounts = monthDays.map((s) => s.size);
     let bmIdx = -1, bmMax = 0;
     for (let i = 0; i < 12; i++) { if (monthlyCounts[i] > bmMax) { bmMax = monthlyCounts[i]; bmIdx = i; } }
     const busiestMonth = (bmMax >= 2) ? { month: bmIdx + 1, count: bmMax } : null;
@@ -83,7 +88,7 @@ App.reviewStats = (function () {
       .map((r) => ({ lat: r.lat, lng: r.lng, genre: r.genre || 'other', name: r.name || '', date: r.date }));
 
     return {
-      year, count,
+      year, count, outingDays,
       isEmpty: count === 0,
       isSparse: count > 0 && count < 3,
       daysTogether, newPlaces, topSpot, best3,
@@ -106,6 +111,7 @@ App.reviewStats = (function () {
     const ids = [];
     if (data.isEmpty) return ids;
     if (data.daysTogether != null) ids.push('days');
+    ids.push('outings'); // ふたりで過ごした日数（記念日の有無に関わらず出す）
     ids.push('places'); // 主役（count>=1）
     if (data.newPlaces >= 1) ids.push('new');
     if (data.topSpot) ids.push('topspot');
@@ -164,14 +170,35 @@ App.reviewStats = (function () {
     eq('sparse', computeYearReview([recs[0]], 2026, null, '2026-08-19').isSparse, true);
     eq('empty', computeYearReview([], 2020, null, '2026-08-19').isEmpty, true);
 
+    // --- おでかけ日数（記録本数と食い違うデータで検証する）---
+    // 2月：3件だが全部同じ日 → 1日。7月：2件が別の日 → 2日。
+    // 記録本数なら2月(3)が最多、日数なら7月(2)が最多になる。
+    const dayRecs = [
+      { date: '2026-02-03', lat: 35.0, lng: 139.0, genre: 'food' },
+      { date: '2026-02-03', lat: 35.1, lng: 139.1, genre: 'cafe' },
+      { date: '2026-02-03', lat: 35.2, lng: 139.2, genre: 'food' },
+      { date: '2026-07-01', lat: 35.0, lng: 139.0, genre: 'food' },
+      { date: '2026-07-11', lat: 35.0, lng: 139.0, genre: 'food' },
+    ];
+    const dd = computeYearReview(dayRecs, 2026, null, '2026-12-31');
+    eq('outingDays', dd.outingDays, 3);              // 2/3, 7/1, 7/11
+    eq('count-stays-records', dd.count, 5);          // 記録本数は5のまま
+    eq('monthly-feb-is-days', dd.monthlyCounts[1], 1);  // 2月は3件だが1日
+    eq('monthly-jul-is-days', dd.monthlyCounts[6], 2);  // 7月は2日
+    eq('busiestMonth-by-days', dd.busiestMonth, { month: 7, count: 2 }); // 本数基準なら2月になる
+    eq('outingDays-empty', computeYearReview([], 2020, null, '2026-12-31').outingDays, 0);
+
     // yearsWithRecords
     eq('years', yearsWithRecords(recs), [2027, 2026, 2025]);
 
     // planSlides：全部そろう年
-    eq('planSlides-full', planSlides(d), ['days', 'places', 'new', 'topspot', 'genre', 'month', 'closing']);
+    eq('planSlides-full', planSlides(d), ['days', 'outings', 'places', 'new', 'topspot', 'genre', 'month', 'closing']);
+    // 記念日が無くても「ふたりで過ごした日」は出す（付き合って日数とは別物）
+    eq('planSlides-outings-without-anniv',
+      planSlides(computeYearReview(dayRecs, 2026, null, '2026-12-31')).indexOf('outings') >= 0, true);
     // 記念日なし・再訪なし・単月の年 → days/topspot/month が落ちる
     eq('planSlides-min', planSlides(computeYearReview([recs[2]], 2026, null, '2026-08-19')),
-      ['places', 'new', 'closing']); // count=1, B食堂は2026が初訪問なので newPlaces=1 → 'new' が入る
+      ['outings', 'places', 'new', 'closing']); // count=1, B食堂は2026が初訪問なので newPlaces=1 → 'new' が入る。outingsは記念日なしでも出る
 
     console.log(fails === 0 ? '✅ review-stats ALL PASS' : ('❌ review-stats ' + fails + ' FAIL'));
     return fails;

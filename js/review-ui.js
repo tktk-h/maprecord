@@ -214,8 +214,11 @@ App.review = (function () {
     if (id === 'days') return '<div class="rv-cap">付き合って</div>' +
       '<div class="rv-big"><span class="rv-count" data-to="' + data.daysTogether + '">0</span><span class="rv-u">日目</span></div>' +
       '<div class="rv-cap">ふたりで歩いてきた</div>';
+    if (id === 'outings') return '<div class="rv-cap">ふたりで過ごした日</div>' +
+      '<div class="rv-big"><span class="rv-count" data-to="' + data.outingDays + '">0</span><span class="rv-u">日</span></div>' +
+      '<div class="rv-cap">' + data.count + 'か所をめぐった</div>';
     if (id === 'places') return '<div class="rv-cap">今年訪れた場所</div>' +
-      '<div class="rv-big"><span class="rv-count rv-places-num">0</span><span class="rv-u">回</span></div>' +
+      '<div class="rv-big"><span class="rv-count rv-places-num">0</span><span class="rv-u">か所</span></div>' +
       '<div class="rv-map-wrap"><div class="rv-map"></div></div>';
     if (id === 'new') return '<div class="rv-cap">はじめての場所</div>' +
       '<div class="rv-big"><span class="rv-count" data-to="' + data.newPlaces + '">0</span><span class="rv-u">軒</span></div>' +
@@ -235,7 +238,7 @@ App.review = (function () {
     }
     if (id === 'month') return '<div class="rv-cap">いちばん濃かった月</div>' +
       '<div class="rv-big">' + MONTHS[data.busiestMonth.month - 1] + '</div>' +
-      '<div class="rv-cap">この月だけで ' + data.busiestMonth.count + '回</div>';
+      '<div class="rv-cap">この月だけで ' + data.busiestMonth.count + '日</div>';
     if (id === 'closing') return '<div class="rv-mid rv-closing">また来年も、<br>ふたりのあしあとを。</div>' +
       '<button class="rv-btn rv-topage">総集編を見る ↓</button>';
     return '';
@@ -325,6 +328,57 @@ App.review = (function () {
     var mapBtn = el('view-map'); if (mapBtn) mapBtn.click(); // 地図ビューへ
   }
 
+  // その年の写真URLを日付昇順で集める。並べ替えを忘れると「1年に散らす」が効かない。
+  // thumbOf はサムネ(400px)を返す。タイルは45×48しか使わないので、これで十分かつ軽い。
+  function yearPhotoUrls(year) {
+    var urls = [];
+    App.records.getAll()
+      .filter(function (r) { return String(r.date).slice(0, 4) === String(year); })
+      .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; })
+      .forEach(function (r) {
+        (r.photos || []).forEach(function (p) {
+          var u = App.photos.thumbOf(p);
+          if (u) urls.push(u);
+        });
+      });
+    return urls;
+  }
+
+  // 画像を共有シートに渡す。使えなければダウンロードに落とす。
+  async function sharePoster(blob, year) {
+    var name = 'ashiato-' + year + '.png';
+    var file = new File([blob], name, { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: year + '年のあしあと' });
+        return;
+      } catch (e) {
+        if (e && e.name === 'AbortError') return; // 本人が閉じただけ。何もしない
+        // それ以外は保存に落とす
+      }
+    }
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // ボタンから呼ぶ。生成中は押せなくする。
+  async function savePoster(btn, data) {
+    var label = btn.textContent;
+    btn.disabled = true; btn.textContent = '作成中…';
+    try {
+      var blob = await App.reviewPoster.build(data, yearPhotoUrls(data.year));
+      await sharePoster(blob, data.year);
+    } catch (e) {
+      console.error('poster failed', e);
+      alert('画像を作れませんでした');
+    } finally {
+      btn.disabled = false; btn.textContent = label;
+    }
+  }
+
   function showPage(data) {
     document.body.classList.add('reviewing'); // 地図画面用ボタンを隠す
     var host = el('review-page');
@@ -375,7 +429,8 @@ App.review = (function () {
       '<div class="rv-page">' +
       '<button class="rv-x" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
       '<div class="rv-hero"><div class="rv-hero-sub">' + data.year + '年のあしあと</div>' +
-      daysLine + '<div class="rv-hero-count">おでかけ ' + data.count + '回</div></div>' +
+      daysLine + '<div class="rv-hero-count">おでかけ ' + data.outingDays + '日</div>' +
+      '<div class="rv-hero-sub2">訪れた場所 ' + data.count + 'か所</div></div>' +
       '<div class="rv-tiles">' + tiles + '</div>' +
       '<div class="rv-section"><div class="rv-h">あしあと地図</div><div class="rv-map-wrap rv-map-page"><div class="rv-map"></div></div>' +
       '<button class="rv-btn rv-realmap">本物の地図でこの年を見る</button></div>' +
@@ -384,12 +439,15 @@ App.review = (function () {
       (photoGrid ? '<div class="rv-section"><div class="rv-h">写真</div>' + photoGrid + '</div>' : '') +
       (best ? '<div class="rv-section"><div class="rv-h">よく行ったところ</div>' + best + '</div>' : '') +
       '<div class="rv-section"><div class="rv-h">最初と最後</div>' + outing('最初のおでかけ', data.firstOuting) + outing('最後のおでかけ', data.lastOuting) + '</div>' +
+      (data.isEmpty ? '' : '<div class="rv-section rv-save-wrap"><button class="rv-save">画像で保存・共有</button></div>') +
       '</div>';
 
     host.querySelector('.rv-x').onclick = hideAll;
     var mapEl = host.querySelector('.rv-map');
     if (data.pins.length) renderMap(mapEl, data.pins, { animate: false });
     host.querySelector('.rv-realmap').onclick = function () { goToRealMap(data.year); };
+    var saveBtn = host.querySelector('.rv-save');
+    if (saveBtn) saveBtn.onclick = function () { savePoster(saveBtn, data); };
     host.querySelectorAll('.rv-outing').forEach(function (b) {
       b.onclick = function () { hideAll(); App.records.focusDay(b.getAttribute('data-date')); };
     });
@@ -464,7 +522,7 @@ App.review = (function () {
       '<div class="rv-card-icon"><i class="ph ph-sparkle"></i></div>' +
       '<button class="rv-card-open"><div class="rv-card-label">ふりかえり</div>' +
       '<div class="rv-card-title">' + targetYear + '年のふりかえりができました</div>' +
-      '<div class="rv-card-sub">タップで再生 ・ ' + data.count + '回のおでかけ</div></button>' +
+      '<div class="rv-card-sub">タップで再生 ・ ' + data.outingDays + '日のおでかけ</div></button>' +
       '<button class="rv-card-x" aria-label="閉じる"><i class="ph ph-x"></i></button></div>';
     host.querySelector('.rv-card-open').onclick = function () { host.hidden = true; open(targetYear); };
     host.querySelector('.rv-card-x').onclick = function () {
