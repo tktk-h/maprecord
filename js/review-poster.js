@@ -47,7 +47,9 @@ App.reviewPoster = (function () {
   }
 
   const W = 1080, H = 1920;
-  const SHRINK = 8;                 // 1/8に縮小してから戻すことでぼかす
+  const DRAW_W = 270, DRAW_H = 480; // タイルを描く大きさ。ここで写真を縮小するので、小さすぎると粗く拾ってしまう
+  const BLUR_MIN = 68;              // ここまで縮めてから戻すと、モックで選んだ「弱め」のやわらかさになる
+  const STEP = 1.6;                 // 戻すときの1段の倍率。小刻みなほどガウスに近くなる
 
   // 画像を1枚読む。失敗しても reject せず null を返す（1枚の失敗で全体を止めない）。
   // crossOrigin を付けないと canvas が汚染され、書き出しのときだけ SecurityError になる。
@@ -66,6 +68,35 @@ App.reviewPoster = (function () {
     const s = Math.max(w / img.width, h / img.height);
     const sw = w / s, sh = h / s;                          // 元画像から切り出す範囲
     ctx.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, x, y, w, h);
+  }
+
+  // 指定サイズの canvas に描き写す（補間は最高品質で）
+  function scaled(src, w, h) {
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const x = c.getContext('2d');
+    x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+    x.drawImage(src, 0, 0, w, h);
+    return c;
+  }
+
+  // 背景をぼかして原寸で描く。ctx.filter は端末差があるので使わない。
+  // 半分ずつ縮めてから 1.6倍ずつ戻すことで補間を何度も重ね、
+  // 一気に拡大したときの「直線的な継ぎ目」ではなくガウスに近いなめらかさを作る。
+  function drawBlurred(ctx, src, w, h) {
+    let cur = src;
+    const drop = (c) => { if (c !== src) { c.width = c.height = 0; } }; // 作業用canvasは早めに返す
+    while (Math.round(cur.width / 2) >= BLUR_MIN) {
+      const next = scaled(cur, Math.round(cur.width / 2), Math.round(cur.height / 2));
+      drop(cur); cur = next;
+    }
+    while (cur.width * STEP < w) {
+      const next = scaled(cur, Math.round(cur.width * STEP), Math.round(cur.height * STEP));
+      drop(cur); cur = next;
+    }
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(cur, 0, 0, w, h);
+    drop(cur);
   }
 
   // 写真が無い年の背景。暖色のグラデーションで成立させる。
@@ -123,10 +154,11 @@ App.reviewPoster = (function () {
     const imgs = await Promise.all(picked.map(loadImage));
     const usable = imgs.filter(Boolean).length;
 
-    const sw = Math.round(W / SHRINK), sh = Math.round(H / SHRINK);
+    const sw = DRAW_W, sh = DRAW_H;
     const small = document.createElement('canvas');
     small.width = sw; small.height = sh;
     const sctx = small.getContext('2d');
+    sctx.imageSmoothingEnabled = true; sctx.imageSmoothingQuality = 'high';
 
     if (usable === 0) {
       drawWarmField(sctx, sw, sh);
@@ -139,15 +171,8 @@ App.reviewPoster = (function () {
       });
     }
 
-    // 一気に8倍すると角が立つので、2段階で戻して滑らかにする
-    const mid = document.createElement('canvas');
-    mid.width = Math.round(W / 2); mid.height = Math.round(H / 2);
-    const mctx = mid.getContext('2d');
-    mctx.imageSmoothingEnabled = true; mctx.imageSmoothingQuality = 'high';
-    mctx.drawImage(small, 0, 0, mid.width, mid.height);
-    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(mid, 0, 0, W, H);
-    small.width = small.height = 0; mid.width = mid.height = 0; // 端末のメモリを早めに返す
+    drawBlurred(ctx, small, W, H);
+    small.width = small.height = 0; // 端末のメモリを早めに返す
 
     // --- 暗幕 ---
     ctx.fillStyle = 'rgba(38, 26, 19, 0.55)';
