@@ -268,16 +268,38 @@ App.map = (function () {
     });
   }
 
-  // クラスタ（束ねたピン）のバッジ。件数を白文字で出す。
+  // 束ねをやめて個別ピンに戻すズーム。CLUSTER_MAX_ZOOM 以下で束ね、+1 から個別。
+  const CLUSTER_MAX_ZOOM = 14;
+
+  // クラスタ（束ねたピン）。中の写真を数枚重ねたカードに見せ、右上に件数を出す。
+  // 再訪ピン（写真1枚＋しっぽ＋濃いグレーの数字）と紛れないよう、
+  // 重なり・しっぽなし・テラコッタの数字の3点で区別する。
   // gmpClickable が必須：AdvancedMarkerElement のクラスタをライブラリは 'gmp-click' で
   // 待ち受けるため、これが無いとバッジをタップしても何も起きない。
   // 座標が LatLng で来るため makeMarker（lat,lng を取る）は使わず直接組む。
   const clusterRenderer = {
     render(cluster) {
-      const c = el('<div class="cluster-pin"></div>');
-      c.textContent = String(cluster.count); // 件数（注入防止で textContent）
-      c.title = cluster.count + '件'; // 読み上げ・ホバー用（バッジの数字だけでは伝わらない）
-      c.style.transform = 'translateY(50%)'; // 円の中心を座標に合わせる
+      const c = el('<div class="cluster-pin">'
+        + '<span class="cl-card cl-back2"></span><span class="cl-card cl-back1"></span>'
+        + '</div>');
+      // 束ねた中から写真を1枚借りる。無ければ先頭のジャンル色で塗る。
+      const marks = cluster.markers || [];
+      const withPhoto = marks.find((m) => m.__rec && (m.__rec.photos || []).length);
+      if (withPhoto) {
+        const img = el('<img class="cl-face" alt="">');
+        img.src = App.photos.thumbOf(withPhoto.__rec.photos[0]);
+        c.appendChild(img);
+      } else {
+        const face = el('<span class="cl-face"></span>');
+        const first = marks.find((m) => m.__rec);
+        face.style.background = App.genres.color(first && first.__rec ? first.__rec.genre : null);
+        c.appendChild(face);
+      }
+      const n = el('<span class="cl-count"></span>');
+      n.textContent = String(cluster.count); // 件数（注入防止で textContent）
+      c.appendChild(n);
+      c.title = cluster.count + '件の場所'; // 読み上げ・ホバー用（数字だけでは伝わらない）
+      c.style.transform = 'translateY(50%)'; // 中心を座標に合わせる
       return new AdvancedMarkerElement({
         position: cluster.position,
         content: c,
@@ -287,14 +309,14 @@ App.map = (function () {
     },
   };
 
-  // クラスタをタップ：その範囲に寄せる。同じ地点だけの束は範囲がゼロで最大ズームまで
-  // 飛んでしまうので、個別ピンが出る16で止める（fitTo と同じ考え方）。
+  // クラスタをタップ：中身が見える方へ一定段数だけ寄る。
+  // fitBounds は使わない——同じ地点だけの束は範囲がゼロで最大ズームまで飛び、その後
+  // 引き戻す動きが「ドアップから広がる」ように見えるため。段数固定なら挙動が読める。
   function onClusterClick(_event, cluster) {
-    if (!cluster || !cluster.bounds) return;
-    map.fitBounds(cluster.bounds, 60);
-    google.maps.event.addListenerOnce(map, 'idle', () => {
-      if (map.getZoom() > 16) map.setZoom(16);
-    });
+    if (!cluster || !map) return;
+    const cur = map.getZoom() || 0;
+    map.panTo(cluster.position);
+    map.setZoom(Math.min(cur + 3, CLUSTER_MAX_ZOOM + 1)); // 寄り切ったら必ず個別ピン
   }
 
   // markers をクラスタラに預けて束ねる。起動できたら true。CDN未読込などで無理なら false。
@@ -302,9 +324,10 @@ App.map = (function () {
     if (!window.markerClusterer || clusterer || !map) return false;
     clusterer = new markerClusterer.MarkerClusterer({
       map, markers, renderer: clusterRenderer, onClusterClick,
-      // 既定16だと「ズーム16でもまだ束ねる」。flyTo/fitTo が16まで寄せるので、
-      // 16では必ず個別ピンが見えるよう15で束ねを終わりにする。
-      algorithmOptions: { maxZoom: 15 },
+      // 既定(radius 60 / maxZoom 16)は段階が細かすぎて、少し寄るたびに
+      // 2〜3件の小さな束へバラバラに割れて煩わしい。広めに束ね、5件未満は
+      // 束ねず、14以下でだけ束ねることで「大づかみ→個別」の2段階にする。
+      algorithmOptions: { maxZoom: CLUSTER_MAX_ZOOM, radius: 140, minPoints: 5 },
     });
     return true;
   }
@@ -404,6 +427,7 @@ App.map = (function () {
       const { content, centered } = markerContent(r, numbered ? i + 1 : null, countAt ? countAt(r) : 1);
       content.title = r.name || '(名称未設定)'; // ホバーで名前（Leaflet の tooltip 代替）
       const m = makeMarker(r.lat, r.lng, content, { centered, noMap: clusterWanted });
+      m.__rec = r; // クラスタのバッジが写真・ジャンル色を借りるため元レコードを持たせる
       m.addListener('click', () => {
         if (pickMarker && pickRecordSelect) { pickRecordSelect(r); return; } // 位置ピック中は選択に回す
         onClick(r);

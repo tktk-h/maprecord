@@ -530,10 +530,22 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
   border: 2px solid #fff; box-shadow: var(--shadow-sm); }
 
-/* クラスタ（近くのピンを束ねたバッジ）。件数を白文字で出す */
-.cluster-pin { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: #fff;
-  font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center;
-  border: 2px solid #fff; box-shadow: var(--shadow-md); cursor: pointer; }
+/* クラスタ（近くの場所を束ねたバッジ）。写真を数枚重ねたカードに見せる。
+   再訪ピン（写真1枚＋しっぽ＋濃いグレーの数字）と紛れないよう、
+   重なり・しっぽなし・テラコッタの数字で区別する。 */
+.cluster-pin { position: relative; width: 46px; height: 46px; cursor: pointer; }
+.cluster-pin .cl-card { position: absolute; width: 46px; height: 46px; border-radius: 12px;
+  border: 2px solid #fff; box-shadow: var(--shadow-sm); }
+.cluster-pin .cl-back2 { background: #e6dcc8; transform: rotate(8deg) translate(4px, -2px); }
+.cluster-pin .cl-back1 { background: #d9c3ae; transform: rotate(-5deg) translate(2px, -1px); }
+/* 一番手前＝実際の写真（無ければジャンル色） */
+.cluster-pin .cl-face { position: absolute; left: 0; top: 0; width: 46px !important; height: 46px !important;
+  object-fit: cover; border-radius: 12px; border: 2px solid #fff; background: #fff; display: block;
+  box-shadow: var(--shadow-md); }
+.cluster-pin .cl-count { position: absolute; top: -9px; right: -6px; min-width: 20px; height: 20px;
+  padding: 0 5px; border-radius: 10px; background: var(--accent); color: #fff;
+  font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  border: 2px solid #fff; box-shadow: var(--shadow-sm); }
 
 /* ===== 一日の流れ（ルートシート） ===== */
 .sheet-handle { display: block; width: 40px; height: 5px; border-radius: 3px; background: #d8d2c8; }
