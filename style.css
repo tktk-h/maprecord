@@ -893,8 +893,8 @@ body.reviewing #bulk-btn { display: none !important; }
 .rv-hero-sub { font-size: 12px; letter-spacing: .1em; opacity: .85; }
 .rv-hero-days { font-size: 15px; margin-top: 6px; opacity: .95; }
 .rv-hero-count { font-size: 26px; font-weight: 800; margin-top: 4px; font-family: var(--font-display); }
-/* ヘッダーの2つめの数字（訪れた場所） */
-.rv-hero-sub2 { margin-top: 4px; font-size: 14px; color: var(--text-muted); }
+/* ヘッダーの2つめの数字（訪れた場所）。兄弟に合わせ、色ではなく opacity で弱める */
+.rv-hero-sub2 { margin-top: 4px; font-size: 14px; opacity: .9; }
 .rv-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 16px; }
 .rv-tile { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px; }
 .rv-tile-n { font-size: 22px; font-weight: 800; color: var(--accent-strong); }
