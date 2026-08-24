@@ -48,7 +48,6 @@ App.reviewPoster = (function () {
 
   const W = 1080, H = 1920;
   const SHRINK = 8;                 // 1/8に縮小してから戻すことでぼかす
-  const CREAM = '#faf6ef';
 
   // 画像を1枚読む。失敗しても reject せず null を返す（1枚の失敗で全体を止めない）。
   // crossOrigin を付けないと canvas が汚染され、書き出しのときだけ SecurityError になる。
@@ -62,11 +61,11 @@ App.reviewPoster = (function () {
     });
   }
 
-  // 枠いっぱいに写真を敷く（はみ出す分は切る＝object-fit:cover 相当）
+  // 枠いっぱいに写真を敷く（元画像の側を切り出す＝object-fit:cover 相当）
   function drawCover(ctx, img, x, y, w, h) {
     const s = Math.max(w / img.width, h / img.height);
-    const dw = img.width * s, dh = img.height * s;
-    ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+    const sw = w / s, sh = h / s;                          // 元画像から切り出す範囲
+    ctx.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, x, y, w, h);
   }
 
   // 写真が無い年の背景。暖色のグラデーションで成立させる。
@@ -85,15 +84,19 @@ App.reviewPoster = (function () {
 
   // 字間を空けて中央に描く。ctx.letterSpacing は対応がまちまちなので1文字ずつ置く。
   function drawSpaced(ctx, text, cx, y, spacing) {
+    const prev = ctx.textAlign;
+    ctx.textAlign = 'center';
     const chars = String(text).split('');
     let total = 0;
     chars.forEach((c) => { total += ctx.measureText(c).width + spacing; });
     total -= spacing;
     let x = cx - total / 2;
     chars.forEach((c) => {
-      ctx.fillText(c, x + ctx.measureText(c).width / 2, y);
-      x += ctx.measureText(c).width + spacing;
+      const w = ctx.measureText(c).width;
+      ctx.fillText(c, x + w / 2, y);
+      x += w + spacing;
     });
+    ctx.textAlign = prev;
   }
 
   // アプリと同じ書体で描くため、canvas に使う前にフォントを読み込ませる。
@@ -101,7 +104,7 @@ App.reviewPoster = (function () {
   async function ensureFonts() {
     try {
       await Promise.all([
-        document.fonts.load('300 152px "Zen Kaku Gothic New"'),
+        document.fonts.load('300 240px "Zen Kaku Gothic New"'),
         document.fonts.load('400 30px "Zen Kaku Gothic New"'),
       ]);
       await document.fonts.ready;
@@ -144,6 +147,7 @@ App.reviewPoster = (function () {
     mctx.drawImage(small, 0, 0, mid.width, mid.height);
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(mid, 0, 0, W, H);
+    small.width = small.height = 0; mid.width = mid.height = 0; // 端末のメモリを早めに返す
 
     // --- 暗幕 ---
     ctx.fillStyle = 'rgba(38, 26, 19, 0.55)';
@@ -157,13 +161,13 @@ App.reviewPoster = (function () {
     drawSpacedLeft(ctx, 'あしあと', 60, 66, 5);
 
     ctx.textAlign = 'center';
-    ctx.font = '300 152px "Zen Kaku Gothic New", sans-serif';
+    ctx.font = '300 240px "Zen Kaku Gothic New", sans-serif';
     ctx.fillStyle = '#fff';
     ctx.fillText(String(data.year), W / 2, H * 0.31);
 
     ctx.font = '400 30px "Zen Kaku Gothic New", sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,.8)';
-    drawSpaced(ctx, '年のあしあと', W / 2, H * 0.31 + 118, 9);
+    drawSpaced(ctx, '年のあしあと', W / 2, H * 0.31 + 165, 9);
 
     const lines = statLines(data);
     const lineH = 58;
@@ -184,11 +188,14 @@ App.reviewPoster = (function () {
 
   // 左揃えで字間を空ける（左上のロゴ用）
   function drawSpacedLeft(ctx, text, x, y, spacing) {
+    const prev = ctx.textAlign;
+    ctx.textAlign = 'left';
     let cx = x;
     String(text).split('').forEach((c) => {
       ctx.fillText(c, cx, y);
       cx += ctx.measureText(c).width + spacing;
     });
+    ctx.textAlign = prev;
   }
 
   function _selfTest() {
