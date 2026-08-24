@@ -412,6 +412,8 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   padding: 9px 8px; font-size: 14px; text-align: left; }
 #backup-bar button .ph { font-size: 18px; color: var(--text-muted); }
 #backup-bar button:hover { background: var(--surface-2); }
+#backup-bar button.on { background: var(--accent-soft); color: var(--accent-strong); }
+#backup-bar button.on .ph { color: var(--accent-strong); }
 #anniv-btn .ph { color: var(--accent); }
 #logout-btn { color: #a86a62; }
 #logout-btn .ph { color: #a86a62; }
