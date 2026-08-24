@@ -6,6 +6,8 @@ App.map = (function () {
   let AdvancedMarkerElement;   // marker ライブラリのクラス（init で読み込む）
   let markers = [];            // renderPins で出したマーカー
   let searchMarkers = [];      // 場所検索の結果ピン（記録ピン markers とは別レイヤー）
+  let clusterer = null;        // MarkerClusterer（クラスタON時のみ）
+  let clusterWanted = false;   // 直近の renderPins がクラスタ指定だったか（検索からの復帰判定に使う）
   let routeLine = null;        // ルートの点線（numbered 表示時）
   let tempMarker = null;       // 追加フォーム中の目印
   let pickMarker = null;       // 位置修正のドラッグ用
@@ -171,6 +173,8 @@ App.map = (function () {
   function setTapHandler(fn) { onTap = fn; }
 
   function clearPins() {
+    stopClusterer();   // 先に破棄しないと idle リスナーが残ってマーカーが復活する
+    clusterWanted = false;
     markers.forEach((m) => { m.map = null; });
     markers = [];
     if (routeLine) { routeLine.setMap(null); routeLine = null; }
@@ -241,12 +245,42 @@ App.map = (function () {
     });
   }
 
+  // クラスタ（束ねたピン）のバッジ。件数を白文字で出す。
+  // gmpClickable が必須：AdvancedMarkerElement のクラスタをライブラリは 'gmp-click' で
+  // 待ち受けるため、これが無いとバッジをタップしても何も起きない。
+  const clusterRenderer = {
+    render(cluster) {
+      const c = el('<div class="cluster-pin"></div>');
+      c.textContent = String(cluster.count); // 件数（注入防止で textContent）
+      c.style.transform = 'translateY(50%)'; // 円の中心を座標に合わせる
+      return new AdvancedMarkerElement({
+        position: cluster.position,
+        content: c,
+        zIndex: 900,
+        gmpClickable: true,
+      });
+    },
+  };
+
+  // markers をクラスタラに預けて束ねる。CDN未読込なら何もしない（＝通常描画のまま）
+  function startClusterer() {
+    if (!window.markerClusterer || clusterer || !map) return;
+    clusterer = new markerClusterer.MarkerClusterer({ map, markers, renderer: clusterRenderer });
+  }
+  // 束ねを止めて素の個別ピン制御に戻す。setMap(null) で管理下のマーカーは全て map=null になる。
+  function stopClusterer() {
+    if (!clusterer) return;
+    clusterer.setMap(null);
+    clusterer = null;
+  }
+
   // AdvancedMarker を作る。centered=true の content は中心を座標に合わせる（既定は下端中央アンカー）
+  // noMap=true は地図に出さない（クラスタに預ける前に一瞬表示されるのを防ぐ）
   function makeMarker(lat, lng, content, opts) {
     opts = opts || {};
     if (opts.centered) content.style.transform = 'translateY(50%)';
     return new AdvancedMarkerElement({
-      map,
+      map: opts.noMap ? null : map,
       position: { lat, lng },
       content,
       zIndex: opts.zIndex,
@@ -308,10 +342,12 @@ App.map = (function () {
 
   // records: [{id, lat, lng, name, genre, photos, ...}], onClick: (record)=>void
   // opts.numbered=true で順番バッジ＋ルート点線を描く（records は表示順に並んでいる前提）
+  // opts.cluster=true で近接ピンを束ねる（通常のマップ表示のみ。ルート・検索結果では使わない）
   function renderPins(records, onClick, opts) {
     clearPins();
     const numbered = !!(opts && opts.numbered);
     const countAt = opts && opts.countAt;
+    clusterWanted = !!(opts && opts.cluster) && !!window.markerClusterer; // CDN未読込なら通常描画
     if (numbered && records.length > 1) {
       routeLine = new google.maps.Polyline({
         path: records.map((r) => ({ lat: r.lat, lng: r.lng })),
@@ -326,13 +362,14 @@ App.map = (function () {
     records.forEach((r, i) => {
       const { content, centered } = markerContent(r, numbered ? i + 1 : null, countAt ? countAt(r) : 1);
       content.title = r.name || '(名称未設定)'; // ホバーで名前（Leaflet の tooltip 代替）
-      const m = makeMarker(r.lat, r.lng, content, { centered });
+      const m = makeMarker(r.lat, r.lng, content, { centered, noMap: clusterWanted });
       m.addListener('click', () => {
         if (pickMarker && pickRecordSelect) { pickRecordSelect(r); return; } // 位置ピック中は選択に回す
         onClick(r);
       });
       markers.push(m);
     });
+    if (clusterWanted) startClusterer();
   }
 
   return { init, setClickHandler, setPlaceClickHandler, getPlaceClickHandler, setRecordPickHandler, setLongPressHandler, setUserPanHandler, setTapHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
