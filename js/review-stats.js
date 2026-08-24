@@ -111,6 +111,7 @@ App.reviewStats = (function () {
     const ids = [];
     if (data.isEmpty) return ids;
     if (data.daysTogether != null) ids.push('days');
+    ids.push('outings'); // ふたりで過ごした日数（記念日の有無に関わらず出す）
     ids.push('places'); // 主役（count>=1）
     if (data.newPlaces >= 1) ids.push('new');
     if (data.topSpot) ids.push('topspot');
@@ -191,10 +192,13 @@ App.reviewStats = (function () {
     eq('years', yearsWithRecords(recs), [2027, 2026, 2025]);
 
     // planSlides：全部そろう年
-    eq('planSlides-full', planSlides(d), ['days', 'places', 'new', 'topspot', 'genre', 'month', 'closing']);
+    eq('planSlides-full', planSlides(d), ['days', 'outings', 'places', 'new', 'topspot', 'genre', 'month', 'closing']);
+    // 記念日が無くても「ふたりで過ごした日」は出す（付き合って日数とは別物）
+    eq('planSlides-outings-without-anniv',
+      planSlides(computeYearReview(dayRecs, 2026, null, '2026-12-31')).indexOf('outings') >= 0, true);
     // 記念日なし・再訪なし・単月の年 → days/topspot/month が落ちる
     eq('planSlides-min', planSlides(computeYearReview([recs[2]], 2026, null, '2026-08-19')),
-      ['places', 'new', 'closing']); // count=1, B食堂は2026が初訪問なので newPlaces=1 → 'new' が入る
+      ['outings', 'places', 'new', 'closing']); // count=1, B食堂は2026が初訪問なので newPlaces=1 → 'new' が入る。outingsは記念日なしでも出る
 
     console.log(fails === 0 ? '✅ review-stats ALL PASS' : ('❌ review-stats ' + fails + ' FAIL'));
     return fails;
