@@ -214,8 +214,11 @@ App.review = (function () {
     if (id === 'days') return '<div class="rv-cap">付き合って</div>' +
       '<div class="rv-big"><span class="rv-count" data-to="' + data.daysTogether + '">0</span><span class="rv-u">日目</span></div>' +
       '<div class="rv-cap">ふたりで歩いてきた</div>';
+    if (id === 'outings') return '<div class="rv-cap">ふたりで過ごした日</div>' +
+      '<div class="rv-big"><span class="rv-count" data-to="' + data.outingDays + '">0</span><span class="rv-u">日</span></div>' +
+      '<div class="rv-cap">' + data.count + 'か所をめぐった</div>';
     if (id === 'places') return '<div class="rv-cap">今年訪れた場所</div>' +
-      '<div class="rv-big"><span class="rv-count rv-places-num">0</span><span class="rv-u">回</span></div>' +
+      '<div class="rv-big"><span class="rv-count rv-places-num">0</span><span class="rv-u">か所</span></div>' +
       '<div class="rv-map-wrap"><div class="rv-map"></div></div>';
     if (id === 'new') return '<div class="rv-cap">はじめての場所</div>' +
       '<div class="rv-big"><span class="rv-count" data-to="' + data.newPlaces + '">0</span><span class="rv-u">軒</span></div>' +
@@ -235,7 +238,7 @@ App.review = (function () {
     }
     if (id === 'month') return '<div class="rv-cap">いちばん濃かった月</div>' +
       '<div class="rv-big">' + MONTHS[data.busiestMonth.month - 1] + '</div>' +
-      '<div class="rv-cap">この月だけで ' + data.busiestMonth.count + '回</div>';
+      '<div class="rv-cap">この月だけで ' + data.busiestMonth.count + '日</div>';
     if (id === 'closing') return '<div class="rv-mid rv-closing">また来年も、<br>ふたりのあしあとを。</div>' +
       '<button class="rv-btn rv-topage">総集編を見る ↓</button>';
     return '';
@@ -375,7 +378,8 @@ App.review = (function () {
       '<div class="rv-page">' +
       '<button class="rv-x" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
       '<div class="rv-hero"><div class="rv-hero-sub">' + data.year + '年のあしあと</div>' +
-      daysLine + '<div class="rv-hero-count">おでかけ ' + data.count + '回</div></div>' +
+      daysLine + '<div class="rv-hero-count">おでかけ ' + data.outingDays + '日</div>' +
+      '<div class="rv-hero-sub2">訪れた場所 ' + data.count + 'か所</div></div>' +
       '<div class="rv-tiles">' + tiles + '</div>' +
       '<div class="rv-section"><div class="rv-h">あしあと地図</div><div class="rv-map-wrap rv-map-page"><div class="rv-map"></div></div>' +
       '<button class="rv-btn rv-realmap">本物の地図でこの年を見る</button></div>' +
@@ -464,7 +468,7 @@ App.review = (function () {
       '<div class="rv-card-icon"><i class="ph ph-sparkle"></i></div>' +
       '<button class="rv-card-open"><div class="rv-card-label">ふりかえり</div>' +
       '<div class="rv-card-title">' + targetYear + '年のふりかえりができました</div>' +
-      '<div class="rv-card-sub">タップで再生 ・ ' + data.count + '回のおでかけ</div></button>' +
+      '<div class="rv-card-sub">タップで再生 ・ ' + data.outingDays + '日のおでかけ</div></button>' +
       '<button class="rv-card-x" aria-label="閉じる"><i class="ph ph-x"></i></button></div>';
     host.querySelector('.rv-card-open').onclick = function () { host.hidden = true; open(targetYear); };
     host.querySelector('.rv-card-x').onclick = function () {
