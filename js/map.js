@@ -48,6 +48,9 @@ App.map = (function () {
     try { localStorage.setItem(CLUSTER_KEY, on ? 'on' : 'off'); } catch (e) { /* 保存できなくても動作は続ける */ }
   }
 
+  // クラスタを使うか。opts.cluster 指定かつCDN読込済みのときだけ true（未読込なら通常描画）
+  function wantsCluster(opts) { return !!(opts && opts.cluster) && !!window.markerClusterer; }
+
   function _selfTest() {
     let fails = 0;
     const eq = (n, got, want) => {
@@ -62,6 +65,14 @@ App.map = (function () {
     eq('same-spot-near', sameSpot({ lat: 35, lng: 139 }, { lat: 35.0001, lng: 139.0001 }), true);
     eq('same-spot-far', sameSpot({ lat: 35, lng: 139 }, { lat: 35.01, lng: 139 }), false);
     eq('same-spot-null', sameSpot(null, { lat: 35, lng: 139 }), false);
+    const savedMC = window.markerClusterer;
+    window.markerClusterer = undefined;                     // CDN未読込を再現
+    eq('wants-cluster-no-cdn', wantsCluster({ cluster: true }), false);
+    window.markerClusterer = {};                            // CDN読込済みを再現
+    eq('wants-cluster-on', wantsCluster({ cluster: true }), true);
+    eq('wants-cluster-off', wantsCluster({ cluster: false }), false);
+    eq('wants-cluster-no-opts', wantsCluster(null), false);
+    window.markerClusterer = savedMC;
     console.log(fails === 0 ? 'ALL PASS (map)' : (fails + ' FAILED (map)'));
     return fails;
   }
@@ -248,6 +259,7 @@ App.map = (function () {
   // クラスタ（束ねたピン）のバッジ。件数を白文字で出す。
   // gmpClickable が必須：AdvancedMarkerElement のクラスタをライブラリは 'gmp-click' で
   // 待ち受けるため、これが無いとバッジをタップしても何も起きない。
+  // 座標が LatLng で来るため makeMarker（lat,lng を取る）は使わず直接組む。
   const clusterRenderer = {
     render(cluster) {
       const c = el('<div class="cluster-pin"></div>');
@@ -262,10 +274,11 @@ App.map = (function () {
     },
   };
 
-  // markers をクラスタラに預けて束ねる。CDN未読込なら何もしない（＝通常描画のまま）
+  // markers をクラスタラに預けて束ねる。起動できたら true。CDN未読込などで無理なら false。
   function startClusterer() {
-    if (!window.markerClusterer || clusterer || !map) return;
+    if (!window.markerClusterer || clusterer || !map) return false;
     clusterer = new markerClusterer.MarkerClusterer({ map, markers, renderer: clusterRenderer });
+    return true;
   }
   // 束ねを止めて素の個別ピン制御に戻す。setMap(null) で管理下のマーカーは全て map=null になる。
   function stopClusterer() {
@@ -347,7 +360,7 @@ App.map = (function () {
     clearPins();
     const numbered = !!(opts && opts.numbered);
     const countAt = opts && opts.countAt;
-    clusterWanted = !!(opts && opts.cluster) && !!window.markerClusterer; // CDN未読込なら通常描画
+    clusterWanted = wantsCluster(opts);
     if (numbered && records.length > 1) {
       routeLine = new google.maps.Polyline({
         path: records.map((r) => ({ lat: r.lat, lng: r.lng })),
@@ -369,7 +382,8 @@ App.map = (function () {
       });
       markers.push(m);
     });
-    if (clusterWanted) startClusterer();
+    // 束ねられなかったら、伏せてあるマーカーを素のまま出す（真っ白な地図にしない）
+    if (clusterWanted && !startClusterer()) markers.forEach((m) => { m.map = map; });
   }
 
   return { init, setClickHandler, setPlaceClickHandler, getPlaceClickHandler, setRecordPickHandler, setLongPressHandler, setUserPanHandler, setTapHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
