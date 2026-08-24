@@ -202,22 +202,30 @@ App.map = (function () {
     return !!(a && b && Math.abs(a.lat - b.lat) < SAME_SPOT_TOL && Math.abs(a.lng - b.lng) < SAME_SPOT_TOL);
   }
 
-  function clearPlaceResults() {
+  // keepPinsHidden=true のときは記録ピンの表示を戻さない（直後に呼び出し側が決める）
+  function clearPlaceResults(keepPinsHidden) {
     searchMarkers.forEach((m) => { m.map = null; });
     searchMarkers = [];
+    if (keepPinsHidden) return;
+    if (clusterWanted) { // クラスタ表示へ復帰（すでに動いているなら触らない）
+      if (!clusterer) { markers.forEach((m) => { m.map = null; }); startClusterer(); }
+      return;
+    }
     markers.forEach((m) => { if (m.map !== map) m.map = map; }); // 隠していた記録ピンを戻す
   }
 
   // 記録ピンを即座に全部隠す（検索の通信待ち中に一瞬表示されるのを防ぐ）
-  function hideRecordPins() { markers.forEach((m) => { m.map = null; }); }
+  // クラスタON中はバッジがクラスタラ所有の別マーカーなので、先に束ねを止めないと消えない
+  function hideRecordPins() { stopClusterer(); markers.forEach((m) => { m.map = null; }); }
 
   // places=[{placeId,name,lat,lng,genre}] を検索ピンとして表示。タップで onSelect(placeId)
   // opts.hideRecords=true：検索結果に一致しない記録ピンを隠す（一致する記録ピンは残し、赤ピンは出さない）
   function renderPlaceResults(places, onSelect, opts) {
     opts = opts || {};
-    clearPlaceResults();
+    clearPlaceResults(!!opts.hideRecords);
     places = places || [];
     if (opts.hideRecords) {
+      stopClusterer(); // 束ねたままだと idle 再描画に表示状態を上書きされる
       markers.forEach((m) => {
         const c = markerLatLng(m);
         m.map = places.some((p) => sameSpot(p, c)) ? map : null;
