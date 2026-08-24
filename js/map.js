@@ -314,36 +314,53 @@ App.map = (function () {
 
   // 束ねが解けた瞬間、ピンが元のバッジ位置からそれぞれの場所へ散っていく動き。
   // AdvancedMarkerElement は座標そのものを動かせないので、content を「元の位置ぶん」
-  // ずらして置いてから 0 に戻す（見た目だけ動かす）。
-  const SPREAD_MS = 420;
-  function spreadFrom(m) {
+  // ずらしたところから自分の位置へ動かす（見た目だけ動かす）。
+  //
+  // CSS transition ではなく Web Animations API を使う。Google は map=null↔map の
+  // 切り替えで content を DOM から出し入れするため、挿入直後の要素には「直前の
+  // 計算済みスタイル」が無く transition が発火しない（実際これで動かなかった）。
+  // animate() はキーフレームを明示するのでその条件に左右されない。
+  const SPREAD_MS = 460;
+  const SPREAD_MAX_PX = 150; // 寄り幅が大きいと画面外から飛んでくるので距離を頭打ちに
+  function spreadFrom(m, i) {
     // まだ束ねられている（map=null）間は控えを持ち続ける。ほどけて出てきた回だけ消費する。
-    if (!m.__from || !m.map) return;
+    if (!m.__from || !m.map) return false;
     const from = m.__from;
     m.__from = null;
-    if (!overlayProjection || !m.content) return;
+    if (!m.content || !m.content.animate) return false;
     const to = markerLatLng(m);
-    if (!to) return;
-    const a = overlayProjection.fromLatLngToContainerPixel(from);
-    const b = overlayProjection.fromLatLngToContainerPixel(new google.maps.LatLng(to.lat, to.lng));
-    if (!a || !b) return;
-    const dx = Math.round(a.x - b.x), dy = Math.round(a.y - b.y); // 端数はCSSに出さない
-    if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return; // ほぼ同じ場所なら動かさない
+    if (!to) return false;
+    // 画面上の何px離れているか。長押し用の overlayProjection ではなく map.getProjection() を使う：
+    // クラスタラ自身が getProjection() のある時だけ描画するので、ここでは必ず取れる。
+    const proj = map.getProjection();
+    if (!proj) return false;
+    const scale = Math.pow(2, map.getZoom() || 0); // ワールド座標(256px基準)→画面px
+    const a = proj.fromLatLngToPoint(from);
+    const b = proj.fromLatLngToPoint(new google.maps.LatLng(to.lat, to.lng));
+    if (!a || !b) return false;
+    let dx = (a.x - b.x) * scale, dy = (a.y - b.y) * scale;
+    const len = Math.hypot(dx, dy);
+    if (len < 2) return false;                // ほぼ同じ場所なら動かさない
+    if (len > SPREAD_MAX_PX) { dx = dx * SPREAD_MAX_PX / len; dy = dy * SPREAD_MAX_PX / len; }
     const base = m.content.style.transform || ''; // centered の translateY(50%) を壊さない
-    const st = m.content.style;
-    st.transition = 'none';
-    st.transform = `translate(${dx}px, ${dy}px) ${base}`;
-    st.opacity = '0';
-    // 1フレーム置いてから戻すと、ブラウザが差分を見てアニメーションしてくれる
-    requestAnimationFrame(() => {
-      st.transition = `transform ${SPREAD_MS}ms cubic-bezier(.22,.72,.3,1), opacity ${Math.round(SPREAD_MS * 0.6)}ms ease-out`;
-      st.transform = base;
-      st.opacity = '1';
-      setTimeout(() => { st.transition = ''; }, SPREAD_MS + 60); // 後の操作に残さない
-    });
+    const start = `translate(${Math.round(dx)}px, ${Math.round(dy)}px)` + (base ? ' ' + base : '');
+    m.content.animate(
+      [{ transform: start, opacity: 0 }, { transform: base || 'none', opacity: 1 }],
+      {
+        duration: SPREAD_MS,
+        delay: Math.min(i * 14, 140), // 少しずつ遅らせて「ばらけた」感じを出す
+        easing: 'cubic-bezier(.22,.72,.3,1)',
+        fill: 'backwards',            // 遅延中も開始位置で待たせる（最終位置にちらつかせない）
+      },
+    );
+    return true;
   }
-  // 束ね直しが終わるたび、今回ほどけたピンだけを散らす（__from があるものだけ動く）
-  function spreadUnbundled() { markers.forEach(spreadFrom); }
+  // 束ね直しが終わるたび、今回ほどけたピンだけを散らす（__from があるものだけ動く）。
+  // ずらし遅延は「実際に散る分」だけで数える（markers 内の並び順では間延びするため）
+  function spreadUnbundled() {
+    let i = 0;
+    markers.forEach((m) => { if (spreadFrom(m, i)) i++; });
+  }
 
   // クラスタをタップ：中身が見える方へ一定段数だけ寄る。
   // fitBounds は使わない——同じ地点だけの束は範囲がゼロで最大ズームまで飛び、その後
