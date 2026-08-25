@@ -146,19 +146,18 @@ App.reviewPoster = (function () {
 
   // 写真を1枚読む。
   //
-  // ⚠️ 素直に <img crossOrigin> だけにすると、実機で背景が単色に落ちる。
-  // 総集編ページが同じ写真を CSS background-image（no-cors）で先に読んでおり、
-  // その応答が使い回されると crossOrigin 付きの読み込みだけが失敗するため。
-  // グリッドは9枚までなので、写真が9枚以下の期間は「ポスターに要る写真が全部
-  // 先に読まれている」状態になり、1枚も読めずに背景が作れなくなっていた。
-  // 逆に写真が10枚以上ある年は、あぶれた写真が読めるぶん穴埋めが効いて表面化しない。
-  // そこで fetch(cache:'reload') を主経路にしてキャッシュを迂回する。
-  // URL は書き換えない（?_p=1 のような小細工は写真ホスト側の作法に依存するため）。
+  // この読み込みが総集編ページと競合していた時期がある。ページ側が同じ写真を
+  // 背景画像（no-cors）で先に読むと、その応答が使い回されて crossOrigin 付きの
+  // 読み込みだけが失敗していた。いまはページ側も crossorigin を付けた <img> で
+  // 読むよう揃えてあるので、取り合いは起きない（js/review-ui.js の写真グリッド）。
+  //
+  // 順番は「実機で動く経路が先」。<img crossOrigin> は端末で実績があり、
+  // fetch は環境によっては CORS 前で TypeError になることがあるので保険に回す。
   async function loadImage(url) {
+    const viaImg = await loadImgEl(url, true);
+    if (viaImg) { if (diag) diag.viaImg++; return viaImg; }
     const viaFetch = await fetchAsImage(url);
     if (viaFetch) { if (diag) diag.viaFetch++; return viaFetch; }
-    const viaImg = await loadImgEl(url, true); // fetch が塞がれたときの保険
-    if (viaImg) { if (diag) diag.viaImg++; return viaImg; }
     if (diag) diag.failed++;
     return null;
   }

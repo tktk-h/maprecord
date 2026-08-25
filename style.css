@@ -940,7 +940,9 @@ body.reviewing #review-back { display: none !important; }
 .rv-gbar { height: 12px; border-radius: 6px; min-width: 4px; }
 .rv-gcount { font-size: 12px; color: var(--text-muted); }
 .rv-photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.rv-photo { aspect-ratio: 1 / 1; border-radius: 10px; background-size: cover; background-position: center; background-color: var(--surface-2); }
+/* <img> で読む（crossorigin を付けるため）。背景画像だとポスター側の読み直しと競合する */
+.rv-photo { aspect-ratio: 1 / 1; width: 100%; display: block; object-fit: cover;
+  border-radius: 10px; background-color: var(--surface-2); }
 .rv-best { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
 .rv-best-rank { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff;
   display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }

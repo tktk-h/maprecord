@@ -274,6 +274,8 @@ App.review = (function () {
   function esc(s) {
     return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
+  // 属性値に URL を入れるとき用。esc に加えて引用符も潰す（URL は写真の保存先＝外部由来）。
+  function attrUrl(u) { return esc(u).replace(/"/g, '&quot;'); }
   function el(id) { return document.getElementById(id); }
   function hideAll() {
     ['review-picker', 'review-show', 'review-page'].forEach(function (i) { var e = el(i); if (e) { e.hidden = true; e.innerHTML = ''; } });
@@ -327,6 +329,18 @@ App.review = (function () {
     var b = el('review-back'); if (b) b.hidden = true;
   }
 
+  // ×＝この期間はもう見終わった、という意思表示。goToRealMap がかけた期間の
+  // 絞り込みをここで戻す。かけたものだけを戻すので、ジャンルの選択や検索語には触らない
+  // （全体リセットではない）。#filter-clear を押す手もあるが、あちらの配線に依存したくない。
+  function dismissBackToReview() {
+    hideBackToReview();
+    var ms = el('mode-select'); if (ms) ms.value = 'all';
+    var f = el('from-input'), t = el('to-input');
+    if (f) f.value = '';
+    if (t) t.value = '';
+    if (App.records && App.records.applyUiFilter) App.records.applyUiFilter();
+  }
+
   // 「ふりかえりに戻る」を地図の上に出す。押すと同じ期間の総集編をもう一度開く。
   function showBackToReview() {
     var host = el('review-back');
@@ -335,7 +349,7 @@ App.review = (function () {
       hideBackToReview();
       showPage(lastData);
     };
-    host.querySelector('.rb-x').onclick = hideBackToReview;
+    host.querySelector('.rb-x').onclick = dismissBackToReview;
     host.hidden = false;
   }
 
@@ -462,8 +476,16 @@ App.review = (function () {
         r.photos.forEach(function (p) { if (photos.length < 9) photos.push(App.photos.thumbOf(p)); });
       }
     });
+    // ⚠️ ここは crossorigin を付けた <img> で読むこと（背景画像にしない）。
+    // 背景画像は no-cors で取りに行くため、同じ写真をあとからポスターが
+    // crossOrigin 付きで読み直すときに、その応答が使い回されて失敗する。
+    // グリッドは9枚までなので、写真が9枚以下の期間はポスターに要る写真が
+    // 全部ここで読まれてしまい、背景が1枚も作れなくなっていた。
+    // 読み方を揃えておけば、キャッシュの取り合いがそもそも起きない。
     var photoGrid = photos.length
-      ? '<div class="rv-photos">' + photos.map(function (u) { return '<div class="rv-photo" style="background-image:url(' + u + ')"></div>'; }).join('') + '</div>'
+      ? '<div class="rv-photos">' + photos.map(function (u) {
+        return '<img class="rv-photo" crossorigin="anonymous" alt="" src="' + attrUrl(u) + '">';
+      }).join('') + '</div>'
       : '';
 
     var best = data.best3.map(function (s, i) {
