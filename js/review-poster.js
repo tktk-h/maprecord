@@ -196,23 +196,27 @@ App.reviewPoster = (function () {
   // ポスターに出す文字。フォント読み込みに「この字が要る」と伝えるために使う。
   // Google Fonts の日本語は多数のサブセットに分割配信されるので、字を指定せずに
   // load() すると欧文サブセットしか保証されず、一部の字だけ既定書体に化ける。
-  const GLYPHS = 'あしあと年のおでかけ日訪れた場所か写真枚付き合って目・0123456789';
+  const GLYPHS = 'あしあと年のおでかけ日訪れた場所か写真枚付き合って目・これまで〜./0123456789';
 
   // アプリと同じ書体で描くため、canvas に使う前にフォントを読み込ませる。
   // 待たないと日本語が既定ゴシックになり、別物の見た目になる。
-  async function ensureFonts() {
+  // extra には実際に描く文字（期間ラベルと日付行）を渡すこと。任意の字が来るため。
+  async function ensureFonts(extra) {
+    const glyphs = GLYPHS + (extra || '');
     try {
       await Promise.all([
-        document.fonts.load('300 240px "Zen Kaku Gothic New"', GLYPHS),
-        document.fonts.load('400 30px "Zen Kaku Gothic New"', GLYPHS),
+        document.fonts.load('300 240px "Zen Kaku Gothic New"', glyphs),
+        document.fonts.load('400 30px "Zen Kaku Gothic New"', glyphs),
       ]);
       await document.fonts.ready;
     } catch (e) { /* 読めなくても既定書体で続行する */ }
   }
 
-  // data=computeYearReview の戻り値, photoUrls=その年の写真URL（日付昇順）
+  // data=computePeriodReview の戻り値, photoUrls=その期間の写真URL（日付昇順）
   async function build(data, photoUrls) {
-    await ensureFonts();
+    const period = data.period;
+    const dateLine = App.reviewStats.formatDateLine(period);
+    await ensureFonts(period.label + dateLine);
     const canvas = document.createElement('canvas');
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
@@ -264,13 +268,28 @@ App.reviewPoster = (function () {
     drawSpacedLeft(ctx, 'あしあと', 60, 66, 5);
 
     ctx.textAlign = 'center';
-    ctx.font = '300 240px "Zen Kaku Gothic New", sans-serif';
+    const head = planHeadline(period.label, (t, size) => {
+      ctx.font = '300 ' + size + 'px "Zen Kaku Gothic New", sans-serif';
+      return ctx.measureText(t).width;
+    });
+    ctx.font = '300 ' + head.size + 'px "Zen Kaku Gothic New", sans-serif';
     ctx.fillStyle = '#fff';
-    ctx.fillText(String(data.year), W / 2, H * 0.31);
+    // 行が増えても見出しの中心が動かないよう、上下に振り分ける
+    const headLineH = Math.round(head.size * 1.15);
+    const top = H * 0.31 - (head.lines.length - 1) * headLineH / 2;
+    head.lines.forEach((t, i) => { ctx.fillText(t, W / 2, top + i * headLineH); });
 
+    // 副題は最終行の下に置く。1行のときは従来と同じ位置になる。
+    const subY = top + (head.lines.length - 1) * headLineH + Math.round(head.size * 0.5) + 45;
     ctx.font = '400 30px "Zen Kaku Gothic New", sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,.8)';
-    drawSpaced(ctx, '年のあしあと', W / 2, H * 0.31 + 165, 9);
+    drawSpaced(ctx, period.kind === 'year' ? '年のあしあと' : 'のあしあと', W / 2, subY, 9);
+
+    if (dateLine) {
+      ctx.font = '400 30px "Zen Kaku Gothic New", sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,.4)';
+      ctx.fillText(dateLine, W / 2, subY + 58);
+    }
 
     const lines = statLines(data);
     const lineH = 58;
