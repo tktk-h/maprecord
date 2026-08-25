@@ -208,16 +208,15 @@ App.review = (function () {
     return function () { cancels.forEach(clearTimeout); };
   }
 
-  var MONTHS = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-
   function slideHTML(id, data) {
+    var kind = data.period.kind;
     if (id === 'days') return '<div class="rv-cap">付き合って</div>' +
       '<div class="rv-big"><span class="rv-count" data-to="' + data.daysTogether + '">0</span><span class="rv-u">日目</span></div>' +
       '<div class="rv-cap">ふたりで歩いてきた</div>';
     if (id === 'outings') return '<div class="rv-cap">ふたりで過ごした日</div>' +
       '<div class="rv-big"><span class="rv-count" data-to="' + data.outingDays + '">0</span><span class="rv-u">日</span></div>' +
       '<div class="rv-cap">' + data.count + 'か所をめぐった</div>';
-    if (id === 'places') return '<div class="rv-cap">今年訪れた場所</div>' +
+    if (id === 'places') return '<div class="rv-cap">' + (kind === 'year' ? '今年訪れた場所' : '訪れた場所') + '</div>' +
       '<div class="rv-big"><span class="rv-count rv-places-num">0</span><span class="rv-u">か所</span></div>' +
       '<div class="rv-map-wrap"><div class="rv-map"></div></div>';
     if (id === 'new') return '<div class="rv-cap">はじめての場所</div>' +
@@ -236,10 +235,14 @@ App.review = (function () {
         '<div class="rv-mid">' + esc(App.genres.label(g.key)) + '</div>' +
         '<div class="rv-bars">' + bars + '</div>';
     }
-    if (id === 'month') return '<div class="rv-cap">いちばん濃かった月</div>' +
-      '<div class="rv-big">' + MONTHS[data.busiestMonth.month - 1] + '</div>' +
-      '<div class="rv-cap">この月だけで ' + data.busiestMonth.count + '日</div>';
-    if (id === 'closing') return '<div class="rv-mid rv-closing">また来年も、<br>ふたりのあしあとを。</div>' +
+    if (id === 'busiest') {
+      var unit = data.buckets.unit === 'month' ? '月' : '年';
+      return '<div class="rv-cap">いちばん濃かった' + unit + '</div>' +
+        '<div class="rv-big">' + data.busiest.label + '</div>' +
+        '<div class="rv-cap">この' + unit + 'だけで ' + data.busiest.count + '日</div>';
+    }
+    if (id === 'closing') return '<div class="rv-mid rv-closing">' +
+      (kind === 'year' ? 'また来年も、<br>ふたりのあしあとを。' : 'これからも、<br>ふたりのあしあとを。') + '</div>' +
       '<button class="rv-btn rv-topage">総集編を見る ↓</button>';
     return '';
   }
@@ -317,23 +320,28 @@ App.review = (function () {
     host.querySelector('.rv-prev').onclick = function () { go(idx - 1); };
     go(0);
   }
-  function goToRealMap(year) {
-    // メインマップにその年の期間フィルタをかけて着地（既存フィルタUIを利用）
+  function goToRealMap(period) {
+    // メインマップにその期間のフィルタをかけて着地（既存フィルタUIを利用）
     hideAll();
-    var ms = el('mode-select'); if (ms) ms.value = 'range';
-    var f = el('from-input'), t = el('to-input');
-    if (f) f.value = year + '-01-01';
-    if (t) t.value = year + '-12-31';
+    var ms = el('mode-select');
+    if (period.kind === 'all') {
+      if (ms) ms.value = 'all';
+    } else {
+      if (ms) ms.value = 'range';
+      var f = el('from-input'), t = el('to-input');
+      if (f) f.value = period.start;
+      if (t) t.value = period.end;
+    }
     if (App.records && App.records.applyUiFilter) App.records.applyUiFilter();
     var mapBtn = el('view-map'); if (mapBtn) mapBtn.click(); // 地図ビューへ
   }
 
-  // その年の写真URLを日付昇順で集める。並べ替えを忘れると「1年に散らす」が効かない。
+  // その期間の写真URLを日付昇順で集める。並べ替えを忘れると「期間内に散らす」が効かない。
   // thumbOf はサムネ(400px)を返す。タイルは45×48しか使わないので、これで十分かつ軽い。
-  function yearPhotoUrls(year) {
+  function periodPhotoUrls(period) {
     var urls = [];
     App.records.getAll()
-      .filter(function (r) { return String(r.date).slice(0, 4) === String(year); })
+      .filter(function (r) { return r && r.date && String(r.date) >= period.start && String(r.date) <= period.end; })
       .sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; })
       .forEach(function (r) {
         (r.photos || []).forEach(function (p) {
@@ -345,12 +353,13 @@ App.review = (function () {
   }
 
   // 画像を共有シートに渡す。使えなければダウンロードに落とす。
-  async function sharePoster(blob, year) {
-    var name = 'ashiato-' + year + '.png';
+  async function sharePoster(blob, period) {
+    var name = App.reviewPoster.posterFileName(period.label);
     var file = new File([blob], name, { type: 'image/png' });
+    var title = period.label + (period.kind === 'year' ? '年のあしあと' : 'のあしあと');
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
-        await navigator.share({ files: [file], title: year + '年のあしあと' });
+        await navigator.share({ files: [file], title: title });
         return;
       } catch (e) {
         if (e && e.name === 'AbortError') return; // 本人が閉じただけ。何もしない
@@ -371,8 +380,8 @@ App.review = (function () {
     var label = btn.textContent;
     btn.disabled = true; btn.textContent = '作成中…';
     try {
-      var blob = await App.reviewPoster.build(data, yearPhotoUrls(data.year));
-      await sharePoster(blob, data.year);
+      var blob = await App.reviewPoster.build(data, periodPhotoUrls(data.period));
+      await sharePoster(blob, data.period);
     } catch (e) {
       console.error('poster failed', e);
       alert('画像を作れませんでした');
@@ -384,19 +393,26 @@ App.review = (function () {
   function showPage(data) {
     document.body.classList.add('reviewing'); // 地図画面用ボタンを隠す
     var host = el('review-page');
+    var period = data.period;
+    var unit = data.buckets.unit === 'month' ? '月' : '年';
     var tiles = [
       { n: data.newPlaces, l: 'はじめての場所', u: '軒' },
       { n: data.topGenre ? App.genres.label(data.topGenre.key) : '—', l: 'いちばんのジャンル', u: '' },
       { n: data.photoCount, l: '写真', u: '枚' },
-      { n: data.busiestMonth ? (MONTHS[data.busiestMonth.month - 1]) : '—', l: 'いちばん濃かった月', u: '' },
+      { n: data.busiest ? data.busiest.label : '—', l: 'いちばん濃かった' + unit, u: '' },
     ].map(function (x) {
       return '<div class="rv-tile"><div class="rv-tile-n">' + esc(String(x.n)) + '<span class="rv-tile-u">' + x.u + '</span></div><div class="rv-tile-l">' + x.l + '</div></div>';
     }).join('');
 
-    var maxM = Math.max.apply(null, data.monthlyCounts.concat([1]));
-    var monthBars = data.monthlyCounts.map(function (c, i) {
-      return '<div class="rv-mb"><span style="height:' + Math.round(100 * c / maxM) + '%"></span><small>' + (i + 1) + '</small></div>';
-    }).join('');
+    // 棒が1本しかない期間はグラフにならないので節ごと出さない
+    var bucketSection = '';
+    if (data.buckets.items.length >= 2) {
+      var maxB = Math.max.apply(null, data.buckets.items.map(function (b) { return b.count; }).concat([1]));
+      var bars = data.buckets.items.map(function (b) {
+        return '<div class="rv-mb"><span style="height:' + Math.round(100 * b.count / maxB) + '%"></span><small>' + esc(b.label.replace(/[月年]$/, '')) + '</small></div>';
+      }).join('');
+      bucketSection = '<div class="rv-section"><div class="rv-h">' + unit + '別のおでかけ</div><div class="rv-months">' + bars + '</div></div>';
+    }
 
     var genreRows = data.genreBreakdown.map(function (g) {
       var max = data.genreBreakdown[0].count || 1;
@@ -407,7 +423,7 @@ App.review = (function () {
 
     var photos = [];
     App.records.getAll().forEach(function (r) {
-      if (String(r.date).slice(0, 4) === String(data.year) && r.photos) {
+      if (r && r.date && String(r.date) >= period.start && String(r.date) <= period.end && r.photos) {
         r.photos.forEach(function (p) { if (photos.length < 9) photos.push(App.photos.thumbOf(p)); });
       }
     });
@@ -427,16 +443,20 @@ App.review = (function () {
     }
 
     var daysLine = data.daysTogether != null ? '<div class="rv-hero-days">付き合って ' + data.daysTogether + '日目</div>' : '';
+    // ラベルはユーザーが打った文字なので必ず esc を通す
+    var title = esc(period.label) + (period.kind === 'year' ? '年のあしあと' : 'のあしあと');
+    var dateLine = App.reviewStats.formatDateLine(period);
     host.innerHTML =
       '<div class="rv-page">' +
       '<button class="rv-x" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
-      '<div class="rv-hero"><div class="rv-hero-sub">' + data.year + '年のあしあと</div>' +
+      '<div class="rv-hero"><div class="rv-hero-sub">' + title + '</div>' +
+      (dateLine ? '<div class="rv-hero-dates">' + dateLine + '</div>' : '') +
       daysLine + '<div class="rv-hero-count">おでかけ ' + data.outingDays + '日</div>' +
       '<div class="rv-hero-sub2">訪れた場所 ' + data.count + 'か所</div></div>' +
       '<div class="rv-tiles">' + tiles + '</div>' +
       '<div class="rv-section"><div class="rv-h">あしあと地図</div><div class="rv-map-wrap rv-map-page"><div class="rv-map"></div></div>' +
-      '<button class="rv-btn rv-realmap">本物の地図でこの年を見る</button></div>' +
-      '<div class="rv-section"><div class="rv-h">月別のおでかけ</div><div class="rv-months">' + monthBars + '</div></div>' +
+      '<button class="rv-btn rv-realmap">本物の地図で' + (period.kind === 'year' ? 'この年' : 'この期間') + 'を見る</button></div>' +
+      bucketSection +
       '<div class="rv-section"><div class="rv-h">ジャンル</div>' + genreRows + '</div>' +
       (photoGrid ? '<div class="rv-section"><div class="rv-h">写真</div>' + photoGrid + '</div>' : '') +
       (best ? '<div class="rv-section"><div class="rv-h">よく行ったところ</div>' + best + '</div>' : '') +
@@ -447,7 +467,7 @@ App.review = (function () {
     host.querySelector('.rv-x').onclick = hideAll;
     var mapEl = host.querySelector('.rv-map');
     if (data.pins.length) renderMap(mapEl, data.pins, { animate: false });
-    host.querySelector('.rv-realmap').onclick = function () { goToRealMap(data.year); };
+    host.querySelector('.rv-realmap').onclick = function () { goToRealMap(period); };
     var saveBtn = host.querySelector('.rv-save');
     if (saveBtn) saveBtn.onclick = function () { savePoster(saveBtn, data); };
     host.querySelectorAll('.rv-outing').forEach(function (b) {
@@ -457,12 +477,13 @@ App.review = (function () {
     host.hidden = false;
   }
 
-  // 対象年のデータを作って開く
-  function open(year) {
-    var data = App.reviewStats.computeYearReview(App.records.getAll(), year, anniversary, todayStr());
+  // 対象期間のデータを作って開く
+  function open(period) {
+    var data = App.reviewStats.computePeriodReview(App.records.getAll(), period, anniversary, todayStr());
     hideAll();
     if (data.isEmpty) { showPage(data); return; }
-    if (data.isSparse) { showSparse(data); return; }
+    // 「まだ少なめ」の遠慮は年だけ。期間を自分で選んだなら見たいということなので出す。
+    if (period.kind === 'year' && data.isSparse) { showSparse(data); return; }
     showSlides(data);
   }
 
@@ -497,7 +518,7 @@ App.review = (function () {
     host.innerHTML = '<div class="rv-slide rv-sparse">' +
       '<button class="rv-x" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
       '<div class="rv-sparse-emoji">🌱</div>' +
-      '<div class="rv-mid">まだ' + data.year + '年のあしあとは少なめ</div>' +
+      '<div class="rv-mid">まだ' + esc(data.period.label) + '年のあしあとは少なめ</div>' +
       '<div class="rv-cap">これからだね</div>' +
       '<button class="rv-btn rv-topage">記録を見る</button></div>';
     host.querySelector('.rv-x').onclick = hideAll;
@@ -517,7 +538,8 @@ App.review = (function () {
     var targetYear = (mo === 12) ? now.getFullYear() : now.getFullYear() - 1;
     var key = 'reviewDismissed:' + targetYear;
     try { if (localStorage.getItem(key)) { host.hidden = true; return false; } } catch (e) {}
-    var data = App.reviewStats.computeYearReview(App.records.getAll(), targetYear, null, todayStr());
+    var data = App.reviewStats.computePeriodReview(
+      App.records.getAll(), App.reviewStats.makeYearPeriod(targetYear), null, todayStr());
     if (data.count < 3) { host.hidden = true; return false; }
     host.innerHTML =
       '<div class="rv-card-inner">' +
@@ -526,7 +548,9 @@ App.review = (function () {
       '<div class="rv-card-title">' + targetYear + '年のふりかえりができました</div>' +
       '<div class="rv-card-sub">タップで再生 ・ ' + data.outingDays + '日のおでかけ</div></button>' +
       '<button class="rv-card-x" aria-label="閉じる"><i class="ph ph-x"></i></button></div>';
-    host.querySelector('.rv-card-open').onclick = function () { host.hidden = true; open(targetYear); };
+    host.querySelector('.rv-card-open').onclick = function () {
+      host.hidden = true; open(App.reviewStats.makeYearPeriod(targetYear));
+    };
     host.querySelector('.rv-card-x').onclick = function () {
       try { localStorage.setItem(key, '1'); } catch (e) {}
       host.hidden = true;
