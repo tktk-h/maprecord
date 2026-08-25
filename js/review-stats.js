@@ -19,10 +19,15 @@ App.reviewStats = (function () {
   }
 
   // ポスターと総集編に添える控えめな日付行。同じ年なら右側の年を省く。
-  // 年のふりかえりは見出しの年号がすでに日付を語っているので出さない。
+  // この行は「見出しが言っていないこと」を補うためにある。だから見出しがすでに
+  // 日付を語りきっているときは出さない：
+  //   ・年のふりかえり（見出しが年号そのもの）
+  //   ・見出しが自動生成の日付ラベルで、年をまたぐため年号まで入っているとき
+  // 自動生成でも同じ年なら見出しに年が無いので、この行が年を補う。
   function formatDateLine(period) {
     if (!period || period.kind === 'year') return '';
     var sy = yearOf(period.start), ey = yearOf(period.end);
+    if (period.autoLabel && sy !== ey) return '';
     var left = sy + '.' + monthOf(period.start) + '.' + dayOf(period.start);
     var right = (sy === ey ? '' : ey + '.') + monthOf(period.end) + '.' + dayOf(period.end);
     return left + ' 〜 ' + right;
@@ -43,9 +48,11 @@ App.reviewStats = (function () {
   }
 
   // ラベルは任意。空や空白だけなら日付から自動生成する。
+  // autoLabel＝見出しが日付そのものかどうか。日付行を出すかの判断に使う。
   function makeRangePeriod(start, end, label) {
     var t = (label == null ? '' : String(label)).trim();
-    return { kind: 'range', start: start, end: end, label: t || formatRangeLabel(start, end) };
+    return { kind: 'range', start: start, end: end,
+      label: t || formatRangeLabel(start, end), autoLabel: !t };
   }
 
   // 記念日 a から基準日 b までの日数（両端含む＝記念日当日を1日目）。不正なら null。
@@ -241,6 +248,21 @@ App.reviewStats = (function () {
     eq('dateline-cross-year',
       formatDateLine({ kind: 'range', start: '2025-12-30', end: '2026-01-03' }), '2025.12.30 〜 2026.1.3');
     eq('dateline-year-empty', formatDateLine(makeYearPeriod(2026)), '');
+    // 日付行は「見出しが言っていないこと」を補う役。見出しが日付を語りきっていたら出さない。
+    // 自動ラベルで年をまたぐと見出しが 2025/12/30〜2026/1/3 になり、この行はなぞるだけになる。
+    eq('dateline-skipped-when-auto-label-spells-years',
+      formatDateLine(makeRangePeriod('2025-12-30', '2026-01-03', '')), '');
+    // 同じ年の自動ラベルは 3/1〜3/5 で年が無いので、この行が年を補う。
+    eq('dateline-kept-when-auto-label-omits-year',
+      formatDateLine(makeRangePeriod('2026-03-01', '2026-03-05', '')), '2026.3.1 〜 3.5');
+    // 自分で名前を付けたなら、年をまたいでも日付は見出しに無いので出す。
+    eq('dateline-kept-when-user-labelled',
+      formatDateLine(makeRangePeriod('2025-12-30', '2026-01-03', '年越し旅行')), '2025.12.30 〜 2026.1.3');
+    // 「これまで」は見出しに日付が無いので必ず出す。
+    eq('dateline-kept-for-all-period',
+      formatDateLine(makeAllPeriod(recs, '2026-08-19')), '2025.8.1 〜 2027.1.1');
+    eq('range-auto-label-flag', makeRangePeriod('2026-03-01', '2026-03-05', '').autoLabel, true);
+    eq('range-user-label-flag', makeRangePeriod('2026-03-01', '2026-03-05', '沖縄旅行').autoLabel, false);
 
     eq('all-period-start', makeAllPeriod(recs, '2026-08-19').start, '2025-08-01');
     eq('all-period-end-covers-future', makeAllPeriod(recs, '2026-08-19').end, '2027-01-01');
