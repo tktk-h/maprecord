@@ -899,16 +899,50 @@ body.reviewing #review-back { display: none !important; }
 .rv-year { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
   padding: 14px 18px; font-size: 16px; font-weight: 700; color: var(--text); cursor: pointer; }
 .rv-empty { color: var(--text-muted); }
-.rv-all { border-style: dashed; }
-.rv-range-open { display: block; width: 100%; margin-top: 14px; background: none;
-  border: 1px dashed var(--border); border-radius: 14px; padding: 12px;
-  font-size: 15px; font-weight: 700; color: var(--text); cursor: pointer; }
+/* 「これまで」「期間を選ぶ」は年ボタンとは別の選び方なので、アクセントの淡いトーンで色を付ける */
+.rv-all { background: var(--accent-soft); border-color: var(--accent-soft); color: var(--accent-strong); }
+.rv-range-open { display: block; width: 100%; margin-top: 14px;
+  background: var(--accent-soft); border: 1px solid var(--accent-soft); border-radius: 14px; padding: 12px;
+  font-size: 15px; font-weight: 700; color: var(--accent-strong); cursor: pointer; }
 .rv-range-form { margin-top: 12px; padding: 14px; background: var(--surface);
   border: 1px solid var(--border); border-radius: 14px; }
 .rv-f-l { display: block; margin-bottom: 12px; font-size: 13px; color: var(--text-muted); }
 .rv-f-l input { display: block; width: 100%; margin-top: 5px; box-sizing: border-box;
   padding: 10px; font: inherit; font-size: 15px; color: var(--text);
   background: var(--bg); border: 1px solid var(--border); border-radius: 10px; }
+
+/* 期間選択のカレンダー（1枚で開始日と終了日を選ぶ） */
+.rv-cal { margin-bottom: 14px; }
+.rv-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.rv-cal-title { font-weight: 700; font-size: 15px; font-family: var(--font-display); }
+.rv-cal-nav { background: none; border: 0; padding: 6px 10px; font-size: 18px;
+  color: var(--accent-strong); cursor: pointer; line-height: 1; }
+.rv-cal-dow, .rv-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.rv-cal-dow span { text-align: center; font-size: 11px; color: var(--text-muted); padding-bottom: 4px; }
+.rv-cal-dow span:first-child { color: #c2705f; }
+.rv-cal-dow span:last-child { color: #6f8aa8; }
+.rv-cal-d { aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center;
+  position: relative; background: none; border: 0; border-radius: 9px;
+  font: inherit; font-size: 14px; color: var(--text); cursor: pointer; }
+.rv-cal-pad { aspect-ratio: 1 / 1; }
+/* 記録がある日は下に点。旅行の範囲を選ぶときの手がかりになる */
+.rv-cal-d.has-rec::after { content: ''; position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);
+  width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
+.rv-cal-d.is-mid { background: var(--accent-soft); border-radius: 0; }
+.rv-cal-d.is-from, .rv-cal-d.is-to { background: var(--accent-deep); color: #fff; font-weight: 700; }
+.rv-cal-d.is-from.has-rec::after, .rv-cal-d.is-to.has-rec::after { background: rgba(255,255,255,.8); }
+.rv-cal-sel { margin-top: 10px; font-size: 13px; color: var(--text-muted); text-align: center; }
+
+/* 書き出した画像のプレビュー（共有の前に必ず見せる） */
+#poster-preview { background: #2b211c; }
+.pv-wrap { min-height: 100%; box-sizing: border-box; padding: 20px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+.pv-img { max-width: min(86vw, 340px); max-height: 66vh; width: auto; height: auto;
+  border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+.pv-actions { display: flex; align-items: center; gap: 12px; }
+.pv-actions .rv-btn { margin-top: 0; }
+.pv-close { background: none; border: 1px solid rgba(255,255,255,.35); border-radius: var(--radius-pill);
+  padding: 10px 18px; color: rgba(255,255,255,.85); font-size: 14px; cursor: pointer; }
 .rv-f-msg { margin: 0 0 10px; font-size: 13px; color: var(--accent); }
 .rv-f-go { width: 100%; }
 .rv-hero-dates { margin-top: 4px; font-size: 13px; color: var(--text-muted); }

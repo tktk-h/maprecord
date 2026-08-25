@@ -277,8 +277,15 @@ App.review = (function () {
   // 属性値に URL を入れるとき用。esc に加えて引用符も潰す（URL は写真の保存先＝外部由来）。
   function attrUrl(u) { return esc(u).replace(/"/g, '&quot;'); }
   function el(id) { return document.getElementById(id); }
+  // プレビューに出している画像の後始末。閉じ忘れると blob がメモリに残る。
+  var previewUrl = null;
+  function clearPreview() {
+    if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+  }
+
   function hideAll() {
-    ['review-picker', 'review-show', 'review-page'].forEach(function (i) { var e = el(i); if (e) { e.hidden = true; e.innerHTML = ''; } });
+    ['review-picker', 'review-show', 'review-page', 'poster-preview'].forEach(function (i) { var e = el(i); if (e) { e.hidden = true; e.innerHTML = ''; } });
+    clearPreview();
     document.body.classList.remove('reviewing'); // 現在地/写真追加ボタンの抑制を解除
   }
 
@@ -416,6 +423,28 @@ App.review = (function () {
     setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
   }
 
+  // 作った画像はまず見せる。共有するかどうかは見てから決めてもらう。
+  function showPosterPreview(blob, period) {
+    var host = el('poster-preview');
+    if (!host) { sharePoster(blob, period); return; } // 置き場所が無ければ従来どおり
+    clearPreview();
+    previewUrl = URL.createObjectURL(blob);
+    host.innerHTML =
+      '<div class="pv-wrap">' +
+      '<img class="pv-img" alt="" src="' + previewUrl + '">' +
+      '<div class="pv-actions">' +
+      '<button class="rv-btn pv-share">共有・保存</button>' +
+      '<button class="pv-close">閉じる</button>' +
+      '</div></div>';
+    host.querySelector('.pv-share').onclick = function () { sharePoster(blob, period); };
+    host.querySelector('.pv-close').onclick = function () {
+      host.hidden = true; host.innerHTML = '';
+      clearPreview();
+    };
+    host.scrollTop = 0;
+    host.hidden = false;
+  }
+
   // ボタンから呼ぶ。生成中は押せなくする。
   async function savePoster(btn, data) {
     var label = btn.textContent;
@@ -431,7 +460,7 @@ App.review = (function () {
         // 描かせてくれない。設定すれば直るので、原因の見当がつく言い方にしておく。
         alert('写真を背景に使えませんでした。\n写真の保存先の設定（CORS）が必要です。\n[' + urls.length + '枚 / ' + (d.why || '原因不明') + ']');
       }
-      await sharePoster(blob, data.period);
+      showPosterPreview(blob, data.period);
     } catch (e) {
       console.error('poster failed', e);
       alert('画像を作れませんでした');
@@ -542,6 +571,74 @@ App.review = (function () {
     showSlides(data);
   }
 
+  // 期間選択のカレンダー。宿の予約サイトのように、1枚のカレンダーを2回タップして
+  // 開始日と終了日を決める。記録のある日には印を付けて、旅行の範囲を選びやすくする。
+  // 選んだ値は隠し入力に入れるので、検証と makeRangePeriod 側は今までどおり読める。
+  function wireRangeCalendar(form, allRecords) {
+    var sel = { from: null, to: null };
+    var days = {}; // 記録のある日
+    var latest = '';
+    (allRecords || []).forEach(function (r) {
+      if (!r || !r.date) return;
+      var s = String(r.date);
+      days[s] = true;
+      if (s > latest) latest = s;
+    });
+    // 最後に記録した月から始める。そこが今いちばん選びたい月のはずなので。
+    var start = latest ? new Date(Number(latest.slice(0, 4)), Number(latest.slice(5, 7)) - 1, 1) : new Date();
+    var view = { y: start.getFullYear(), m: start.getMonth() };
+
+    var grid = form.querySelector('.rv-cal-grid');
+    var title = form.querySelector('.rv-cal-title');
+    var note = form.querySelector('.rv-cal-sel');
+    var fromEl = form.querySelector('.rv-f-from');
+    var toEl = form.querySelector('.rv-f-to');
+
+    function two(n) { return (n < 10 ? '0' : '') + n; }
+    function iso(y, m, d) { return y + '-' + two(m + 1) + '-' + two(d); }
+
+    function render() {
+      title.textContent = view.y + '年' + (view.m + 1) + '月';
+      var lead = new Date(view.y, view.m, 1).getDay();      // 1日が何曜日か（日曜=0）
+      var last = new Date(view.y, view.m + 1, 0).getDate(); // その月の日数
+      var cells = '';
+      for (var i = 0; i < lead; i++) cells += '<span class="rv-cal-pad"></span>';
+      for (var d = 1; d <= last; d++) {
+        var s = iso(view.y, view.m, d);
+        var cls = 'rv-cal-d';
+        if (s === sel.from) cls += ' is-from';
+        if (s === sel.to) cls += ' is-to';
+        if (sel.from && sel.to && s > sel.from && s < sel.to) cls += ' is-mid';
+        if (days[s]) cls += ' has-rec';
+        cells += '<button type="button" class="' + cls + '" data-d="' + s + '">' + d + '</button>';
+      }
+      grid.innerHTML = cells;
+      grid.querySelectorAll('.rv-cal-d').forEach(function (b) {
+        b.onclick = function () { pick(b.getAttribute('data-d')); };
+      });
+      fromEl.value = sel.from || '';
+      toEl.value = sel.to || '';
+      note.textContent = !sel.from ? '開始日を選んでね'
+        : !sel.to ? '終了日を選んでね（同じ日をもう一度押すと1日だけ）'
+          : sel.from.replace(/-/g, '/') + ' 〜 ' + sel.to.replace(/-/g, '/');
+    }
+
+    function pick(s) {
+      if (!sel.from || sel.to) { sel.from = s; sel.to = null; } // 1回目、または選び直し
+      else if (s < sel.from) { sel.from = s; }                  // 開始より前を押したら開始を移す
+      else { sel.to = s; }
+      render();
+    }
+
+    form.querySelector('.rv-cal-prev').onclick = function () {
+      view.m--; if (view.m < 0) { view.m = 11; view.y--; } render();
+    };
+    form.querySelector('.rv-cal-next').onclick = function () {
+      view.m++; if (view.m > 11) { view.m = 0; view.y++; } render();
+    };
+    render();
+  }
+
   // 期間ピッカー
   function showPicker() {
     document.body.classList.add('reviewing'); // 地図画面用ボタンを隠す
@@ -563,8 +660,16 @@ App.review = (function () {
       '<div class="rv-years">' + items + '<button class="rv-year rv-all">これまで</button></div>' +
       '<button class="rv-range-open">期間を選ぶ</button>' +
       '<div class="rv-range-form" hidden>' +
-      '<label class="rv-f-l">いつから<input type="date" class="rv-f-from"></label>' +
-      '<label class="rv-f-l">いつまで<input type="date" class="rv-f-to"></label>' +
+      '<div class="rv-cal">' +
+      '<div class="rv-cal-head">' +
+      '<button type="button" class="rv-cal-nav rv-cal-prev" aria-label="前の月"><i class="ph ph-caret-left"></i></button>' +
+      '<span class="rv-cal-title"></span>' +
+      '<button type="button" class="rv-cal-nav rv-cal-next" aria-label="次の月"><i class="ph ph-caret-right"></i></button>' +
+      '</div>' +
+      '<div class="rv-cal-dow"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>' +
+      '<div class="rv-cal-grid"></div>' +
+      '<div class="rv-cal-sel"></div></div>' +
+      '<input type="hidden" class="rv-f-from"><input type="hidden" class="rv-f-to">' +
       '<label class="rv-f-l">見出しの文字（任意）' +
       '<input type="text" class="rv-f-label" maxlength="10" placeholder="沖縄旅行"></label>' +
       '<p class="rv-f-msg" hidden></p>' +
@@ -580,6 +685,7 @@ App.review = (function () {
 
     var form = host.querySelector('.rv-range-form');
     var msg = host.querySelector('.rv-f-msg');
+    wireRangeCalendar(form, all);
     host.querySelector('.rv-range-open').onclick = function () { form.hidden = !form.hidden; };
     host.querySelector('.rv-f-go').onclick = function () {
       function warn(t) { msg.textContent = t; msg.hidden = false; }
