@@ -57,6 +57,48 @@ App.reviewStats = (function () {
   }
 
   // allRecords=全期間の全記録, year=対象年(number), anniversary='YYYY-MM-DD'|null, today='YYYY-MM-DD'
+  // 期間の刻みを決めてバケットの並びを作る。
+  // 366日以内は月刻み（またぐ月だけ並べる）、超えたら年刻み。
+  // count は「おでかけ日数」＝同じ日に何か所まわっても1日。
+  function bucketize(period, recs) {
+    var span = daysBetweenInclusive(period.start, period.end);
+    var unit = (span != null && span <= 366) ? 'month' : 'year';
+    var items = [];
+    if (unit === 'month') {
+      var y = yearOf(period.start), m = monthOf(period.start);
+      var ey = yearOf(period.end), em = monthOf(period.end);
+      while (y < ey || (y === ey && m <= em)) {
+        items.push({ key: y + '-' + (m < 10 ? '0' + m : String(m)), label: m + '月', count: 0 });
+        m++; if (m > 12) { m = 1; y++; }
+      }
+    } else {
+      for (var yy = yearOf(period.start); yy <= yearOf(period.end); yy++) {
+        items.push({ key: String(yy), label: yy + '年', count: 0 });
+      }
+    }
+    var idx = {};
+    items.forEach(function (b, i) { idx[b.key] = i; });
+    var seen = {}; // バケットごとに数えた日付。重複を弾いて「日数」にする
+    (recs || []).forEach(function (r) {
+      var k = (unit === 'month') ? String(r.date).slice(0, 7) : String(r.date).slice(0, 4);
+      if (idx[k] == null) return;
+      if (!seen[k]) seen[k] = {};
+      if (seen[k][r.date]) return;
+      seen[k][r.date] = 1;
+      items[idx[k]].count++;
+    });
+    return { unit: unit, items: items };
+  }
+
+  // いちばん濃かったバケット。棒が1本しかない期間は比較にならないので出さない。
+  function pickBusiest(buckets) {
+    if (!buckets || buckets.items.length < 2) return null;
+    var best = null;
+    buckets.items.forEach(function (b) { if (!best || b.count > best.count) best = b; });
+    if (!best || best.count < 2) return null;
+    return { label: best.label, count: best.count };
+  }
+
   function computeYearReview(allRecords, year, anniversary, today) {
     const recs = (allRecords || []).filter((r) => r && r.date);
     const yearRecs = recs.filter((r) => yearOf(r.date) === year)
@@ -261,6 +303,45 @@ App.reviewStats = (function () {
       makeAllPeriod([], '2026-08-19'),
       { kind: 'all', start: '2026-08-19', end: '2026-08-19', label: 'これまで' });
 
+    // --- バケット（月刻み／年刻み）---
+    // 年のふりかえりは1月〜12月の12個。うるう年の366日も月刻みのまま。
+    var bYear = bucketize(makeYearPeriod(2026), dayRecs);
+    eq('bucket-year-unit', bYear.unit, 'month');
+    eq('bucket-year-len', bYear.items.length, 12);
+    eq('bucket-year-labels', [bYear.items[0].label, bYear.items[11].label], ['1月', '12月']);
+    eq('bucket-year-feb-is-days', bYear.items[1].count, 1);   // 2月は3件だが同じ日なので1日
+    eq('bucket-year-jul-is-days', bYear.items[6].count, 2);
+    eq('bucket-leap-year-still-month', bucketize(makeYearPeriod(2024), []).unit, 'month');
+
+    // 短い期間はまたぐ月だけ並ぶ
+    var bTrip = bucketize(makeRangePeriod('2026-07-01', '2026-07-11', ''), dayRecs);
+    eq('bucket-trip-len', bTrip.items.length, 1);
+    eq('bucket-trip-count', bTrip.items[0].count, 2);
+
+    // 月をまたぐ短い期間
+    var bTwo = bucketize(makeRangePeriod('2026-02-01', '2026-07-31', ''), dayRecs);
+    eq('bucket-two-len', bTwo.items.length, 6);               // 2月〜7月
+    eq('bucket-two-labels', [bTwo.items[0].label, bTwo.items[5].label], ['2月', '7月']);
+
+    // 年をまたぐ月刻み（366日以内）
+    var bCross = bucketize(makeRangePeriod('2025-12-01', '2026-02-28', ''), []);
+    eq('bucket-cross-unit', bCross.unit, 'month');
+    eq('bucket-cross-len', bCross.items.length, 3);
+    eq('bucket-cross-labels', bCross.items.map(function (b) { return b.label; }), ['12月', '1月', '2月']);
+
+    // 366日を超えると年刻み
+    var bLong = bucketize(makeRangePeriod('2025-01-01', '2026-12-31', ''), recs);
+    eq('bucket-long-unit', bLong.unit, 'year');
+    eq('bucket-long-len', bLong.items.length, 2);
+    eq('bucket-long-labels', bLong.items.map(function (b) { return b.label; }), ['2025年', '2026年']);
+    eq('bucket-long-2025', bLong.items[0].count, 1);
+    eq('bucket-long-2026', bLong.items[1].count, 4);
+
+    // pickBusiest：最大が2以上のときだけ。棒が1本しかない期間は情報を持たないので出さない。
+    eq('busiest-by-days', pickBusiest(bYear), { label: '7月', count: 2 });
+    eq('busiest-null-when-single-bucket', pickBusiest(bTrip), null);
+    eq('busiest-null-when-max-is-one', pickBusiest(bucketize(makeYearPeriod(2026), [recs[2]])), null);
+
     // yearsWithRecords
     eq('years', yearsWithRecords(recs), [2027, 2026, 2025]);
 
@@ -278,5 +359,6 @@ App.reviewStats = (function () {
   }
 
   return { computeYearReview, yearsWithRecords, planSlides, placeKey, daysBetweenInclusive,
-    formatRangeLabel, formatDateLine, makeYearPeriod, makeAllPeriod, makeRangePeriod, _selfTest };
+    formatRangeLabel, formatDateLine, makeYearPeriod, makeAllPeriod, makeRangePeriod,
+    bucketize, pickBusiest, _selfTest };
 })();
