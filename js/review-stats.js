@@ -7,6 +7,46 @@ App.reviewStats = (function () {
   }
   function yearOf(d) { return Number(String(d).slice(0, 4)); }
   function monthOf(d) { return Number(String(d).slice(5, 7)); }
+  function dayOf(d) { return Number(String(d).slice(8, 10)); }
+
+  // 期間ラベルの自動生成。同じ年なら 3/1〜3/5、年をまたぐなら 2025/12/30〜2026/1/3。
+  function formatRangeLabel(start, end) {
+    var sy = yearOf(start), ey = yearOf(end);
+    var s = monthOf(start) + '/' + dayOf(start);
+    var e = monthOf(end) + '/' + dayOf(end);
+    if (sy === ey) return s + '〜' + e;
+    return sy + '/' + s + '〜' + ey + '/' + e;
+  }
+
+  // ポスターと総集編に添える控えめな日付行。同じ年なら右側の年を省く。
+  // 年のふりかえりは見出しの年号がすでに日付を語っているので出さない。
+  function formatDateLine(period) {
+    if (!period || period.kind === 'year') return '';
+    var sy = yearOf(period.start), ey = yearOf(period.end);
+    var left = sy + '.' + monthOf(period.start) + '.' + dayOf(period.start);
+    var right = (sy === ey ? '' : ey + '.') + monthOf(period.end) + '.' + dayOf(period.end);
+    return left + ' 〜 ' + right;
+  }
+
+  function makeYearPeriod(y) {
+    return { kind: 'year', start: y + '-01-01', end: y + '-12-31', label: String(y) };
+  }
+
+  // 全期間。終了日を today で止めず最新の記録日まで伸ばすのは、
+  // 先の日付で入れた記録が「これまで」から黙って消えないようにするため。
+  function makeAllPeriod(allRecords, today) {
+    var dates = (allRecords || []).filter(function (r) { return r && r.date; })
+      .map(function (r) { return String(r.date); }).sort();
+    var first = dates.length ? dates[0] : today;
+    var last = dates.length ? dates[dates.length - 1] : today;
+    return { kind: 'all', start: first, end: (last > today ? last : today), label: 'これまで' };
+  }
+
+  // ラベルは任意。空や空白だけなら日付から自動生成する。
+  function makeRangePeriod(start, end, label) {
+    var t = (label == null ? '' : String(label)).trim();
+    return { kind: 'range', start: start, end: end, label: t || formatRangeLabel(start, end) };
+  }
 
   // 記念日 a から基準日 b までの日数（両端含む＝記念日当日を1日目）。不正なら null。
   function daysBetweenInclusive(a, b) {
@@ -188,6 +228,39 @@ App.reviewStats = (function () {
     eq('busiestMonth-by-days', dd.busiestMonth, { month: 7, count: 2 }); // 本数基準なら2月になる
     eq('outingDays-empty', computeYearReview([], 2020, null, '2026-12-31').outingDays, 0);
 
+    // --- period の生成とラベル整形 ---
+    eq('year-period', makeYearPeriod(2026),
+      { kind: 'year', start: '2026-01-01', end: '2026-12-31', label: '2026' });
+
+    // 同じ年の範囲は年を出さない
+    eq('range-label-same-year', formatRangeLabel('2026-03-01', '2026-03-05'), '3/1〜3/5');
+    // 年をまたぐ範囲は両側に年を出す
+    eq('range-label-cross-year', formatRangeLabel('2025-12-30', '2026-01-03'), '2025/12/30〜2026/1/3');
+    // ラベルを渡せばそれを使い、空白だけなら自動生成に落ちる
+    eq('range-uses-given-label', makeRangePeriod('2026-03-01', '2026-03-05', '沖縄旅行').label, '沖縄旅行');
+    eq('range-trims-label', makeRangePeriod('2026-03-01', '2026-03-05', '  沖縄旅行  ').label, '沖縄旅行');
+    eq('range-blank-label-falls-back', makeRangePeriod('2026-03-01', '2026-03-05', '   ').label, '3/1〜3/5');
+    eq('range-null-label-falls-back', makeRangePeriod('2026-03-01', '2026-03-05', null).label, '3/1〜3/5');
+    eq('range-kind', makeRangePeriod('2026-03-01', '2026-03-05', 'x').kind, 'range');
+
+    // 日付行：同じ年なら右側の年を省く
+    eq('dateline-same-year',
+      formatDateLine({ kind: 'range', start: '2026-03-01', end: '2026-03-05' }), '2026.3.1 〜 3.5');
+    eq('dateline-cross-year',
+      formatDateLine({ kind: 'range', start: '2025-12-30', end: '2026-01-03' }), '2025.12.30 〜 2026.1.3');
+    // 年のふりかえりは見出しの年号が日付を語るので出さない
+    eq('dateline-year-empty', formatDateLine(makeYearPeriod(2026)), '');
+
+    // これまで：最古の記録日から。未来の記録があれば today ではなくそこまで伸ばす
+    eq('all-period-start', makeAllPeriod(recs, '2026-08-19').start, '2025-08-01');
+    eq('all-period-end-covers-future', makeAllPeriod(recs, '2026-08-19').end, '2027-01-01');
+    eq('all-period-end-is-today-when-no-future',
+      makeAllPeriod([recs[0]], '2026-08-19').end, '2026-08-19');
+    eq('all-period-label', makeAllPeriod(recs, '2026-08-19').label, 'これまで');
+    eq('all-period-no-records',
+      makeAllPeriod([], '2026-08-19'),
+      { kind: 'all', start: '2026-08-19', end: '2026-08-19', label: 'これまで' });
+
     // yearsWithRecords
     eq('years', yearsWithRecords(recs), [2027, 2026, 2025]);
 
@@ -204,5 +277,6 @@ App.reviewStats = (function () {
     return fails;
   }
 
-  return { computeYearReview, yearsWithRecords, planSlides, placeKey, daysBetweenInclusive, _selfTest };
+  return { computeYearReview, yearsWithRecords, planSlides, placeKey, daysBetweenInclusive,
+    formatRangeLabel, formatDateLine, makeYearPeriod, makeAllPeriod, makeRangePeriod, _selfTest };
 })();
