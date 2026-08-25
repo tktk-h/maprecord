@@ -427,7 +427,9 @@ App.review = (function () {
       // （端末でしか起きない読み込み失敗を、次に当て推量なしで追えるようにする）
       var d = App.reviewPoster.lastDiag && App.reviewPoster.lastDiag();
       if (urls.length && d && d.viaFetch === 0 && d.viaImg === 0) {
-        alert('写真を背景に使えませんでした（' + urls.length + '枚 / ' + (d.why || '原因不明') + '）');
+        // 写真の保存先(Storage)に CORS 設定が無いと、ブラウザは写真を canvas に
+        // 描かせてくれない。設定すれば直るので、原因の見当がつく言い方にしておく。
+        alert('写真を背景に使えませんでした。\n写真の保存先の設定（CORS）が必要です。\n[' + urls.length + '枚 / ' + (d.why || '原因不明') + ']');
       }
       await sharePoster(blob, data.period);
     } catch (e) {
@@ -476,15 +478,11 @@ App.review = (function () {
         r.photos.forEach(function (p) { if (photos.length < 9) photos.push(App.photos.thumbOf(p)); });
       }
     });
-    // ⚠️ ここは crossorigin を付けた <img> で読むこと（背景画像にしない）。
-    // 背景画像は no-cors で取りに行くため、同じ写真をあとからポスターが
-    // crossOrigin 付きで読み直すときに、その応答が使い回されて失敗する。
-    // グリッドは9枚までなので、写真が9枚以下の期間はポスターに要る写真が
-    // 全部ここで読まれてしまい、背景が1枚も作れなくなっていた。
-    // 読み方を揃えておけば、キャッシュの取り合いがそもそも起きない。
+    // ⚠️ ここは背景画像（no-cors）のまま。crossorigin を付けた <img> にすると
+    // Storage バケットに CORS 設定が無いあいだは1枚も表示できなくなる（実機で確認済み）。
     var photoGrid = photos.length
       ? '<div class="rv-photos">' + photos.map(function (u) {
-        return '<img class="rv-photo" crossorigin="anonymous" alt="" src="' + attrUrl(u) + '">';
+        return '<div class="rv-photo" style="background-image:url(' + attrUrl(u) + ')"></div>';
       }).join('') + '</div>'
       : '';
 
