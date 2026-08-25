@@ -34,8 +34,10 @@ period = {
 | 関数 | kind | start | end | label |
 |---|---|---|---|---|
 | `makeYearPeriod(y)` | `year` | `y-01-01` | `y-12-31` | `String(y)` |
-| `makeAllPeriod(all, today)` | `all` | 最古の記録日（記録が無ければ today） | `today` | `'これまで'` |
+| `makeAllPeriod(all, today)` | `all` | 最古の記録日（記録が無ければ today） | 最新の記録日と today の遅い方 | `'これまで'` |
 | `makeRangePeriod(start, end, label)` | `range` | 引数 | 引数 | 入力が空なら `formatRangeLabel(start, end)` |
+
+`makeAllPeriod` の終了日を today で止めず最新の記録日まで伸ばすのは、先の日付で入れた記録が「これまで」から黙って消えないようにするため。
 
 `formatRangeLabel(start, end)` は日付範囲を短く表す。同じ年なら `3/1〜3/5`、年をまたぐなら `2025/12/30〜2026/1/3`。
 
