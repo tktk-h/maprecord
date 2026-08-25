@@ -741,7 +741,21 @@ body.picking #panel { display: none !important; }
 
 /* ふりかえり再生中は地図画面用ボタンを隠す（重なり防止） */
 body.reviewing #locate-btn,
-body.reviewing #bulk-btn { display: none !important; }
+body.reviewing #bulk-btn,
+body.reviewing #review-back { display: none !important; }
+
+/* 地図から総集編へ戻る帯（ふりかえりから地図に出たときだけ出る） */
+#review-back { position: absolute; left: 50%; transform: translateX(-50%); bottom: 24px; z-index: 500;
+  display: inline-flex; align-items: center; overflow: hidden;
+  background: var(--surface); border-radius: var(--radius-pill); box-shadow: var(--shadow-md); }
+#review-back .rb-open { display: inline-flex; align-items: center; gap: 7px; background: none;
+  border: 0; padding: 11px 8px 11px 16px; font-size: 14px; font-weight: 600;
+  color: var(--accent-strong); cursor: pointer; }
+#review-back .rb-open .ph { font-size: 18px; }
+#review-back .rb-x { background: none; border: 0; padding: 11px 14px 11px 6px;
+  color: var(--text-muted); cursor: pointer; line-height: 1; }
+#review-back .rb-x .ph { font-size: 16px; }
+#review-back button:active { transform: scale(.96); }
 
 /* hidden 属性を効かせる（#locate-btn/#bulk-btn は display:inline-flex 指定があり素の[hidden]が負けるため）。
    ＝カレンダー表示時などボタンを非表示にできるようにする */

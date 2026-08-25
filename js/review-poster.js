@@ -90,10 +90,10 @@ App.reviewPoster = (function () {
 
   const LOAD_TIMEOUT = 8000; // これを過ぎたら諦める。電波が悪いと onerror も来ず永久に待つため
 
-  // 画像を1枚読む。失敗しても reject せず null を返す（1枚の失敗で全体を止めない）。
+  // <img crossOrigin> で1枚読む。失敗しても reject せず null を返す。
   // crossOrigin を付けないと canvas が汚染され、書き出しのときだけ SecurityError になる。
   // 応答が返らないまま止まることがあるので、時間切れでも必ず決着させる。
-  function loadImage(url) {
+  function loadViaImgElement(url) {
     return new Promise((resolve) => {
       const img = new Image();
       let done = false;
@@ -105,6 +105,41 @@ App.reviewPoster = (function () {
       img.onerror = () => finish(null);
       img.src = url;
     });
+  }
+
+  // キャッシュを明示的に迂回して取り直し、Blob から ImageBitmap を作る。
+  // Blob 由来なので canvas は汚れず、toBlob() も通る。読めなければ null。
+  async function fetchBitmap(url) {
+    if (typeof fetch !== 'function' || typeof createImageBitmap !== 'function') return null;
+    if (/^data:/.test(url)) return null; // data URL はキャッシュと無縁なので img 経路で十分
+    let timer = null;
+    try {
+      const ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+      if (ctl) timer = setTimeout(() => ctl.abort(), LOAD_TIMEOUT);
+      const res = await fetch(url, { mode: 'cors', cache: 'reload', signal: ctl ? ctl.signal : undefined });
+      if (!res.ok) return null;
+      return await createImageBitmap(await res.blob());
+    } catch (e) {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  // 写真を1枚読む。
+  //
+  // ⚠️ 素直に <img crossOrigin> だけにすると、実機で背景が単色に落ちる。
+  // 総集編ページが同じ写真を CSS background-image（no-cors）で先に読んでおり、
+  // その応答が使い回されると crossOrigin 付きの読み込みだけが失敗するため。
+  // グリッドは9枚までなので、写真が9枚以下の期間は「ポスターに要る写真が全部
+  // 先に読まれている」状態になり、1枚も読めずに背景が作れなくなっていた。
+  // 逆に写真が10枚以上ある年は、あぶれた写真が読めるぶん穴埋めが効いて表面化しない。
+  // そこで fetch(cache:'reload') を主経路にしてキャッシュを迂回する。
+  // URL は書き換えない（?_p=1 のような小細工は写真ホスト側の作法に依存するため）。
+  async function loadImage(url) {
+    const bitmap = await fetchBitmap(url);
+    if (bitmap) return bitmap;
+    return loadViaImgElement(url); // 古い端末や fetch が塞がれたときの保険
   }
 
   // 一度失敗した URL を、キャッシュを避けて読み直すための別URLにする。
@@ -223,14 +258,18 @@ App.reviewPoster = (function () {
 
     // --- 背景：小さく描いて拡大＝ぼかし ---
     const picked = pickPosterPhotos(photoUrls || [], TILES, COLS);
-    let loaded = await Promise.all(picked.map(loadImage));
-    if (loaded.some((im) => !im)) { // 失敗したぶんだけキャッシュを避けて読み直す
-      loaded = await Promise.all(loaded.map((im, i) => {
-        if (im) return im;
-        const alt = bustCache(picked[i]);
-        return alt ? loadImage(alt) : null;
-      }));
-    }
+    // 同じ写真が複数の枠に入る。URLごとに1回だけ読む——毎回ネットワークまで
+    // 取りに行くので、枠の数だけ読むと同じ写真を何度も落とすことになる。
+    const uniq = Array.from(new Set(picked));
+    const byUrl = new Map();
+    await Promise.all(uniq.map((u) => loadImage(u).then((im) => { byUrl.set(u, im); })));
+    // それでも読めなかったものだけ、問い合わせ先を変えてもう一度だけ試す（保険）
+    await Promise.all(uniq.filter((u) => !byUrl.get(u)).map((u) => {
+      const alt = bustCache(u);
+      if (!alt) return null;
+      return loadImage(alt).then((im) => { if (im) byUrl.set(u, im); });
+    }));
+    const loaded = picked.map((u) => byUrl.get(u) || null);
     const failed = loaded.filter((im) => !im).length;
     if (failed) console.warn('poster: 読めなかった写真 ' + failed + '/' + loaded.length);
     const imgs = fillGaps(loaded);
@@ -255,6 +294,8 @@ App.reviewPoster = (function () {
 
     drawBlurred(ctx, small, W, H);
     small.width = small.height = 0; // 端末のメモリを早めに返す
+    // ImageBitmap は使い終わったら閉じる。同じ写真が複数の枠に入るので重複を除いてから。
+    new Set(imgs).forEach((im) => { if (im && typeof im.close === 'function') im.close(); });
 
     // --- 暗幕 ---
     ctx.fillStyle = 'rgba(38, 26, 19, 0.55)';

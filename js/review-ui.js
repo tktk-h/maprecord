@@ -320,6 +320,25 @@ App.review = (function () {
     host.querySelector('.rv-prev').onclick = function () { go(idx - 1); };
     go(0);
   }
+  // 地図から総集編へ戻るための控え。goToRealMap で覚え、戻るボタンで使う。
+  var lastData = null;
+
+  function hideBackToReview() {
+    var b = el('review-back'); if (b) b.hidden = true;
+  }
+
+  // 「ふりかえりに戻る」を地図の上に出す。押すと同じ期間の総集編をもう一度開く。
+  function showBackToReview() {
+    var host = el('review-back');
+    if (!host || !lastData) return;
+    host.querySelector('.rb-open').onclick = function () {
+      hideBackToReview();
+      showPage(lastData);
+    };
+    host.querySelector('.rb-x').onclick = hideBackToReview;
+    host.hidden = false;
+  }
+
   function goToRealMap(period) {
     // メインマップにその期間のフィルタをかけて着地（既存フィルタUIを利用）
     hideAll();
@@ -334,6 +353,14 @@ App.review = (function () {
     }
     if (App.records && App.records.applyUiFilter) App.records.applyUiFilter();
     var mapBtn = el('view-map'); if (mapBtn) mapBtn.click(); // 地図ビューへ
+    // 絞り込むだけでは地図が動かず、直前に開いていた場所のままになる。
+    // 地図ビューを出した後にその期間のピンへ合わせる（表示直後はレイアウトが
+    // 固まっていないので1拍おく）。
+    var pins = lastData && lastData.pins;
+    if (pins && pins.length && App.map && App.map.fitTo) {
+      setTimeout(function () { App.map.fitTo(pins); }, 0);
+    }
+    showBackToReview();
   }
 
   // その期間の写真URLを日付昇順で集める。並べ替えを忘れると「期間内に散らす」が効かない。
@@ -392,6 +419,7 @@ App.review = (function () {
 
   function showPage(data) {
     document.body.classList.add('reviewing'); // 地図画面用ボタンを隠す
+    lastData = data; // 地図へ出たあと、ここへ戻れるように覚えておく
     var host = el('review-page');
     var period = data.period;
     var unit = data.buckets.unit === 'month' ? '月' : '年';
