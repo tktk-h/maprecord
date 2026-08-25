@@ -407,7 +407,14 @@ App.review = (function () {
     var label = btn.textContent;
     btn.disabled = true; btn.textContent = '作成中…';
     try {
-      var blob = await App.reviewPoster.build(data, periodPhotoUrls(data.period));
+      var urls = periodPhotoUrls(data.period);
+      var blob = await App.reviewPoster.build(data, urls);
+      // 写真があるのに1枚も背景に使えなかったときは黙って劣化させず、理由ごと伝える。
+      // （端末でしか起きない読み込み失敗を、次に当て推量なしで追えるようにする）
+      var d = App.reviewPoster.lastDiag && App.reviewPoster.lastDiag();
+      if (urls.length && d && d.viaFetch === 0 && d.viaImg === 0) {
+        alert('写真を背景に使えませんでした（' + urls.length + '枚 / ' + (d.why || '原因不明') + '）');
+      }
       await sharePoster(blob, data.period);
     } catch (e) {
       console.error('poster failed', e);

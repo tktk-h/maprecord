@@ -90,36 +90,54 @@ App.reviewPoster = (function () {
 
   const LOAD_TIMEOUT = 8000; // これを過ぎたら諦める。電波が悪いと onerror も来ず永久に待つため
 
-  // <img crossOrigin> で1枚読む。失敗しても reject せず null を返す。
-  // crossOrigin を付けないと canvas が汚染され、書き出しのときだけ SecurityError になる。
+  // どこで失敗したかを残す。実機でしか起きない不具合を、次に当て推量なしで追うため。
+  var diag = null;
+  function resetDiag(n) { diag = { urls: n, viaFetch: 0, viaImg: 0, failed: 0, why: '' }; }
+  function note(what) { if (diag && !diag.why) diag.why = what; }
+  function lastDiag() { return diag; }
+
+  // <img> で1枚読む。失敗しても reject せず null を返す。
+  // cors=true のときだけ crossOrigin を付ける。付けないと canvas が汚染され、
+  // 書き出しのときだけ SecurityError になる。ただし blob: は同一オリジン扱いなので不要
+  //（blob: に crossOrigin を付けると逆に失敗する端末がある）。
   // 応答が返らないまま止まることがあるので、時間切れでも必ず決着させる。
-  function loadViaImgElement(url) {
+  function loadImgEl(url, cors) {
     return new Promise((resolve) => {
       const img = new Image();
       let done = false;
       let timer = null;
       const finish = (v) => { if (done) return; done = true; clearTimeout(timer); resolve(v); };
       timer = setTimeout(() => { img.src = ''; finish(null); }, LOAD_TIMEOUT);
-      img.crossOrigin = 'anonymous';
+      if (cors) img.crossOrigin = 'anonymous';
       img.onload = () => finish(img);
       img.onerror = () => finish(null);
       img.src = url;
     });
   }
 
-  // キャッシュを明示的に迂回して取り直し、Blob から ImageBitmap を作る。
-  // Blob 由来なので canvas は汚れず、toBlob() も通る。読めなければ null。
-  async function fetchBitmap(url) {
-    if (typeof fetch !== 'function' || typeof createImageBitmap !== 'function') return null;
-    if (/^data:/.test(url)) return null; // data URL はキャッシュと無縁なので img 経路で十分
+  // キャッシュを明示的に迂回して取り直し、Blob 経由で読む。
+  // blob: URL は同一オリジン扱いなので canvas が汚れず、toBlob() も通る。
+  // createImageBitmap は端末差が大きいので使わない（実機で読めなかった）。
+  // 解放は描き終わってから。ここで revoke すると描画前に画像が消える。
+  async function fetchAsImage(url) {
+    if (typeof fetch !== 'function') { note('no-fetch'); return null; }
+    if (/^data:/.test(url)) return null; // data URL はキャッシュと無縁。img 経路で十分
     let timer = null;
+    let objUrl = null;
     try {
       const ctl = (typeof AbortController === 'function') ? new AbortController() : null;
       if (ctl) timer = setTimeout(() => ctl.abort(), LOAD_TIMEOUT);
       const res = await fetch(url, { mode: 'cors', cache: 'reload', signal: ctl ? ctl.signal : undefined });
-      if (!res.ok) return null;
-      return await createImageBitmap(await res.blob());
+      if (!res.ok) { note('http' + res.status); return null; }
+      const blob = await res.blob();
+      objUrl = URL.createObjectURL(blob);
+      const img = await loadImgEl(objUrl, false);
+      if (!img) { URL.revokeObjectURL(objUrl); note('blob-decode'); return null; }
+      img._objUrl = objUrl; // build が描き終わってから解放する
+      return img;
     } catch (e) {
+      if (objUrl) URL.revokeObjectURL(objUrl);
+      note('fetch:' + ((e && e.name) || 'err'));
       return null;
     } finally {
       clearTimeout(timer);
@@ -137,9 +155,12 @@ App.reviewPoster = (function () {
   // そこで fetch(cache:'reload') を主経路にしてキャッシュを迂回する。
   // URL は書き換えない（?_p=1 のような小細工は写真ホスト側の作法に依存するため）。
   async function loadImage(url) {
-    const bitmap = await fetchBitmap(url);
-    if (bitmap) return bitmap;
-    return loadViaImgElement(url); // 古い端末や fetch が塞がれたときの保険
+    const viaFetch = await fetchAsImage(url);
+    if (viaFetch) { if (diag) diag.viaFetch++; return viaFetch; }
+    const viaImg = await loadImgEl(url, true); // fetch が塞がれたときの保険
+    if (viaImg) { if (diag) diag.viaImg++; return viaImg; }
+    if (diag) diag.failed++;
+    return null;
   }
 
   // 一度失敗した URL を、キャッシュを避けて読み直すための別URLにする。
@@ -261,6 +282,7 @@ App.reviewPoster = (function () {
     // 同じ写真が複数の枠に入る。URLごとに1回だけ読む——毎回ネットワークまで
     // 取りに行くので、枠の数だけ読むと同じ写真を何度も落とすことになる。
     const uniq = Array.from(new Set(picked));
+    resetDiag(uniq.length);
     const byUrl = new Map();
     await Promise.all(uniq.map((u) => loadImage(u).then((im) => { byUrl.set(u, im); })));
     // それでも読めなかったものだけ、問い合わせ先を変えてもう一度だけ試す（保険）
@@ -294,8 +316,8 @@ App.reviewPoster = (function () {
 
     drawBlurred(ctx, small, W, H);
     small.width = small.height = 0; // 端末のメモリを早めに返す
-    // ImageBitmap は使い終わったら閉じる。同じ写真が複数の枠に入るので重複を除いてから。
-    new Set(imgs).forEach((im) => { if (im && typeof im.close === 'function') im.close(); });
+    // blob: URL は描き終わってから解放する。同じ写真が複数の枠に入るので重複を除いてから。
+    new Set(imgs).forEach((im) => { if (im && im._objUrl) URL.revokeObjectURL(im._objUrl); });
 
     // --- 暗幕 ---
     ctx.fillStyle = 'rgba(38, 26, 19, 0.55)';
@@ -458,5 +480,5 @@ App.reviewPoster = (function () {
     return fails;
   }
 
-  return { build, pickPosterPhotos, statLines, tileRects, planHeadline, posterFileName, _selfTest };
+  return { build, pickPosterPhotos, statLines, tileRects, planHeadline, posterFileName, lastDiag, _selfTest };
 })();

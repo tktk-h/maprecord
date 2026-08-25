@@ -745,6 +745,7 @@ body.reviewing #bulk-btn,
 body.reviewing #review-back { display: none !important; }
 
 /* 地図から総集編へ戻る帯（ふりかえりから地図に出たときだけ出る） */
+#review-back[hidden] { display: none; } /* display:inline-flex が hidden を打ち消さないように */
 #review-back { position: absolute; left: 50%; transform: translateX(-50%); bottom: 24px; z-index: 500;
   display: inline-flex; align-items: center; overflow: hidden;
   background: var(--surface); border-radius: var(--radius-pill); box-shadow: var(--shadow-md); }
