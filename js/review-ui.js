@@ -357,11 +357,13 @@ App.review = (function () {
         // それ以外は保存に落とす
       }
     }
+    var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    a.href = url;
     a.download = name;
     a.click();
-    URL.revokeObjectURL(a.href);
+    // 保存が始まる前に取り消すと落ちることがあるので、少し置いてから返す
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
   }
 
   // ボタンから呼ぶ。生成中は押せなくする。

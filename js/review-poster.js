@@ -51,16 +51,42 @@ App.reviewPoster = (function () {
   const BLUR_MIN = 68;              // ここまで縮めてから戻すと、モックで選んだ「弱め」のやわらかさになる
   const STEP = 1.6;                 // 戻すときの1段の倍率。小刻みなほどガウスに近くなる
 
+  const LOAD_TIMEOUT = 8000; // これを過ぎたら諦める。電波が悪いと onerror も来ず永久に待つため
+
   // 画像を1枚読む。失敗しても reject せず null を返す（1枚の失敗で全体を止めない）。
   // crossOrigin を付けないと canvas が汚染され、書き出しのときだけ SecurityError になる。
+  // 応答が返らないまま止まることがあるので、時間切れでも必ず決着させる。
   function loadImage(url) {
     return new Promise((resolve) => {
       const img = new Image();
+      let done = false;
+      let timer = null;
+      const finish = (v) => { if (done) return; done = true; clearTimeout(timer); resolve(v); };
+      timer = setTimeout(() => { img.src = ''; finish(null); }, LOAD_TIMEOUT);
       img.crossOrigin = 'anonymous';
-      img.onload = () => resolve(img);
-      img.onerror = () => resolve(null);
+      img.onload = () => finish(img);
+      img.onerror = () => finish(null);
       img.src = url;
     });
+  }
+
+  // 一度失敗した URL を、キャッシュを避けて読み直すための別URLにする。
+  // 総集編のページ側は CSS の background-image（no-cors）で同じ写真を読んでいる。
+  // その応答が使い回されると、crossOrigin 付きの読み込みだけが失敗することがある。
+  // 問い合わせ先を変えれば取り直せる。data URL はキャッシュと無縁なので対象外。
+  function bustCache(url) {
+    if (!url || /^data:/.test(url)) return null;
+    return url + (url.indexOf('?') >= 0 ? '&' : '?') + '_p=1';
+  }
+
+  // 読めなかった枠を、読めた写真で埋め直す。
+  // 1枚でも失敗すると背景に単色の四角が残り、ポスターとして破綻してしまうため、
+  // 穴は必ず塞ぐ。ぼかしがかかるので同じ写真を使い回しても目立たない。
+  function fillGaps(imgs) {
+    const ok = imgs.filter(Boolean);
+    if (!ok.length) return imgs;             // 全滅なら呼び出し側が暖色背景に落とす
+    let k = 0;
+    return imgs.map((im) => im || ok[k++ % ok.length]);
   }
 
   // 枠いっぱいに写真を敷く（元画像の側を切り出す＝object-fit:cover 相当）
@@ -130,13 +156,18 @@ App.reviewPoster = (function () {
     ctx.textAlign = prev;
   }
 
+  // ポスターに出す文字。フォント読み込みに「この字が要る」と伝えるために使う。
+  // Google Fonts の日本語は多数のサブセットに分割配信されるので、字を指定せずに
+  // load() すると欧文サブセットしか保証されず、一部の字だけ既定書体に化ける。
+  const GLYPHS = 'あしあと年のおでかけ日訪れた場所か写真枚付き合って目・0123456789';
+
   // アプリと同じ書体で描くため、canvas に使う前にフォントを読み込ませる。
   // 待たないと日本語が既定ゴシックになり、別物の見た目になる。
   async function ensureFonts() {
     try {
       await Promise.all([
-        document.fonts.load('300 240px "Zen Kaku Gothic New"'),
-        document.fonts.load('400 30px "Zen Kaku Gothic New"'),
+        document.fonts.load('300 240px "Zen Kaku Gothic New"', GLYPHS),
+        document.fonts.load('400 30px "Zen Kaku Gothic New"', GLYPHS),
       ]);
       await document.fonts.ready;
     } catch (e) { /* 読めなくても既定書体で続行する */ }
@@ -151,7 +182,17 @@ App.reviewPoster = (function () {
 
     // --- 背景：小さく描いて拡大＝ぼかし ---
     const picked = pickPosterPhotos(photoUrls || [], TILES, COLS);
-    const imgs = await Promise.all(picked.map(loadImage));
+    let loaded = await Promise.all(picked.map(loadImage));
+    if (loaded.some((im) => !im)) { // 失敗したぶんだけキャッシュを避けて読み直す
+      loaded = await Promise.all(loaded.map((im, i) => {
+        if (im) return im;
+        const alt = bustCache(picked[i]);
+        return alt ? loadImage(alt) : null;
+      }));
+    }
+    const failed = loaded.filter((im) => !im).length;
+    if (failed) console.warn('poster: 読めなかった写真 ' + failed + '/' + loaded.length);
+    const imgs = fillGaps(loaded);
     const usable = imgs.filter(Boolean).length;
 
     const sw = DRAW_W, sh = DRAW_H;
