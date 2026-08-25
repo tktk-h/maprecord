@@ -866,12 +866,13 @@ Google Fonts の日本語は多数のサブセットに分割配信されるの�
     ctx.font = '300 ' + head.size + 'px "Zen Kaku Gothic New", sans-serif';
     ctx.fillStyle = '#fff';
     // 行が増えても見出しの中心が動かないよう、上下に振り分ける
-    const lineH = Math.round(head.size * 1.15);
-    const top = H * 0.31 - (head.lines.length - 1) * lineH / 2;
-    head.lines.forEach((t, i) => { ctx.fillText(t, W / 2, top + i * lineH); });
+    // （`lineH` は build 内の統計行がすでに使っているので別名にする。同名だと重複宣言でモジュールごと落ちる）
+    const headLineH = Math.round(head.size * 1.15);
+    const top = H * 0.31 - (head.lines.length - 1) * headLineH / 2;
+    head.lines.forEach((t, i) => { ctx.fillText(t, W / 2, top + i * headLineH); });
 
     // 副題は最終行の下に置く。1行のときは従来と同じ位置になる。
-    const subY = top + (head.lines.length - 1) * lineH + Math.round(head.size * 0.5) + 45;
+    const subY = top + (head.lines.length - 1) * headLineH + Math.round(head.size * 0.5) + 45;
     ctx.font = '400 30px "Zen Kaku Gothic New", sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,.8)';
     drawSpaced(ctx, period.kind === 'year' ? '年のあしあと' : 'のあしあと', W / 2, subY, 9);
