@@ -896,14 +896,14 @@ body.reviewing #review-back { display: none !important; }
 .rv-picker { max-width: 420px; margin: 0 auto; padding: 32px 20px; }
 .rv-picker-head { font-size: 18px; font-weight: 800; margin-bottom: 16px; font-family: var(--font-display); }
 .rv-years { display: flex; flex-wrap: wrap; gap: 10px; }
-.rv-year { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
-  padding: 14px 18px; font-size: 16px; font-weight: 700; color: var(--text); cursor: pointer; }
+/* 期間の選択肢は「年」「これまで」「期間を選ぶ」で見た目を揃える。
+   影は 閉じる（.rv-btn 由来の --cta-shadow）と同じものを使う。 */
+.rv-year, .rv-range-open { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 14px 18px; font-size: 16px; font-weight: 700; color: var(--text); cursor: pointer;
+  box-shadow: var(--cta-shadow); }
 .rv-empty { color: var(--text-muted); }
-/* 「これまで」「期間を選ぶ」は年ボタンとは別の選び方なので、アクセントの淡いトーンで色を付ける */
-.rv-all { background: var(--accent-soft); border-color: var(--accent-soft); color: var(--accent-strong); }
-.rv-range-open { display: block; width: 100%; margin-top: 14px;
-  background: var(--accent-soft); border: 1px solid var(--accent-soft); border-radius: 14px; padding: 12px;
-  font-size: 15px; font-weight: 700; color: var(--accent-strong); cursor: pointer; }
+/* 「期間を選ぶ」は横いっぱい。見た目は年ボタンと同じ（上の .rv-year と共通指定） */
+.rv-range-open { display: block; width: 100%; margin-top: 14px; }
 .rv-range-form { margin-top: 12px; padding: 14px; background: var(--surface);
   border: 1px solid var(--border); border-radius: 14px; }
 .rv-f-l { display: block; margin-bottom: 12px; font-size: 13px; color: var(--text-muted); }
