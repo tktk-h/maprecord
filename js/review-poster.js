@@ -51,6 +51,43 @@ App.reviewPoster = (function () {
   const BLUR_MIN = 68;              // ここまで縮めてから戻すと、モックで選んだ「弱め」のやわらかさになる
   const STEP = 1.6;                 // 戻すときの1段の倍率。小刻みなほどガウスに近くなる
 
+  const HEAD_MAX_W = 920;    // W - 左右の余白160
+  const HEAD_BASE = 240;     // 年号の大きさ。これを上限にする
+  const HEAD_MIN = 72;
+  const HEAD_WRAP_AT = 120;  // ここまで縮むなら、割れるラベルは2行にしたほうが読める
+  const HEAD_WRAP_MAX = 200; // 2行にしたときの上限（1行より大きくは見せない）
+
+  // 見出しの行組みとフォントサイズを決める。measure(text, size) は幅(px)を返す関数。
+  // canvas 無しでも試せるよう、測る手段を外から渡す。
+  function planHeadline(label, measure) {
+    const text = String(label == null ? '' : label);
+    const fit = (t) => {
+      const w = measure(t, HEAD_BASE);
+      if (!(w > 0)) return HEAD_BASE;
+      return Math.min(HEAD_BASE, Math.floor(HEAD_BASE * HEAD_MAX_W / w));
+    };
+    const one = fit(text);
+    const at = text.indexOf('〜');
+    // 先頭が 〜 のときに割ると空行ができるので、at<=0 は1行のまま
+    if (one >= HEAD_WRAP_AT || at <= 0) {
+      return { lines: [text], size: Math.max(HEAD_MIN, one) };
+    }
+    const a = text.slice(0, at);
+    const b = text.slice(at); // 2行目は 〜 から始める
+    const size = Math.min(HEAD_WRAP_MAX, Math.min(fit(a), fit(b)));
+    return { lines: [a, b], size: Math.max(HEAD_MIN, size) };
+  }
+
+  // 共有・保存のファイル名。ラベルはユーザーが打った文字なので、
+  // ファイル名に使えない字を落としてから使う。
+  function posterFileName(label) {
+    const safe = String(label == null ? '' : label)
+      .replace(/[\\/:*?"<>|]/g, '_')
+      .replace(/[\u0000-\u001F]/g, '')
+      .trim();
+    return 'ashiato-' + (safe || 'period') + '.png';
+  }
+
   const LOAD_TIMEOUT = 8000; // これを過ぎたら諦める。電波が悪いと onerror も来ず永久に待つため
 
   // 画像を1枚読む。失敗しても reject せず null を返す（1枚の失敗で全体を止めない）。
@@ -315,9 +352,51 @@ App.reviewPoster = (function () {
     eq('tiles-last-corner', rects[14].x + rects[14].w, 1080);
     eq('tiles-last-bottom', rects[14].y + rects[14].h, 1920);
 
+    // --- 見出しの行組み ---
+    // 全角=1.0em / 半角=0.5em として幅を見積もる簡易 measure（実測の代わり）
+    const measure = (text, size) => {
+      let w = 0;
+      for (const ch of String(text)) w += (/[\x20-\x7e]/.test(ch) ? 0.5 : 1) * size;
+      return w;
+    };
+    // 年号は今までどおり基準サイズのまま1行
+    eq('head-year-lines', planHeadline('2026', measure).lines, ['2026']);
+    eq('head-year-size', planHeadline('2026', measure).size, 240);
+    // 4文字の日本語は少し縮んで1行
+    eq('head-imamade-lines', planHeadline('これまで', measure).lines, ['これまで']);
+    eq('head-imamade-size', planHeadline('これまで', measure).size, 230);
+    eq('head-trip-lines', planHeadline('沖縄旅行', measure).lines, ['沖縄旅行']);
+    // 短い日付ラベルは割らない
+    eq('head-short-range-lines', planHeadline('3/1〜3/5', measure).lines, ['3/1〜3/5']);
+    // 年をまたぐ長い日付ラベルは 〜 の前で2行に割り、2行目は 〜 から始める
+    const cross = planHeadline('2025/12/30〜2026/1/3', measure);
+    eq('head-cross-2-lines', cross.lines.length, 2);
+    eq('head-cross-line1', cross.lines[0], '2025/12/30');
+    eq('head-cross-line2', cross.lines[1], '〜2026/1/3');
+    eq('head-cross-size', cross.size, 184);
+    // 〜 を含まない長いラベルは折り返さず、縮めて1行に収める
+    const long10 = planHeadline('あいうえおかきくけこ', measure);
+    eq('head-long-1-line', long10.lines.length, 1);
+    eq('head-long-size', long10.size, 92);
+    // 下限を割らない（入力は10文字までだが関数としては守る）
+    eq('head-min-size', planHeadline(new Array(21).join('あ'), measure).size, 72);
+    // 先頭が 〜 のときは空行を作らない
+    eq('head-leading-tilde-1-line', planHeadline('〜あいうえおかきくけこ', measure).lines.length, 1);
+
+    // --- 共有ファイル名 ---
+    eq('file-year', posterFileName('2026'), 'ashiato-2026.png');
+    eq('file-label', posterFileName('沖縄旅行'), 'ashiato-沖縄旅行.png');
+    eq('file-strips-path-chars', posterFileName('a/b:c*d?e"f<g>h|i'), 'ashiato-a_b_c_d_e_f_g_h_i.png');
+    eq('file-strips-backslash', posterFileName('a\\b'), 'ashiato-a_b.png');
+    // 空白とハイフンは消さない（制御文字の範囲を書き損じると、ここが落ちる）
+    eq('file-keeps-inner-space', posterFileName('沖縄 旅行'), 'ashiato-沖縄 旅行.png');
+    eq('file-keeps-hyphen', posterFileName('3-1'), 'ashiato-3-1.png');
+    eq('file-blank-falls-back', posterFileName('   '), 'ashiato-period.png');
+    eq('file-null-falls-back', posterFileName(null), 'ashiato-period.png');
+
     console.log(fails === 0 ? 'ALL PASS (poster)' : (fails + ' FAILED (poster)'));
     return fails;
   }
 
-  return { build, pickPosterPhotos, statLines, tileRects, _selfTest };
+  return { build, pickPosterPhotos, statLines, tileRects, planHeadline, posterFileName, _selfTest };
 })();
