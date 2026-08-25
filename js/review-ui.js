@@ -487,26 +487,60 @@ App.review = (function () {
     showSlides(data);
   }
 
-  // 年ピッカー
+  // 期間ピッカー
   function showPicker() {
     document.body.classList.add('reviewing'); // 地図画面用ボタンを隠す
-    var years = App.reviewStats.yearsWithRecords(App.records.getAll());
+    var all = App.records.getAll();
+    var years = App.reviewStats.yearsWithRecords(all);
     var host = el('review-picker');
     if (!years.length) {
       host.innerHTML = '<div class="rv-picker"><div class="rv-picker-head">ふりかえり</div>' +
         '<p class="rv-empty">まだ記録がありません。おでかけを記録するとここに出ます。</p>' +
         '<button class="rv-btn rv-close">閉じる</button></div>';
-    } else {
-      var items = years.map(function (y) {
-        return '<button class="rv-year" data-year="' + y + '">' + y + '年</button>';
-      }).join('');
-      host.innerHTML = '<div class="rv-picker"><div class="rv-picker-head">どの年をふりかえる？</div>' +
-        '<div class="rv-years">' + items + '</div>' +
-        '<button class="rv-btn rv-close">閉じる</button></div>';
-      host.querySelectorAll('.rv-year').forEach(function (b) {
-        b.onclick = function () { open(Number(b.getAttribute('data-year'))); };
-      });
+      host.querySelector('.rv-close').onclick = hideAll;
+      host.hidden = false;
+      return;
     }
+    var items = years.map(function (y) {
+      return '<button class="rv-year" data-year="' + y + '">' + y + '年</button>';
+    }).join('');
+    host.innerHTML = '<div class="rv-picker"><div class="rv-picker-head">どの期間をふりかえる？</div>' +
+      '<div class="rv-years">' + items + '<button class="rv-year rv-all">これまで</button></div>' +
+      '<button class="rv-range-open">期間を選ぶ</button>' +
+      '<div class="rv-range-form" hidden>' +
+      '<label class="rv-f-l">いつから<input type="date" class="rv-f-from"></label>' +
+      '<label class="rv-f-l">いつまで<input type="date" class="rv-f-to"></label>' +
+      '<label class="rv-f-l">見出しの文字（任意）' +
+      '<input type="text" class="rv-f-label" maxlength="10" placeholder="沖縄旅行"></label>' +
+      '<p class="rv-f-msg" hidden></p>' +
+      '<button class="rv-btn rv-f-go">見る</button></div>' +
+      '<button class="rv-btn rv-close">閉じる</button></div>';
+
+    host.querySelectorAll('.rv-year[data-year]').forEach(function (b) {
+      b.onclick = function () { open(App.reviewStats.makeYearPeriod(Number(b.getAttribute('data-year')))); };
+    });
+    host.querySelector('.rv-all').onclick = function () {
+      open(App.reviewStats.makeAllPeriod(all, todayStr()));
+    };
+
+    var form = host.querySelector('.rv-range-form');
+    var msg = host.querySelector('.rv-f-msg');
+    host.querySelector('.rv-range-open').onclick = function () { form.hidden = !form.hidden; };
+    host.querySelector('.rv-f-go').onclick = function () {
+      function warn(t) { msg.textContent = t; msg.hidden = false; }
+      var from = host.querySelector('.rv-f-from').value;
+      var to = host.querySelector('.rv-f-to').value;
+      if (!from || !to) { warn('期間を選んでね'); return; }
+      if (from > to) { warn('開始日と終了日が逆だよ'); return; }
+      var p = App.reviewStats.makeRangePeriod(from, to, host.querySelector('.rv-f-label').value);
+      // 0件の期間を開くと空の総集編になってしまうので、ここで止めて理由を出す
+      var has = all.some(function (r) {
+        return r && r.date && String(r.date) >= p.start && String(r.date) <= p.end;
+      });
+      if (!has) { warn('この期間の記録はまだないみたい'); return; }
+      msg.hidden = true;
+      open(p);
+    };
     host.querySelector('.rv-close').onclick = hideAll;
     host.hidden = false;
   }

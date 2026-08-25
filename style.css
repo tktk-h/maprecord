@@ -884,6 +884,19 @@ body.reviewing #bulk-btn { display: none !important; }
 .rv-year { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
   padding: 14px 18px; font-size: 16px; font-weight: 700; color: var(--text); cursor: pointer; }
 .rv-empty { color: var(--text-muted); }
+.rv-all { border-style: dashed; }
+.rv-range-open { display: block; width: 100%; margin-top: 14px; background: none;
+  border: 1px dashed var(--border); border-radius: 14px; padding: 12px;
+  font-size: 15px; font-weight: 700; color: var(--text); cursor: pointer; }
+.rv-range-form { margin-top: 12px; padding: 14px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 14px; }
+.rv-f-l { display: block; margin-bottom: 12px; font-size: 13px; color: var(--text-muted); }
+.rv-f-l input { display: block; width: 100%; margin-top: 5px; box-sizing: border-box;
+  padding: 10px; font: inherit; font-size: 15px; color: var(--text);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 10px; }
+.rv-f-msg { margin: 0 0 10px; font-size: 13px; color: var(--accent); }
+.rv-f-go { width: 100%; }
+.rv-hero-dates { margin-top: 4px; font-size: 13px; color: var(--text-muted); }
 .rv-close { display: block; margin-top: 22px; background: none; border: 1px solid var(--border);
   border-radius: var(--radius-pill); padding: 8px 18px; color: var(--text); cursor: pointer; }
 
