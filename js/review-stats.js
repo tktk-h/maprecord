@@ -56,7 +56,6 @@ App.reviewStats = (function () {
     return Math.round((db - da) / 86400000) + 1;
   }
 
-  // allRecords=全期間の全記録, year=対象年(number), anniversary='YYYY-MM-DD'|null, today='YYYY-MM-DD'
   // 期間の刻みを決めてバケットの並びを作る。
   // 366日以内は月刻み（またぐ月だけ並べる）、超えたら年刻み。
   // count は「おでかけ日数」＝同じ日に何か所まわっても1日。
@@ -99,40 +98,43 @@ App.reviewStats = (function () {
     return { label: best.label, count: best.count };
   }
 
-  function computeYearReview(allRecords, year, anniversary, today) {
+  // allRecords=全期間の全記録, period={kind,start,end,label}, anniversary='YYYY-MM-DD'|null, today='YYYY-MM-DD'
+  function computePeriodReview(allRecords, period, anniversary, today) {
     const recs = (allRecords || []).filter((r) => r && r.date);
-    const yearRecs = recs.filter((r) => yearOf(r.date) === year)
+    const inRecs = recs.filter((r) => String(r.date) >= period.start && String(r.date) <= period.end)
       .slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-    const count = yearRecs.length;
+    const count = inRecs.length;
 
     // おでかけ＝記録がある「日」の数（同じ日に何か所まわっても1日）
-    const outingDays = new Set(yearRecs.map((r) => r.date)).size;
+    const outingDays = new Set(inRecs.map((r) => r.date)).size;
 
-    // 付き合って◯日：基準日は今年なら today、過去年なら 12/31
+    // 付き合って◯日：基準日は期間の終了日。現在進行中なら今日で止める。
+    // 期間まるごとが未来なら出さない（まだ来ていない日を数えても意味がない）。
     let daysTogether = null;
-    if (anniversary && year <= yearOf(today)) {
-      const asOf = (year === yearOf(today)) ? today : (year + '-12-31');
+    if (anniversary && period.start <= today) {
+      const asOf = (period.end < today) ? period.end : today;
       const d = daysBetweenInclusive(anniversary, asOf);
       daysTogether = (d != null && d >= 1) ? d : null;
     }
 
-    // 各場所の「最初に訪れた年」を全期間から求める → その年が対象年なら新規
-    const firstYearOf = {};
+    // 各場所の初訪問日を全期間から求める → 期間の開始日以降なら「はじめて」。
+    // 年ではなく日付で見るので、年内の短い期間でも正しく判定できる。
+    const firstDateOf = {};
     for (const r of recs) {
-      const k = placeKey(r); const yr = yearOf(r.date);
-      if (firstYearOf[k] == null || yr < firstYearOf[k]) firstYearOf[k] = yr;
+      const k = placeKey(r); const dt = String(r.date);
+      if (firstDateOf[k] == null || dt < firstDateOf[k]) firstDateOf[k] = dt;
     }
     let newPlaces = 0;
     const seen = new Set();
-    for (const r of yearRecs) {
+    for (const r of inRecs) {
       const k = placeKey(r);
       if (seen.has(k)) continue; seen.add(k);
-      if (firstYearOf[k] === year) newPlaces++;
+      if (firstDateOf[k] >= period.start) newPlaces++;
     }
 
-    // 対象年を場所ごとに集計（代表名＝最新の記録の名前）
+    // 期間内を場所ごとに集計（代表名＝最新の記録の名前）
     const byKey = {};
-    for (const r of yearRecs) {
+    for (const r of inRecs) {
       const k = placeKey(r);
       if (!byKey[k]) byKey[k] = { key: k, count: 0, name: r.name || '', lastDate: r.date };
       byKey[k].count++;
@@ -146,38 +148,32 @@ App.reviewStats = (function () {
 
     // ジャンル
     const gCount = {};
-    for (const r of yearRecs) { const g = r.genre || 'other'; gCount[g] = (gCount[g] || 0) + 1; }
+    for (const r of inRecs) { const g = r.genre || 'other'; gCount[g] = (gCount[g] || 0) + 1; }
     const genreBreakdown = Object.keys(gCount).map((k) => ({ key: k, count: gCount[k] }))
       .sort((a, b) => b.count - a.count);
     const topGenre = genreBreakdown[0] ? { key: genreBreakdown[0].key, count: genreBreakdown[0].count } : null;
 
-    // 月ごとの「おでかけ日数」。同じ日に複数件あっても1日として数える。
-    const monthDays = [];
-    for (let i = 0; i < 12; i++) monthDays.push(new Set());
-    for (const r of yearRecs) { const mm = monthOf(r.date); if (mm >= 1 && mm <= 12) monthDays[mm - 1].add(r.date); }
-    const monthlyCounts = monthDays.map((s) => s.size);
-    let bmIdx = -1, bmMax = 0;
-    for (let i = 0; i < 12; i++) { if (monthlyCounts[i] > bmMax) { bmMax = monthlyCounts[i]; bmIdx = i; } }
-    const busiestMonth = (bmMax >= 2) ? { month: bmIdx + 1, count: bmMax } : null;
+    const buckets = bucketize(period, inRecs);
+    const busiest = pickBusiest(buckets);
 
     // 写真枚数
     let photoCount = 0;
-    for (const r of yearRecs) photoCount += (r.photos ? r.photos.length : 0);
+    for (const r of inRecs) photoCount += (r.photos ? r.photos.length : 0);
 
     // ピン（時系列順・1記録1本）
-    const pins = yearRecs
+    const pins = inRecs
       .filter((r) => typeof r.lat === 'number' && typeof r.lng === 'number')
       .map((r) => ({ lat: r.lat, lng: r.lng, genre: r.genre || 'other', name: r.name || '', date: r.date }));
 
     return {
-      year, count, outingDays,
+      period, count, outingDays,
       isEmpty: count === 0,
       isSparse: count > 0 && count < 3,
       daysTogether, newPlaces, topSpot, best3,
-      topGenre, genreBreakdown, busiestMonth, monthlyCounts,
+      topGenre, genreBreakdown, buckets, busiest,
       photoCount, pins,
-      firstOuting: yearRecs[0] || null,
-      lastOuting: count ? yearRecs[count - 1] : null,
+      firstOuting: inRecs[0] || null,
+      lastOuting: count ? inRecs[count - 1] : null,
     };
   }
 
@@ -198,7 +194,7 @@ App.reviewStats = (function () {
     if (data.newPlaces >= 1) ids.push('new');
     if (data.topSpot) ids.push('topspot');
     if (data.count >= 2 && data.topGenre) ids.push('genre');
-    if (data.busiestMonth) ids.push('month');
+    if (data.busiest) ids.push('busiest');
     ids.push('closing');
     return ids;
   }
@@ -218,41 +214,6 @@ App.reviewStats = (function () {
       { name: 'C公園', date: '2026-05-20', lat: 35.2, lng: 139.2, genre: 'sightsee', placeId: 'C' }, // 2026は再訪＝新規でない
       { name: '未来', date: '2027-01-01', lat: 35.3, lng: 139.3, genre: 'food' },
     ];
-    const d = computeYearReview(recs, 2026, '2024-05-10', '2026-08-19');
-    eq('count', d.count, 4);                       // 2026 の記録は4件
-    eq('newPlaces', d.newPlaces, 2);               // A,B が新規（C は前年初訪問なので除外）
-    eq('topSpot.count', d.topSpot && d.topSpot.count, 2);   // A珈琲 2回
-    eq('topSpot.name', d.topSpot && d.topSpot.name, 'A珈琲');
-    eq('topGenre.key', d.topGenre && d.topGenre.key, 'cafe'); // cafe=2 が最多
-    eq('busiestMonth', d.busiestMonth, { month: 5, count: 3 }); // 5月に3件
-    eq('photoCount', d.photoCount, 3);             // A珈琲の 2+1
-    eq('pins.length', d.pins.length, 4);
-    eq('firstOuting.date', d.firstOuting && d.firstOuting.date, '2026-03-01');
-    eq('lastOuting.date', d.lastOuting && d.lastOuting.date, '2026-05-20');
-    eq('isSparse-false', d.isSparse, false);
-
-    // daysTogether：2024-05-10 → 2026-08-19（両端含む）
-    eq('daysTogether', d.daysTogether, daysBetweenInclusive('2024-05-10', '2026-08-19'));
-    eq('daysBetween-sameday', daysBetweenInclusive('2026-01-01', '2026-01-01'), 1);
-    eq('daysBetween-oneday', daysBetweenInclusive('2026-01-01', '2026-01-02'), 2);
-
-    // 過去年は基準日が 12/31
-    const d25 = computeYearReview(recs, 2025, '2024-05-10', '2026-08-19');
-    eq('past-year-count', d25.count, 1);
-    eq('past-year-days', d25.daysTogether, daysBetweenInclusive('2024-05-10', '2025-12-31'));
-
-    // anniversary 無し → null
-    const dna = computeYearReview(recs, 2026, null, '2026-08-19');
-    eq('noAnniv-days', dna.daysTogether, null);
-
-    // 未来年は daysTogether を出さない（付き合って日数は無意味）
-    eq('future-year-days', computeYearReview(recs, 2027, '2024-05-10', '2026-08-19').daysTogether, null);
-
-    // sparse / empty
-    eq('sparse', computeYearReview([recs[0]], 2026, null, '2026-08-19').isSparse, true);
-    eq('empty', computeYearReview([], 2020, null, '2026-08-19').isEmpty, true);
-
-    // --- おでかけ日数（記録本数と食い違うデータで検証する）---
     // 2月：3件だが全部同じ日 → 1日。7月：2件が別の日 → 2日。
     // 記録本数なら2月(3)が最多、日数なら7月(2)が最多になる。
     const dayRecs = [
@@ -262,38 +223,25 @@ App.reviewStats = (function () {
       { date: '2026-07-01', lat: 35.0, lng: 139.0, genre: 'food' },
       { date: '2026-07-11', lat: 35.0, lng: 139.0, genre: 'food' },
     ];
-    const dd = computeYearReview(dayRecs, 2026, null, '2026-12-31');
-    eq('outingDays', dd.outingDays, 3);              // 2/3, 7/1, 7/11
-    eq('count-stays-records', dd.count, 5);          // 記録本数は5のまま
-    eq('monthly-feb-is-days', dd.monthlyCounts[1], 1);  // 2月は3件だが1日
-    eq('monthly-jul-is-days', dd.monthlyCounts[6], 2);  // 7月は2日
-    eq('busiestMonth-by-days', dd.busiestMonth, { month: 7, count: 2 }); // 本数基準なら2月になる
-    eq('outingDays-empty', computeYearReview([], 2020, null, '2026-12-31').outingDays, 0);
 
     // --- period の生成とラベル整形 ---
     eq('year-period', makeYearPeriod(2026),
       { kind: 'year', start: '2026-01-01', end: '2026-12-31', label: '2026' });
 
-    // 同じ年の範囲は年を出さない
     eq('range-label-same-year', formatRangeLabel('2026-03-01', '2026-03-05'), '3/1〜3/5');
-    // 年をまたぐ範囲は両側に年を出す
     eq('range-label-cross-year', formatRangeLabel('2025-12-30', '2026-01-03'), '2025/12/30〜2026/1/3');
-    // ラベルを渡せばそれを使い、空白だけなら自動生成に落ちる
     eq('range-uses-given-label', makeRangePeriod('2026-03-01', '2026-03-05', '沖縄旅行').label, '沖縄旅行');
     eq('range-trims-label', makeRangePeriod('2026-03-01', '2026-03-05', '  沖縄旅行  ').label, '沖縄旅行');
     eq('range-blank-label-falls-back', makeRangePeriod('2026-03-01', '2026-03-05', '   ').label, '3/1〜3/5');
     eq('range-null-label-falls-back', makeRangePeriod('2026-03-01', '2026-03-05', null).label, '3/1〜3/5');
     eq('range-kind', makeRangePeriod('2026-03-01', '2026-03-05', 'x').kind, 'range');
 
-    // 日付行：同じ年なら右側の年を省く
     eq('dateline-same-year',
       formatDateLine({ kind: 'range', start: '2026-03-01', end: '2026-03-05' }), '2026.3.1 〜 3.5');
     eq('dateline-cross-year',
       formatDateLine({ kind: 'range', start: '2025-12-30', end: '2026-01-03' }), '2025.12.30 〜 2026.1.3');
-    // 年のふりかえりは見出しの年号が日付を語るので出さない
     eq('dateline-year-empty', formatDateLine(makeYearPeriod(2026)), '');
 
-    // これまで：最古の記録日から。未来の記録があれば today ではなくそこまで伸ばす
     eq('all-period-start', makeAllPeriod(recs, '2026-08-19').start, '2025-08-01');
     eq('all-period-end-covers-future', makeAllPeriod(recs, '2026-08-19').end, '2027-01-01');
     eq('all-period-end-is-today-when-no-future',
@@ -304,61 +252,132 @@ App.reviewStats = (function () {
       { kind: 'all', start: '2026-08-19', end: '2026-08-19', label: 'これまで' });
 
     // --- バケット（月刻み／年刻み）---
-    // 年のふりかえりは1月〜12月の12個。うるう年の366日も月刻みのまま。
-    var bYear = bucketize(makeYearPeriod(2026), dayRecs);
+    const bYear = bucketize(makeYearPeriod(2026), dayRecs);
     eq('bucket-year-unit', bYear.unit, 'month');
     eq('bucket-year-len', bYear.items.length, 12);
     eq('bucket-year-labels', [bYear.items[0].label, bYear.items[11].label], ['1月', '12月']);
-    eq('bucket-year-feb-is-days', bYear.items[1].count, 1);   // 2月は3件だが同じ日なので1日
+    eq('bucket-year-feb-is-days', bYear.items[1].count, 1);
     eq('bucket-year-jul-is-days', bYear.items[6].count, 2);
     eq('bucket-leap-year-still-month', bucketize(makeYearPeriod(2024), []).unit, 'month');
 
-    // 短い期間はまたぐ月だけ並ぶ
-    var bTrip = bucketize(makeRangePeriod('2026-07-01', '2026-07-11', ''), dayRecs);
+    const bTrip = bucketize(makeRangePeriod('2026-07-01', '2026-07-11', ''), dayRecs);
     eq('bucket-trip-len', bTrip.items.length, 1);
     eq('bucket-trip-count', bTrip.items[0].count, 2);
 
-    // 月をまたぐ短い期間
-    var bTwo = bucketize(makeRangePeriod('2026-02-01', '2026-07-31', ''), dayRecs);
-    eq('bucket-two-len', bTwo.items.length, 6);               // 2月〜7月
+    const bTwo = bucketize(makeRangePeriod('2026-02-01', '2026-07-31', ''), dayRecs);
+    eq('bucket-two-len', bTwo.items.length, 6);
     eq('bucket-two-labels', [bTwo.items[0].label, bTwo.items[5].label], ['2月', '7月']);
 
-    // 年をまたぐ月刻み（366日以内）
-    var bCross = bucketize(makeRangePeriod('2025-12-01', '2026-02-28', ''), []);
+    const bCross = bucketize(makeRangePeriod('2025-12-01', '2026-02-28', ''), []);
     eq('bucket-cross-unit', bCross.unit, 'month');
     eq('bucket-cross-len', bCross.items.length, 3);
-    eq('bucket-cross-labels', bCross.items.map(function (b) { return b.label; }), ['12月', '1月', '2月']);
+    eq('bucket-cross-labels', bCross.items.map((b) => b.label), ['12月', '1月', '2月']);
 
-    // 366日を超えると年刻み
-    var bLong = bucketize(makeRangePeriod('2025-01-01', '2026-12-31', ''), recs);
+    const bLong = bucketize(makeRangePeriod('2025-01-01', '2026-12-31', ''), recs);
     eq('bucket-long-unit', bLong.unit, 'year');
     eq('bucket-long-len', bLong.items.length, 2);
-    eq('bucket-long-labels', bLong.items.map(function (b) { return b.label; }), ['2025年', '2026年']);
+    eq('bucket-long-labels', bLong.items.map((b) => b.label), ['2025年', '2026年']);
     eq('bucket-long-2025', bLong.items[0].count, 1);
     eq('bucket-long-2026', bLong.items[1].count, 4);
 
-    // pickBusiest：最大が2以上のときだけ。棒が1本しかない期間は情報を持たないので出さない。
     eq('busiest-by-days', pickBusiest(bYear), { label: '7月', count: 2 });
     eq('busiest-null-when-single-bucket', pickBusiest(bTrip), null);
     eq('busiest-null-when-max-is-one', pickBusiest(bucketize(makeYearPeriod(2026), [recs[2]])), null);
+
+    // --- 年の期間：既存の期待値がそのまま通ること（リグレッション確認）---
+    const d = computePeriodReview(recs, makeYearPeriod(2026), '2024-05-10', '2026-08-19');
+    eq('count', d.count, 4);
+    eq('newPlaces', d.newPlaces, 2);                          // A,B が新規（C は前年初訪問）
+    eq('topSpot.count', d.topSpot && d.topSpot.count, 2);
+    eq('topSpot.name', d.topSpot && d.topSpot.name, 'A珈琲');
+    eq('topGenre.key', d.topGenre && d.topGenre.key, 'cafe');
+    eq('busiest', d.busiest, { label: '5月', count: 3 });
+    eq('photoCount', d.photoCount, 3);
+    eq('pins.length', d.pins.length, 4);
+    eq('firstOuting.date', d.firstOuting && d.firstOuting.date, '2026-03-01');
+    eq('lastOuting.date', d.lastOuting && d.lastOuting.date, '2026-05-20');
+    eq('isSparse-false', d.isSparse, false);
+    eq('period-passed-through', d.period.kind, 'year');
+    eq('buckets-12', d.buckets.items.length, 12);
+
+    // daysTogether：2024-05-10 → 2026-08-19（両端含む）
+    eq('daysTogether', d.daysTogether, daysBetweenInclusive('2024-05-10', '2026-08-19'));
+    eq('daysBetween-sameday', daysBetweenInclusive('2026-01-01', '2026-01-01'), 1);
+    eq('daysBetween-oneday', daysBetweenInclusive('2026-01-01', '2026-01-02'), 2);
+
+    // 過去年は基準日が 12/31
+    const d25 = computePeriodReview(recs, makeYearPeriod(2025), '2024-05-10', '2026-08-19');
+    eq('past-year-count', d25.count, 1);
+    eq('past-year-days', d25.daysTogether, daysBetweenInclusive('2024-05-10', '2025-12-31'));
+
+    eq('noAnniv-days',
+      computePeriodReview(recs, makeYearPeriod(2026), null, '2026-08-19').daysTogether, null);
+    // 未来の期間は「付き合って◯日目」が無意味なので出さない
+    eq('future-year-days',
+      computePeriodReview(recs, makeYearPeriod(2027), '2024-05-10', '2026-08-19').daysTogether, null);
+    // 期間全体が記念日より前なら出さない
+    eq('before-anniversary-days',
+      computePeriodReview(recs, makeYearPeriod(2026), '2027-01-01', '2026-08-19').daysTogether, null);
+
+    eq('sparse', computePeriodReview([recs[0]], makeYearPeriod(2026), null, '2026-08-19').isSparse, true);
+    eq('empty', computePeriodReview([], makeYearPeriod(2020), null, '2026-08-19').isEmpty, true);
+
+    // おでかけ日数と記録本数は別物
+    const dd = computePeriodReview(dayRecs, makeYearPeriod(2026), null, '2026-12-31');
+    eq('outingDays', dd.outingDays, 3);
+    eq('count-stays-records', dd.count, 5);
+    eq('outingDays-empty',
+      computePeriodReview([], makeYearPeriod(2020), null, '2026-12-31').outingDays, 0);
+
+    // --- 期間（range）---
+    // 5月の3件だけを切り出す。年では再訪だった C公園 も、5月に初めて来ているので新規になる。
+    const may = computePeriodReview(recs, makeRangePeriod('2026-05-01', '2026-05-31', '五月'),
+      '2024-05-10', '2026-08-19');
+    eq('range-count', may.count, 3);
+    eq('range-label-kept', may.period.label, '五月');
+    eq('range-newPlaces', may.newPlaces, 1);                  // B のみ（A は3月、C は前年が初訪問）
+    eq('range-single-bucket-no-busiest', may.busiest, null);
+    // 終わった期間なので基準日は today ではなく期間の終了日
+    eq('range-days-uses-period-end', may.daysTogether, daysBetweenInclusive('2024-05-10', '2026-05-31'));
+    // まだ続いている期間は today で止める
+    const ongoing = computePeriodReview(recs, makeRangePeriod('2026-01-01', '2026-12-31', '今'),
+      '2024-05-10', '2026-08-19');
+    eq('range-days-clamped-to-today', ongoing.daysTogether, daysBetweenInclusive('2024-05-10', '2026-08-19'));
+
+    // 終わった旅行は、その期間の終了日が「付き合って◯日目」の基準になる
+    const trip = computePeriodReview(recs, makeRangePeriod('2026-03-01', '2026-03-05', '旅行'),
+      '2024-05-10', '2026-08-19');
+    eq('trip-count', trip.count, 1);
+    eq('trip-days-uses-period-end', trip.daysTogether, daysBetweenInclusive('2024-05-10', '2026-03-05'));
+    eq('trip-newPlaces', trip.newPlaces, 1);                  // A珈琲はこの日が初訪問
+
+    // --- これまで ---
+    const all = computePeriodReview(recs, makeAllPeriod(recs, '2026-08-19'), null, '2026-08-19');
+    eq('all-count', all.count, 6);                            // 未来の記録も含む
+    eq('all-unit-is-year', all.buckets.unit, 'year');
+    eq('all-buckets', all.buckets.items.map((b) => b.label), ['2025年', '2026年', '2027年']);
+    eq('all-newPlaces-is-every-place', all.newPlaces, 4);      // A,B,C,未来 すべてが初訪問
 
     // yearsWithRecords
     eq('years', yearsWithRecords(recs), [2027, 2026, 2025]);
 
     // planSlides：全部そろう年
-    eq('planSlides-full', planSlides(d), ['days', 'outings', 'places', 'new', 'topspot', 'genre', 'month', 'closing']);
+    eq('planSlides-full', planSlides(d), ['days', 'outings', 'places', 'new', 'topspot', 'genre', 'busiest', 'closing']);
     // 記念日が無くても「ふたりで過ごした日」は出す（付き合って日数とは別物）
     eq('planSlides-outings-without-anniv',
-      planSlides(computeYearReview(dayRecs, 2026, null, '2026-12-31')).indexOf('outings') >= 0, true);
-    // 記念日なし・再訪なし・単月の年 → days/topspot/month が落ちる
-    eq('planSlides-min', planSlides(computeYearReview([recs[2]], 2026, null, '2026-08-19')),
-      ['outings', 'places', 'new', 'closing']); // count=1, B食堂は2026が初訪問なので newPlaces=1 → 'new' が入る。outingsは記念日なしでも出る
+      planSlides(computePeriodReview(dayRecs, makeYearPeriod(2026), null, '2026-12-31')).indexOf('outings') >= 0, true);
+    // 記念日なし・再訪なし・単月 → days/topspot/busiest が落ちる
+    eq('planSlides-min',
+      planSlides(computePeriodReview([recs[2]], makeYearPeriod(2026), null, '2026-08-19')),
+      ['outings', 'places', 'new', 'closing']);
+    // 記録1件の旅行でもスライドは出る（しきい値の扱いは open() 側）
+    eq('planSlides-one-record-trip', planSlides(trip).length > 0, true);
 
     console.log(fails === 0 ? '✅ review-stats ALL PASS' : ('❌ review-stats ' + fails + ' FAIL'));
     return fails;
   }
 
-  return { computeYearReview, yearsWithRecords, planSlides, placeKey, daysBetweenInclusive,
+  return { computePeriodReview, yearsWithRecords, planSlides, placeKey, daysBetweenInclusive,
     formatRangeLabel, formatDateLine, makeYearPeriod, makeAllPeriod, makeRangePeriod,
     bucketize, pickBusiest, _selfTest };
 })();
