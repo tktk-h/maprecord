@@ -1,5 +1,5 @@
 import {
-  collection, doc, getDoc, getDocs, setDoc, updateDoc, query, where, arrayUnion,
+  collection, doc, getDoc, getDocs, setDoc, updateDoc, query, where, arrayUnion, deleteField,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { fb } from './firebaseInit.js';
 
@@ -64,6 +64,17 @@ App.space = (function () {
     await updateDoc(doc(fb.db, SPACES, spaceId), { anniversary: date || '' });
   }
 
+  // 通知の購読をスペースに保存する。lastSeen と同じく
+  // spaces ドキュメントのマップに入れる（Firestore のルールが
+  // このドキュメントの update しか許していないため。サブコレクションにするなら
+  // ルールの追加が必要になる）。id は端末ごとに一意。
+  async function setPushSub(spaceId, id, sub) {
+    await updateDoc(doc(fb.db, SPACES, spaceId), { ['push.' + id]: sub });
+  }
+  async function removePushSub(spaceId, id) {
+    await updateDoc(doc(fb.db, SPACES, spaceId), { ['push.' + id]: deleteField() });
+  }
+
   async function setGenres(spaceId, genres) {
     await updateDoc(doc(fb.db, SPACES, spaceId), { genres: genres || [] });
   }
@@ -79,6 +90,6 @@ App.space = (function () {
   }
 
   return { genInviteCode, normalizeCode, findMySpace, createSpace, joinSpace,
-           touchLastSeen, setAnniversary, setGenres, _selfTest };
+           touchLastSeen, setAnniversary, setGenres, setPushSub, removePushSub, _selfTest };
 })();
 export const space = App.space;

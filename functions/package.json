@@ -1,12 +1,15 @@
 {
   "name": "functions",
   "description": "Cloud Functions for maprecord",
-  "engines": { "node": "22" },
+  "engines": {
+    "node": "22"
+  },
   "main": "index.js",
   "dependencies": {
-    "firebase-functions": "^7.3.2",
+    "@google/generative-ai": "^0.21.0",
     "firebase-admin": "^12.7.0",
-    "@google/generative-ai": "^0.21.0"
+    "firebase-functions": "^7.3.2",
+    "web-push": "^3.6.7"
   },
   "private": true
 }

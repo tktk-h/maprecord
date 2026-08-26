@@ -86,3 +86,31 @@ self.addEventListener('fetch', (e) => {
   if (isStatic(url)) { e.respondWith(cacheFirst(req)); return; }
   // それ以外（Firebase/Maps/Places/Gemini/データ通信）は respondWith せず素通し＝network
 });
+
+// ===== 通知（記念日） =====
+// 送り主は functions/index.js の dailyAnniversary。{title, body, tag} を JSON で載せてくる。
+// iOS では userVisibleOnly が必須＝push を受けたら必ず1つ通知を出すこと（出さないと購読を切られる）。
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (_) { /* 中身が読めなくても通知は出す */ }
+  const title = d.title || 'あしあと';
+  e.waitUntil(self.registration.showNotification(title, {
+    body: d.body || '',
+    icon: 'icon-192.png',
+    badge: 'icon-192.png',
+    tag: d.tag || 'ashiato',   // 同じ tag は差し替え＝通知が積み上がらない
+    data: { url: d.url || './' },
+  }));
+});
+
+// 通知をタップ：すでに開いていればそれを前に出し、無ければ開く
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || './';
+  e.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const w of wins) { if ('focus' in w) return w.focus(); }
+    if (self.clients.openWindow) return self.clients.openWindow(url);
+    return null;
+  })());
+});

@@ -67,3 +67,55 @@ exports.suggestPlace = onCall(
     return { name: line, raw, err: '', imgs: parts.length };
   }
 );
+
+// ===== 記念日の通知 =====
+// 毎朝9時(日本時間)に全スペースを見て、その日に当たる記念日だけ Web Push で送る。
+// 送り先は spaces/{id}.push（購読情報のマップ）。Firestore のルールは spaces ドキュメントの
+// update しか許していないので、サブコレクションではなくこの中に持たせている（lastSeen と同じ形）。
+const { onSchedule } = require('firebase-functions/v2/scheduler');
+const admin = require('firebase-admin');
+const webpush = require('web-push');
+const { todayInTokyo } = require('./anniversary');
+const { runDaily } = require('./daily');
+
+const VAPID_PUBLIC = defineSecret('VAPID_PUBLIC');
+const VAPID_PRIVATE = defineSecret('VAPID_PRIVATE');
+const VAPID_SUBJECT = 'mailto:0525toki0525@gmail.com';
+
+if (!admin.apps.length) admin.initializeApp();
+
+// 購読に必要な公開鍵をブラウザへ渡す。公開してよい鍵なので認証済みなら誰でも取れる。
+exports.pushKey = onCall({ secrets: [VAPID_PUBLIC], region: 'us-central1' }, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'login required');
+  return { key: VAPID_PUBLIC.value() };
+});
+
+// 1件送る。相手が消えていたら（404/410）その購読は捨ててよいので、その旨を返す。
+async function sendOne(sub, payload) {
+  try {
+    await webpush.sendNotification(sub, JSON.stringify(payload));
+    return { ok: true, gone: false };
+  } catch (e) {
+    const code = e && e.statusCode;
+    const gone = code === 404 || code === 410; // 端末から消された購読
+    if (!gone) console.error('push failed', code, String((e && e.message) || e).slice(0, 200));
+    return { ok: false, gone };
+  }
+}
+
+exports.dailyAnniversary = onSchedule(
+  {
+    schedule: '0 9 * * *',
+    timeZone: 'Asia/Tokyo',
+    region: 'us-central1',
+    secrets: [VAPID_PUBLIC, VAPID_PRIVATE],
+  },
+  async () => {
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC.value(), VAPID_PRIVATE.value());
+    const today = todayInTokyo();
+    const stats = await runDaily(
+      admin.firestore(), sendOne, today, admin.firestore.FieldValue.delete(),
+    );
+    console.log('dailyAnniversary', Object.assign({ today }, stats));
+  },
+);

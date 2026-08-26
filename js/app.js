@@ -14,6 +14,7 @@ let painted = false;       // 最初の描画（ピン＋思い出カード）�
 function openSettings() {
   document.getElementById('topbar').classList.remove('filters-open'); // 絞り込みとは同時に開かない
   refreshPhotoMigrateBtn(); // 開くたびに残り枚数を数え直す
+  paintNotifyBtn();         // 通知のオンオフも見直す（端末の設定で外されていることがある）
   document.getElementById('settings-panel').hidden = false;
   document.body.classList.add('settings-open');
 }
@@ -147,6 +148,62 @@ function wireUI() {
 
   // 写真を軽くする（昔の埋め込み写真を Storage へ移す）
   document.getElementById('photo-migrate-btn').addEventListener('click', runPhotoMigrate);
+
+  // 記念日の通知
+  document.getElementById('notify-btn').addEventListener('click', toggleNotify);
+}
+
+// 通知の状態を行に出す。端末側の事情（未対応・未インストール・拒否）もここで見せる。
+const NOTIFY_LABEL = {
+  on: 'オン', off: 'オフ', denied: 'ブロック中',
+  'needs-install': 'ホーム画面から', unsupported: '使えません',
+};
+async function paintNotifyBtn() {
+  const btn = document.getElementById('notify-btn');
+  if (!btn || !App.notify) return;
+  const st = await App.notify.state();
+  btn.classList.toggle('on', st === 'on');
+  btn.querySelector('.set-state').textContent = NOTIFY_LABEL[st] || 'オフ';
+}
+
+let notifyBusy = false;
+async function toggleNotify() {
+  if (notifyBusy) return;
+  const btn = document.getElementById('notify-btn');
+  const label = btn.querySelector('.set-state');
+  const st = await App.notify.state();
+  if (st === 'unsupported') {
+    alert('このブラウザでは通知を使えません。');
+    return;
+  }
+  if (st === 'needs-install') {
+    alert(`iPhone で通知を受け取るには、ホーム画面に追加した「あしあと」から開いてください。
+Safari の共有ボタン →「ホーム画面に追加」で入れられます。`);
+    return;
+  }
+  if (st === 'denied') {
+    alert(`通知が端末側で断られています。
+iPhone の「設定 → 通知 → あしあと」から許可してから、もう一度押してください。`);
+    return;
+  }
+  notifyBusy = true;
+  btn.disabled = true;
+  label.textContent = st === 'on' ? '外しています…' : '準備中…';
+  try {
+    const res = st === 'on' ? await App.notify.disable() : await App.notify.enable();
+    if (res === 'denied') {
+      alert('通知を許可しないと受け取れません。');
+    } else if (res === 'on') {
+      alert('通知をオンにしました。記念日の朝9時にお知らせします。');
+    }
+  } catch (e) {
+    console.error('notify toggle failed', e);
+    alert('通知の設定を変えられませんでした: ' + (e && e.message ? e.message : e));
+  } finally {
+    notifyBusy = false;
+    btn.disabled = false;
+    paintNotifyBtn();
+  }
 }
 
 // 残っている埋め込み写真の枚数を見て、あるときだけボタンを出す。
@@ -240,6 +297,7 @@ async function startApp(sp) {
   }
   mapDone = true;
   firstPaint();
+  if (App.notify) App.notify.refresh(); // ブラウザが購読を入れ替えていたら保存し直す
 }
 
 document.addEventListener('DOMContentLoaded', () => {

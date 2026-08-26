@@ -19,6 +19,8 @@ window.App = window.App || {};
 const functions = getFunctions(app);
 window.App.fb = {
   app, auth: getAuth(app), db: getFirestore(app), storage: getStorage(app),
-  functions, suggestPlace: httpsCallable(functions, 'suggestPlace'),
+  functions,
+  suggestPlace: httpsCallable(functions, 'suggestPlace'),
+  pushKey: httpsCallable(functions, 'pushKey'), // 通知の購読に使う公開鍵
 };
 export const fb = window.App.fb;
