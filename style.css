@@ -24,6 +24,11 @@
   /* フォント（温かみ丸ゴシック）。読み込み前・失敗時はシステムフォントにフォールバック */
   --font-sans: 'Zen Kaku Gothic New', system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
   --font-display: 'Zen Maru Gothic', 'Zen Kaku Gothic New', system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  /* iPhone をホーム画面から開いたとき、時計やホームバーに食われる帯の高さ。
+     地図はこの帯の下まで敷き、浮いているものだけこのぶん逃がす。
+     ブラウザ・PC・Android では 0 になるので、そのまま足し算に使ってよい。 */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * { box-sizing: border-box; }
@@ -53,7 +58,8 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 /* ===== ヘッダー ===== */
 /* 地図に浮かせる透明ヘッダー（背景なし・各コントロールがピル） */
 #topbar { position: absolute; top: 0; left: 0; right: 0; z-index: 60;
-  display: flex; align-items: flex-start; gap: 10px; padding: 12px;
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: calc(12px + var(--safe-top)) 12px 12px;
   background: transparent; color: var(--header-text); flex-wrap: wrap;
   pointer-events: none; }
 #topbar > * { pointer-events: auto; }
@@ -185,7 +191,7 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
   text-shadow: 0 0 3px rgba(0,0,0,.95), 0 1px 2px rgba(0,0,0,.95); pointer-events: none; }
 
 /* 「このエリアを再検索」ボタン（上部中央のフローティングピル） */
-#research-btn { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); z-index: 55;
+#research-btn { position: absolute; top: calc(70px + var(--safe-top)); left: 50%; transform: translateX(-50%); z-index: 55;
   display: inline-flex; align-items: center; gap: 7px;
   padding: 10px 18px; border-radius: var(--radius-pill);
   background: var(--surface); color: var(--accent-strong); font-size: 14px; font-weight: 600;
@@ -209,7 +215,7 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
 /* ===== 思い出カード（起動時：過去の同月同日／記念日） =====
    写真が主役。店名は2行まで出す（長い店名を途中で切らない）。
    押すとその日の記録をぜんぶ地図に出すので、押せる合図に矢印を添える。 */
-#memory-card { position: absolute; top: 66px; left: 12px; right: 12px; z-index: 45;
+#memory-card { position: absolute; top: calc(66px + var(--safe-top)); left: 12px; right: 12px; z-index: 45;
   max-width: 380px; }
 #memory-card[hidden] { display: none; }
 .mem-inner { display: flex; align-items: stretch; gap: 4px;
@@ -241,7 +247,7 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
   display: flex; align-items: center; justify-content: center; }
 .mem-x:hover { background: var(--border); color: var(--text); }
 @media (max-width: 700px) {
-  #memory-card { top: 116px; right: 64px; } /* 2段ヘッダーの下・右上の現在地ボタンを避ける */
+  #memory-card { top: calc(116px + var(--safe-top)); right: 64px; } /* 2段ヘッダーの下・右上の現在地ボタンを避ける */
 }
 
 /* ===== クイック記録カード ===== */
@@ -366,11 +372,11 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
 .lb-img { max-width: 92vw; max-height: 86vh; object-fit: contain; border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); }
 .lb-close, .lb-prev, .lb-next { position: absolute; color: #fff; display: flex; align-items: center; justify-content: center;
   background: rgba(255,255,255,.10); border-radius: var(--radius-pill); backdrop-filter: blur(6px); }
-.lb-close { top: 16px; right: 16px; width: 44px; height: 44px; font-size: 22px; }
+.lb-close { top: calc(16px + var(--safe-top)); right: 16px; width: 44px; height: 44px; font-size: 22px; }
 .lb-prev, .lb-next { top: 50%; transform: translateY(-50%); width: 46px; height: 46px; font-size: 24px; }
 .lb-prev { left: 12px; } .lb-next { right: 12px; }
 .lb-close:hover, .lb-prev:hover, .lb-next:hover { background: rgba(255,255,255,.2); }
-.lb-counter { position: absolute; bottom: 20px; left: 0; right: 0; text-align: center; color: rgba(255,255,255,.85); font-size: 13px; }
+.lb-counter { position: absolute; bottom: calc(20px + var(--safe-bottom)); left: 0; right: 0; text-align: center; color: rgba(255,255,255,.85); font-size: 13px; }
 
 /* ===== 絞り込みパネル（温かみ・エモい・作り込み） ===== */
 #filter-panel { display: none; flex-basis: 100%; }
@@ -427,7 +433,7 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
    重なり順：ジャンル編集(62) > 設定(61) > ヘッダー(60) */
 #settings-panel { position: fixed; inset: 0; z-index: 61; overflow: auto;
   background: rgba(45, 38, 30, .35); display: flex; align-items: flex-start; justify-content: center;
-  padding: calc(env(safe-area-inset-top) + 16px) 12px 40px; }
+  padding: calc(16px + var(--safe-top)) 12px calc(40px + var(--safe-bottom)); }
 #settings-panel[hidden] { display: none; }
 .set-sheet { width: 100%; max-width: 460px; background: var(--bg); border-radius: 18px;
   box-shadow: var(--shadow-lg); padding: 16px 16px 20px; }
@@ -663,7 +669,7 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
 
 /* ===== スマホ最適化（末尾に置いて上書き） ===== */
 @media (max-width: 700px) {
-  #topbar { padding: 10px; gap: 8px; }
+  #topbar { padding: calc(10px + var(--safe-top)) 10px 10px; gap: 8px; }
   #search-wrap { flex: 1 1 100%; max-width: none; order: 5; }
   #filter-panel { order: 6; } /* 検索バー(order:5)より後 ＝ 常にバーの下に開く（バー位置は固定） */
 
@@ -682,18 +688,18 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
   #sheet-grip:active { cursor: grabbing; }
   /* full 未満はネイティブスクロールを止めて、スワイプでシート自体を動かす。
      full（一番上）のときだけ中身をスクロールできる（Googleマップ風）。 */
-  #panel-content { padding: 4px 20px 24px; touch-action: none; }
+  #panel-content { padding: 4px 20px calc(24px + var(--safe-bottom)); touch-action: none; }
   #panel.at-full #panel-content { touch-action: pan-y; }
 
-  #locate-btn { top: calc(env(safe-area-inset-top) + 10px); right: 66px; left: auto; bottom: auto; width: 46px; height: 46px; padding: 0; gap: 0; justify-content: center; } /* 上の帯・右から2つめ・丸 */
+  #locate-btn { top: calc(10px + var(--safe-top)); right: 66px; left: auto; bottom: auto; width: 46px; height: 46px; padding: 0; gap: 0; justify-content: center; } /* 上の帯・右から2つめ・丸 */
   #topbar.filters-open ~ #layout #locate-btn { display: none; } /* 絞り込みパネルを開いている間は被る現在地ボタンを隠す */
   #layout:has(#panel:not([hidden])) #locate-btn { display: none; } /* シート（詳細/フォーム等）を開いている間も隠す */
   /* iOS: appearance 既定だと width:100% を無視して最小幅ではみ出すため、スマホ幅ではリセット */
   #filter-bar input[type=date] { -webkit-appearance: none; appearance: none; }
   #filter-bar input[type=date]::-webkit-date-and-time-value { text-align: left; margin: 0; }
   #locate-btn span { display: none; } /* スマホではアイコンのみの丸ボタン */
-  #calendar-view { padding-top: 124px; } /* 浮かせたヘッダー（2段）ぶん空ける */
-  #research-btn { top: 116px; } /* 2段ヘッダー（検索欄は2段目・bottom≈102）の下に出す */
+  #calendar-view { padding-top: calc(124px + var(--safe-top)); } /* 浮かせたヘッダー（2段）ぶん空ける */
+  #research-btn { top: calc(116px + var(--safe-top)); } /* 2段ヘッダー（検索欄は2段目・bottom≈102）の下に出す */
 }
 
 /* ===== 起動スプラッシュ（待機画面） ===== */
@@ -715,7 +721,8 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
 /* ===== ログイン/スペースのゲート ===== */
 #gate { position: fixed; inset: 0; z-index: 3000;
   background: linear-gradient(170deg, #f8f1e9 0%, #efdfd4 100%);
-  display: flex; align-items: center; justify-content: center; padding: 24px; }
+  display: flex; align-items: center; justify-content: center;
+  padding: calc(24px + var(--safe-top)) 24px calc(24px + var(--safe-bottom)); }
 #gate[hidden] { display: none; }
 .gate-card { background: var(--surface); border-radius: 20px; box-shadow: 0 14px 40px rgba(45,38,30,.13);
   padding: 32px 24px 28px; width: 100%; max-width: 380px; text-align: center; }
@@ -751,7 +758,8 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
 #bulk-btn:active { transform: scale(.96); }
 
 #bulk-overlay { position: fixed; inset: 0; z-index: 1000; overflow-y: auto;
-  background: #f4ece4; color: #3a2e28; padding: 16px; }
+  background: #f4ece4; color: #3a2e28;
+  padding: calc(16px + var(--safe-top)) 16px calc(16px + var(--safe-bottom)); }
 @media (prefers-color-scheme: dark) { #bulk-overlay { background: #241d19; color: #efe7df; } }
 .bulk-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .bulk-x { border: none; background: transparent; font-size: 20px; cursor: pointer; color: inherit; }
@@ -783,7 +791,7 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
 .bulk-locstat { font-size: 12px; opacity: .8; }
 #bulk-pickbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1100;
   display: flex; flex-direction: column; gap: 8px;
-  padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+  padding: 12px 14px calc(12px + var(--safe-bottom));
   background: #fffaf5; color: #3a2e28; box-shadow: 0 -4px 16px rgba(0,0,0,.18);
   max-height: 62vh; overflow-y: auto; }
 @media (prefers-color-scheme: dark) { #bulk-pickbar { background: #2c231e; color: #efe7df; } }
@@ -813,7 +821,7 @@ body.settings-open #review-back { display: none !important; }
 
 /* 地図から総集編へ戻る帯（ふりかえりから地図に出たときだけ出る） */
 #review-back[hidden] { display: none; } /* display:inline-flex が hidden を打ち消さないように */
-#review-back { position: absolute; left: 50%; transform: translateX(-50%); bottom: 24px; z-index: 500;
+#review-back { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(24px + var(--safe-bottom)); z-index: 500;
   display: inline-flex; align-items: center; overflow: hidden;
   background: var(--surface); border-radius: var(--radius-pill); box-shadow: var(--shadow-md); }
 #review-back .rb-open { display: inline-flex; align-items: center; gap: 7px; background: none;
@@ -868,7 +876,7 @@ body.settings-open #review-back { display: none !important; }
 .bulk-save[disabled] { opacity: .6; }
 
 @media (max-width: 700px) {
-  #bulk-btn { top: calc(env(safe-area-inset-top) + 10px); right: 14px; left: auto; bottom: auto; width: 46px; height: 46px; padding: 0; gap: 0; justify-content: center; } /* 上の帯・右端・丸 */
+  #bulk-btn { top: calc(10px + var(--safe-top)); right: 14px; left: auto; bottom: auto; width: 46px; height: 46px; padding: 0; gap: 0; justify-content: center; } /* 上の帯・右端・丸 */
   #bulk-btn span { display: none; }
   #topbar.filters-open ~ #layout #bulk-btn { display: none; }
   #layout:has(#panel:not([hidden])) #bulk-btn { display: none; }
@@ -927,15 +935,16 @@ body.settings-open #review-back { display: none !important; }
   font-weight: 600; cursor: pointer; }
 
 /* ===== 年間ふりかえり ===== */
-.review-overlay { position: fixed; inset: 0; z-index: 60; overflow: auto; background: var(--bg); color: var(--text); }
+.review-overlay { position: fixed; inset: 0; z-index: 60; overflow: auto; background: var(--bg); color: var(--text);
+  padding-top: var(--safe-top); }
 .review-overlay[hidden] { display: none; }
 #review-show { background: #ece6db; color: var(--text); overflow: hidden; }
-.rv-x, .rv-card-x { position: absolute; top: 14px; right: 14px; z-index: 3; background: var(--surface-2);
+.rv-x, .rv-card-x { position: absolute; top: calc(14px + var(--safe-top)); right: 14px; z-index: 3; background: var(--surface-2);
   color: var(--text-muted); border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 16px; cursor: pointer;
   display: flex; align-items: center; justify-content: center; }
 
 /* スライドショー */
-.rv-progress { position: absolute; top: 12px; left: 12px; right: 56px; display: flex; gap: 4px; z-index: 2; }
+.rv-progress { position: absolute; top: calc(12px + var(--safe-top)); left: 12px; right: 56px; display: flex; gap: 4px; z-index: 2; }
 .rv-progress span { flex: 1; height: 3px; border-radius: 2px; background: rgba(51,48,43,.16); }
 .rv-progress span.on { background: var(--accent); }
 .rv-nav { position: absolute; top: 0; bottom: 0; width: 50%; z-index: 1; cursor: pointer; }
@@ -1054,7 +1063,7 @@ body.settings-open #review-back { display: none !important; }
 .rv-outing-date { font-size: 12px; color: var(--text-muted); }
 
 /* 年末カード（#memory-card と同じ位置・見た目） */
-#review-card { position: absolute; top: 66px; left: 12px; right: 12px; z-index: 45; max-width: 380px; }
+#review-card { position: absolute; top: calc(66px + var(--safe-top)); left: 12px; right: 12px; z-index: 45; max-width: 380px; }
 #review-card[hidden] { display: none; }
 .rv-card-inner { display: flex; align-items: center; gap: 11px; background: var(--surface);
   border-radius: 14px; box-shadow: var(--shadow-md); padding: 10px; position: relative; }
@@ -1068,12 +1077,13 @@ body.settings-open #review-back { display: none !important; }
 .rv-card-x { position: static; background: var(--surface-2); color: var(--text-muted);
   width: 24px; height: 24px; font-size: 13px; flex: 0 0 auto; }
 @media (max-width: 700px) {
-  #review-card { top: 116px; right: 64px; }
+  #review-card { top: calc(116px + var(--safe-top)); right: 64px; }
 }
 
 /* ===== ジャンル編集 ===== */
 #genre-editor { position: fixed; inset: 0; z-index: 62; overflow: auto;
-  background: rgba(45, 38, 30, .35); display: flex; align-items: flex-start; justify-content: center; padding: 24px 12px; }
+  background: rgba(45, 38, 30, .35); display: flex; align-items: flex-start; justify-content: center;
+  padding: calc(24px + var(--safe-top)) 12px calc(24px + var(--safe-bottom)); }
 #genre-editor[hidden] { display: none; }
 .ge-panel { width: 100%; max-width: 460px; background: var(--bg); border-radius: 16px;
   box-shadow: var(--shadow-lg); padding: 16px; }
