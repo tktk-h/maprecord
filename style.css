@@ -24,10 +24,9 @@
   /* フォント（温かみ丸ゴシック）。読み込み前・失敗時はシステムフォントにフォールバック */
   --font-sans: 'Zen Kaku Gothic New', system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
   --font-display: 'Zen Maru Gothic', 'Zen Kaku Gothic New', system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif;
-  /* 時計やホームバーに食われる帯の高さ。いまは index.html が viewport-fit=cover を
-     付けていないので、どの環境でも 0 になる（＝足しても何も変わらない）。
-     iOS が cover でも窓を縮めなくなったら meta を1行足すだけで全部が正しい位置に動くよう、
-     逃がす計算だけ残してある。経緯は docs/superpowers/specs/2026-08-27-status-bar-map-design.md */
+  /* iPhone をホーム画面から開いたとき、時計やホームバーに食われる帯の高さ。
+     地図はこの帯の下まで敷き、浮いているものだけこのぶん逃がす。
+     ブラウザ・PC・Android では 0 になるので、そのまま足し算に使ってよい。 */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -39,7 +38,10 @@ html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: non
 h1, h2, .splash-title, .gate-title, .gate-code,
 .mem-title, .filter-title, .meta { font-family: var(--font-display); }
 /* ページ全体は固定（スクロールさせない）。中身だけが内部スクロールする */
+/* 高さは 100dvh。ただしホーム画面アプリでは iOS が画面より 47px 短い値を返すので、
+   index.html の先頭スクリプトが実寸を --app-h に入れて上書きする。 */
 body { display: flex; flex-direction: column; height: 100vh; height: 100dvh;
+  height: var(--app-h, 100dvh);
   position: fixed; inset: 0; overflow: hidden;
   background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
 
