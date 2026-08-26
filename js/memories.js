@@ -41,6 +41,15 @@ App.memories = (function () {
     eq('none', pickMemories([{ id: 9, date: '2025-08-11' }], '2026-08-12', null), null);
     // 記念日が同年（years=0）は祝わない → onThisDay/null にフォールバック
     eq('anniv-year0', pickMemories([], '2026-08-12', '2026-08-12'), null);
+
+    // 下段の一行（押したときに何が出るかと合わせる）
+    const I = (d) => ({ date: d });
+    eq('sub-single', subLine([I('2025-08-12')]), '2025.08.12');
+    eq('sub-same-day', subLine([I('2025-08-12'), I('2025-08-12')]), '2025.08.12 ・ 2件');
+    eq('sub-other-year', subLine([I('2025-08-12'), I('2024-08-12')]), '2025.08.12 ・ ほか1年');
+    eq('sub-both', subLine([I('2025-08-12'), I('2025-08-12'), I('2024-08-12'), I('2023-08-12')]),
+       '2025.08.12 ・ 2件 ・ ほか2年');
+    eq('sub-empty', subLine([]), '');
   }
 
   let anniv = null;
@@ -57,16 +66,43 @@ App.memories = (function () {
     host.hidden = true;
   }
 
+  // 日付 'YYYY-MM-DD' → '2025.08.12'（純粋）
+  function dot(d) { return String(d || '').replace(/-/g, '.'); }
+
+  // 下段の一行を組み立てる（純粋）。押すとその日の記録を全部出すので、
+  // 「その日に何件あるか」と「別の年にも同じ日があるか」をここで伝える。
+  function subLine(items) {
+    if (!items || !items.length) return '';
+    const day = items[0].date;
+    const sameDay = items.filter((x) => x.date === day).length;
+    const years = new Set(items.map((x) => x.date)).size - 1;
+    const parts = [dot(day)];
+    if (sameDay > 1) parts.push(sameDay + '件');
+    if (years > 0) parts.push('ほか' + years + '年');
+    return parts.join(' ・ ');
+  }
+
+  // 右側（×と、押せるカードだけに出す矢印）
+  function sideHtml(withGo) {
+    return '<div class="mem-side">'
+      + '<button type="button" class="mem-x" aria-label="閉じる"><i class="ph ph-x"></i></button>'
+      + (withGo ? '<i class="ph ph-caret-right mem-go" aria-hidden="true"></i>' : '')
+      + '</div>';
+  }
+
   function render(host, mem, today) {
     if (mem.type === 'anniversary') {
       host.innerHTML = `
         <div class="mem-inner">
-          <div class="mem-icon mem-icon-accent"><i class="ph ph-confetti"></i></div>
-          <div class="mem-text">
-            <div class="mem-label"><i class="ph ph-heart"></i>記念日</div>
-            <div class="mem-title">今日で${mem.years}年！</div>
+          <div class="mem-open is-static">
+            <span class="mem-shot is-mark"><i class="ph ph-confetti"></i></span>
+            <span class="mem-body">
+              <span class="mem-label"><i class="ph ph-heart"></i>記念日</span>
+              <span class="mem-title">今日で${mem.years}年</span>
+              <span class="mem-sub">${dot(mem.date)} から</span>
+            </span>
           </div>
-          <button type="button" class="mem-x" aria-label="閉じる"><i class="ph ph-x"></i></button>
+          ${sideHtml(false)}
         </div>`;
       host.hidden = false;
       host.querySelector('.mem-x').onclick = () => dismiss(host, today);
@@ -75,19 +111,22 @@ App.memories = (function () {
     const it = mem.items[0]; // 一番新しい過去の年
     const r = it.record;
     const photo = (r.photos || [])[0];
-    const thumb = photo
-      ? `<div class="mem-icon" style="background-image:url(${App.photos.thumbOf(photo)})"></div>`
-      : `<div class="mem-icon mem-icon-accent"><i class="ph ph-map-pin"></i></div>`;
-    const more = mem.count > 1 ? ` ・ ほか${mem.count - 1}件` : '';
+    // 写真が無い記録もあるので、そのときはジャンル色の面に地図ピンを置く
+    const shot = photo
+      ? `<span class="mem-shot" style="background-image:url('${escName(App.photos.thumbOf(photo))}')"></span>`
+      : `<span class="mem-shot is-mark" style="background:${App.genres.color(r.genre)};color:#fff">`
+        + `<i class="ph ph-map-pin"></i></span>`;
     host.innerHTML = `
       <div class="mem-inner">
-        ${thumb}
-        <button type="button" class="mem-text mem-open">
-          <div class="mem-label"><i class="ph ph-clock-counter-clockwise"></i>${it.yearsAgo}年前の今日</div>
-          <div class="mem-title">${escName(r.name) || '(名称未設定)'}</div>
-          <div class="mem-sub">${r.date.replace(/-/g, '.')}${more}</div>
+        <button type="button" class="mem-open">
+          ${shot}
+          <span class="mem-body">
+            <span class="mem-label"><i class="ph ph-clock-counter-clockwise"></i>${it.yearsAgo}年前の今日</span>
+            <span class="mem-title">${escName(r.name) || '(名称未設定)'}</span>
+            <span class="mem-sub">${subLine(mem.items)}</span>
+          </span>
         </button>
-        <button type="button" class="mem-x" aria-label="閉じる"><i class="ph ph-x"></i></button>
+        ${sideHtml(true)}
       </div>`;
     host.hidden = false;
     host.querySelector('.mem-open').onclick = () => App.records.focusDay(it.date);
@@ -104,5 +143,5 @@ App.memories = (function () {
     render(host, mem, today);
   }
 
-  return { pickMemories, setAnniversary, show, _selfTest };
+  return { pickMemories, setAnniversary, show, _render: render, _subLine: subLine, _selfTest };
 })();
