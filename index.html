@@ -2,28 +2,23 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <!-- height=device-height は iOS 向けの古い指定。縦向きのホーム画面アプリで
-       中の高さが画面より 47px 短く計算される件を、これで正せるか試している。 -->
-  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>あしあと</title>
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#b5675f">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=20260827i">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=20260827j">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="あしあと">
-  <!-- ホーム画面アプリのとき、中身をステータスバーの下まで敷く（＝時計の背景が地図になる）。
-       black-translucent のときだけ iOS は全画面を渡してくれる。viewport-fit=cover とセットで効く。
-       この2つが揃っていないと、中身が下にずれるだけで帯は塗りつぶしのまま。
-       ※ iOS はこの指定をインストール時に覚えるので、既にホーム画面にあるアイコンは
-          いったん削除して追加し直さないと変わらないことがある。 -->
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- black-translucent は、この iOS では窓を全画面にせず「上にずらす」だけだった
+       （上で 47px 得て、下で 47px 失う）。実測: inner 797 / screen 844。
+       いまは viewport-fit=cover を付けたまま default に戻して、cover だけで
+       窓が全画面のままステータスバーを重ねてくれるかを試している。 -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@300;400;500;700&family=Zen+Maru+Gothic:wght@500;700&display=swap">
-  <link rel="stylesheet" href="style.css?v=20260827i">
-  <!-- TEMP: 下の帯の正体を見分けるための色。原因が分かったら消す -->
-  <style>html { background: #7048e8; }</style>
+  <link rel="stylesheet" href="style.css?v=20260827j">
   <script>
     // iPhone のホーム画面アプリでは、ステータスバーの下に潜らせたぶんだけ
     // 100dvh が実際の画面より短く報告されることがある（画面の下に地図の無い帯が残る）。
@@ -65,7 +60,7 @@
 <body>
   <div id="splash">
     <div class="splash-inner">
-      <img class="splash-logo" src="icon-512.png?v=20260827i" alt="あしあと">
+      <img class="splash-logo" src="icon-512.png?v=20260827j" alt="あしあと">
       <h1 class="splash-title">あしあと</h1>
       <p class="splash-tag">あなたの足あとを、地図に。</p>
       <div class="splash-spinner"></div>
@@ -74,7 +69,7 @@
 
   <div id="gate" hidden>
     <div class="gate-card">
-      <img class="gate-logo" src="icon-512.png?v=20260827i" alt="あしあと">
+      <img class="gate-logo" src="icon-512.png?v=20260827j" alt="あしあと">
       <h1 class="gate-title">あしあと</h1>
       <div id="gate-login" hidden>
         <p class="gate-lead">行った場所を残して、いつでもたどれる</p>
@@ -202,7 +197,7 @@
           <button id="logout-btn" class="set-row" type="button"><i class="ph ph-sign-out"></i><span>ログアウト</span></button>
         </div>
 
-        <div class="app-ver">ver. 20260827i</div>
+        <div class="app-ver">ver. 20260827j</div>
       </div>
     </div>
     <div id="genre-editor" hidden></div>
@@ -248,32 +243,32 @@
       setInterval(show, 1000);
     })();
   </script>
-  <script src="js/genres.js?v=20260827i"></script>
-  <script src="js/filters.js?v=20260827i"></script>
-  <script src="js/range-cal.js?v=20260827i"></script>
-  <script src="js/photo-migrate.js?v=20260827i"></script>
-  <script src="js/notify.js?v=20260827i"></script>
-  <script src="js/map.js?v=20260827i"></script>
-  <script src="js/places.js?v=20260827i"></script>
-  <script src="js/grouping.js?v=20260827i"></script>
-  <script src="js/records.js?v=20260827i"></script>
-  <script src="js/bulk.js?v=20260827i"></script>
-  <script src="js/lightbox.js?v=20260827i"></script>
-  <script src="js/sheet.js?v=20260827i"></script>
-  <script src="js/calendar.js?v=20260827i"></script>
-  <script src="js/backup.js?v=20260827i"></script>
-  <script src="js/memories.js?v=20260827i"></script>
-  <script src="js/review-stats.js?v=20260827i"></script>
-  <script src="js/review-poster.js?v=20260827i"></script>
-  <script src="js/review-ui.js?v=20260827i"></script>
-  <script src="js/genre-edit.js?v=20260827i"></script>
-  <script src="js/search.js?v=20260827i"></script>
-  <script type="module" src="js/app.js?v=20260827i"></script>
+  <script src="js/genres.js?v=20260827j"></script>
+  <script src="js/filters.js?v=20260827j"></script>
+  <script src="js/range-cal.js?v=20260827j"></script>
+  <script src="js/photo-migrate.js?v=20260827j"></script>
+  <script src="js/notify.js?v=20260827j"></script>
+  <script src="js/map.js?v=20260827j"></script>
+  <script src="js/places.js?v=20260827j"></script>
+  <script src="js/grouping.js?v=20260827j"></script>
+  <script src="js/records.js?v=20260827j"></script>
+  <script src="js/bulk.js?v=20260827j"></script>
+  <script src="js/lightbox.js?v=20260827j"></script>
+  <script src="js/sheet.js?v=20260827j"></script>
+  <script src="js/calendar.js?v=20260827j"></script>
+  <script src="js/backup.js?v=20260827j"></script>
+  <script src="js/memories.js?v=20260827j"></script>
+  <script src="js/review-stats.js?v=20260827j"></script>
+  <script src="js/review-poster.js?v=20260827j"></script>
+  <script src="js/review-ui.js?v=20260827j"></script>
+  <script src="js/genre-edit.js?v=20260827j"></script>
+  <script src="js/search.js?v=20260827j"></script>
+  <script type="module" src="js/app.js?v=20260827j"></script>
   <script>
     // オフライン対応（アプリシェル）。sw.js?v= は下の全置換で版に追従する。
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js?v=20260827i', { updateViaCache: 'none' }).catch(() => {});
+        navigator.serviceWorker.register('sw.js?v=20260827j', { updateViaCache: 'none' }).catch(() => {});
       });
     }
   </script>
