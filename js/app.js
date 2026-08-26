@@ -6,8 +6,9 @@ import { photos } from './photos.js'; // 読み込みで window.App.photos を�
 
 let started = false;
 let currentSpace = null;
-let memoriesShown = false;
 let recordsLoaded = false; // 初回の記録スナップショットが届いたか（ジャンル編集の使用件数判定に必要）
+let mapDone = false;       // 地図の準備ができたか
+let painted = false;       // 最初の描画（ピン＋思い出カード）を済ませたか
 
 function wireUI() {
   const mapBtn = document.getElementById('view-map');
@@ -114,10 +115,65 @@ function wireUI() {
     App.records.render(); // 束ね方が変わるので描き直す
   });
   paintClusterBtn();
+
+  // 写真を軽くする（昔の埋め込み写真を Storage へ移す）
+  document.getElementById('photo-migrate-btn').addEventListener('click', runPhotoMigrate);
+}
+
+// 残っている埋め込み写真の枚数を見て、あるときだけボタンを出す。
+function refreshPhotoMigrateBtn() {
+  const btn = document.getElementById('photo-migrate-btn');
+  if (!btn || migrating) return;
+  const { photos } = App.photoMigrate.pending(App.records.getAll());
+  btn.hidden = photos === 0;
+  if (photos) btn.querySelector('span').textContent = '写真を軽くする（' + photos + '枚）';
+}
+
+let migrating = false;
+async function runPhotoMigrate() {
+  if (migrating) return;
+  const btn = document.getElementById('photo-migrate-btn');
+  const label = btn.querySelector('span');
+  const { photos, records } = App.photoMigrate.pending(App.records.getAll());
+  if (!photos) { refreshPhotoMigrateBtn(); return; }
+  const ok = confirm(`昔の形式で保存された写真 ${photos}枚（${records}件の記録）を、今の保存先へ移します。
+写真はそのまま残り、アプリを開くときの読み込みが軽くなります。
+途中で閉じないでください。`);
+  if (!ok) return;
+  migrating = true;
+  btn.disabled = true;
+  label.textContent = '移しています… 0/' + photos;
+  try {
+    const res = await App.photoMigrate.run((done, total) => {
+      label.textContent = '移しています… ' + done + '/' + total;
+    });
+    alert(res.failed
+      ? (res.moved + '枚を移しました。' + res.failed + '枚は失敗したので、もう一度試してみてください。')
+      : (res.moved + '枚を移しました。次に開くときから軽くなります。'));
+  } catch (e) {
+    console.error('photo migrate aborted', e);
+    alert('移せませんでした: ' + (e && e.message ? e.message : e));
+  } finally {
+    migrating = false;
+    btn.disabled = false;
+    label.textContent = '写真を軽くする';
+    refreshPhotoMigrateBtn(); // 購読の反映を待たずこの場で数え直す
+  }
 }
 
 function showMapLoading() { const el = document.getElementById('map-loading'); if (el) el.hidden = false; }
 function hideMapLoading() { const el = document.getElementById('map-loading'); if (el) el.hidden = true; }
+
+// 地図と記録の両方が揃ってから一度だけ。どちらが先に終わってもここに合流する。
+function firstPaint() {
+  if (painted || !mapDone || !recordsLoaded) return;
+  painted = true;
+  hideMapLoading();
+  App.records.render(); // 地図より先に届いていた記録をここで描く
+  refreshPhotoMigrateBtn();
+  // 年末は「ふりかえりカード」を優先。出なければ通常の思い出カード。
+  if (!App.review.maybeShowYearEndCard()) App.memories.show();
+}
 
 async function startApp(sp) {
   cloud.setSpace(sp.id);
@@ -126,28 +182,35 @@ async function startApp(sp) {
   // アプリを開いた記録（最終アクセス）を残す。失敗しても本体には影響させない。
   const u = auth.user();
   if (u) space.touchLastSeen(sp.id, u.uid, u.displayName || u.email || '').catch(() => {});
+
+  // スペースの設定はUIを組む前に入れる。
+  // （絞り込みのジャンルチップは App.genres.list を見て作るので、先に差し替えておかないと既定の6つで作られる）
+  App.memories.setAnniversary(sp.anniversary || null);
+  App.review.setAnniversary(sp.anniversary || null);
+  App.genres.setList(sp.genres || null);
+  App.genreEdit.setSpaceId(sp.id);
+
+  // 地図の読み込みと記録の購読は互いに独立している。
+  // 地図を待ってから購読するとその分だけ初回同期の開始が遅れるので、同時に進める。
+  const mapReady = started ? Promise.resolve() : App.map.init();
+
+  cloud.subscribe((records) => {
+    App.records.setRecords(records); // 地図がまだなら all に貯めるだけ（render は地図待ち）
+    recordsLoaded = true;
+    firstPaint();
+    if (started) refreshPhotoMigrateBtn();
+  });
+
+  await mapReady; // Google Maps ライブラリの読み込み完了
   if (!started) {
-    await App.map.init(); // Google Maps ライブラリの読み込み完了を待つ
     App.records.init();
     App.sheet.init();
     App.search.init();
     wireUI();
     started = true;
   }
-  App.memories.setAnniversary(sp.anniversary || null);
-  App.review.setAnniversary(sp.anniversary || null);
-  App.genres.setList(sp.genres || null);
-  App.genreEdit.setSpaceId(sp.id);
-  cloud.subscribe((records) => {
-    App.records.setRecords(records);
-    recordsLoaded = true;
-    hideMapLoading();
-    if (!memoriesShown) {
-      memoriesShown = true;
-      // 年末は「ふりかえりカード」を優先。出なければ通常の思い出カード。
-      if (!App.review.maybeShowYearEndCard()) App.memories.show();
-    }
-  });
+  mapDone = true;
+  firstPaint();
 }
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -37,9 +37,27 @@ App.bulk = (function () {
     fileInput.click();
   }
 
+  // exifr（EXIF読み取り）は起動時には読まない。写真を選んだときに一度だけ入れる。
+  // 失敗しても readMeta は撮影日時のフォールバックで動くので、読めなくても止めない。
+  const EXIFR_SRC = 'https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js';
+  let exifrLoading = null;
+  function ensureExifr() {
+    if (window.exifr) return Promise.resolve();
+    if (exifrLoading) return exifrLoading;
+    exifrLoading = new Promise((resolve) => {
+      const el = document.createElement('script');
+      el.src = EXIFR_SRC;
+      el.onload = () => resolve();
+      el.onerror = () => resolve(); // 読めなくても先へ進む
+      document.head.appendChild(el);
+    });
+    return exifrLoading;
+  }
+
   // File → { time(ms), gps:{lat,lng}|null }
   async function readMeta(file) {
     let time = null, gps = null;
+    await ensureExifr();
     if (window.exifr) {
       try { const g = await exifr.gps(file);
         if (g && typeof g.latitude === 'number' && typeof g.longitude === 'number') gps = { lat: g.latitude, lng: g.longitude }; } catch (_) {}

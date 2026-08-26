@@ -64,6 +64,9 @@ App.records = (function () {
   }
 
   function render() {
+    // 地図の読み込みと並行で記録を購読するので、地図ができる前にデータが届くことがある。
+    // そのときは all に入れるだけにしておき、地図ができたあと app.js がもう一度ここを呼ぶ。
+    if (!App.map.isReady()) return;
     // 検索結果モード：場所ごとにまとめた代表ピンだけ表示＋候補リスト
     if (searchResults) {
       const counts = countsByCoord();

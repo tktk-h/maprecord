@@ -495,7 +495,11 @@ App.map = (function () {
     if (clusterWanted && !startClusterer()) markers.forEach((m) => { m.map = map; });
   }
 
-  return { init, setClickHandler, setPlaceClickHandler, getPlaceClickHandler, setRecordPickHandler, setLongPressHandler, setUserPanHandler, setTapHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
+  // 地図の準備ができたか。記録の購読を地図の読み込みと並行で始めるので、
+  // 先にデータが届いても renderPins を呼ばないための見分け。
+  function isReady() { return !!map; }
+
+  return { init, isReady, setClickHandler, setPlaceClickHandler, getPlaceClickHandler, setRecordPickHandler, setLongPressHandler, setUserPanHandler, setTapHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
            clusterEnabled, setClusterEnabled,
            renderPlaceResults, clearPlaceResults, hideRecordPins,
            showTempMarker, clearTempMarker,
