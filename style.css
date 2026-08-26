@@ -38,10 +38,10 @@ html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: non
 h1, h2, .splash-title, .gate-title, .gate-code,
 .mem-title, .filter-title, .meta { font-family: var(--font-display); }
 /* ページ全体は固定（スクロールさせない）。中身だけが内部スクロールする */
-/* 高さは 100dvh。ただしホーム画面アプリでは iOS が画面より 47px 短い値を返すので、
-   index.html の先頭スクリプトが実寸を --app-h に入れて上書きする。 */
+/* 高さは 100dvh のまま。iPhone のホーム画面アプリでは iOS が画面より 47px 小さい座標を
+   渡してきて、それを画面いっぱいに引き伸ばす。実寸に合わせて足すと、はみ出たぶんが
+   画面の外へ切り落とされて下に帯が出る（2026-08-27 に実機で確認済み）。 */
 body { display: flex; flex-direction: column; height: 100vh; height: 100dvh;
-  height: var(--app-h, 100dvh);
   position: fixed; inset: 0; overflow: hidden;
   background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
 
