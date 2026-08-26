@@ -589,16 +589,17 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
 /* クラスタ（近くの場所を束ねたバッジ）。写真を数枚重ねたカードに見せる。
    再訪ピン（写真1枚＋しっぽ＋濃いグレーの数字）と紛れないよう、
    重なり・しっぽなし・テラコッタの数字で区別する。 */
-.cluster-pin { position: relative; width: 46px; height: 46px; cursor: pointer; }
-.cluster-pin .cl-card { position: absolute; width: 46px; height: 46px; border-radius: 12px;
-  border: 2px solid #fff; box-shadow: var(--shadow-sm); }
+/* 大きさは写真ピン（.pin-img 54px＋白フチ3px）に合わせる。小さいと束ねだけ引っ込んで見える。 */
+.cluster-pin { position: relative; width: 54px; height: 54px; cursor: pointer; }
+.cluster-pin .cl-card { position: absolute; width: 54px; height: 54px; border-radius: 15px;
+  border: 3px solid #fff; box-shadow: var(--shadow-sm); }
 .cluster-pin .cl-back2 { background: #e6dcc8; transform: rotate(8deg) translate(4px, -2px); }
 .cluster-pin .cl-back1 { background: #d9c3ae; transform: rotate(-5deg) translate(2px, -1px); }
 /* 一番手前＝実際の写真（無ければジャンル色） */
 /* 背景を白にしない。写真は Storage から来るので、万一描画が間に合わないときに
    白だと「抱けた」ように見える。JS がジャンル色を敷くので、ここは透明でよい。 */
-.cluster-pin .cl-face { position: absolute; left: 0; top: 0; width: 46px !important; height: 46px !important;
-  object-fit: cover; border-radius: 12px; border: 2px solid #fff; display: block;
+.cluster-pin .cl-face { position: absolute; left: 0; top: 0; width: 54px !important; height: 54px !important;
+  object-fit: cover; border-radius: 15px; border: 3px solid #fff; display: block;
   box-shadow: var(--shadow-md); }
 .cluster-pin .cl-count { position: absolute; top: -9px; right: -6px; min-width: 20px; height: 20px;
   padding: 0 5px; border-radius: 10px; background: var(--accent); color: #fff;
