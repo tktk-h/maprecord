@@ -377,9 +377,12 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 #filter-bar input[type=date] { width: 100%; min-width: 0; padding: 11px 13px; font-size: 16px;
   background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); }
 #day-input[hidden] { display: none; } /* mode切替でJSが hidden にしたとき確実に隠す */
-#range-inputs { display: flex; align-items: center; gap: 8px; color: var(--text-muted); }
-#range-inputs[hidden] { display: none; } /* display:flex が hidden を打ち消さないように */
-#range-inputs input[type=date] { flex: 1; width: auto; min-width: 0; }
+/* 期間はふりかえりと同じカレンダー（1枚を 2 回タップ）。中身は .rv-cal の見た目を共有する */
+#range-inputs { display: block; color: var(--text-muted); }
+#range-inputs[hidden] { display: none; } /* display:block が hidden を打ち消さないように */
+#range-cal .rv-cal { margin-bottom: 0; }
+#range-cal .rv-cal-grid, #range-cal .rv-cal-dow { gap: 1px; }
+#range-cal .rv-cal-d { font-size: 13px; border-radius: 8px; }
 
 /* ジャンル：色付きトグルチップ（真実は隠した checkbox） */
 .gf-label { font-size: 11px; color: var(--text-muted); letter-spacing: .04em; margin-bottom: -6px; }

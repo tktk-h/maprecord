@@ -8,8 +8,13 @@ App.records = (function () {
   let searchQuery = '';         // 検索結果の見出し用
   let suppressPlaceUntil = 0;   // 地図タップで詳細を閉じた直後は店カードを出さない（ms）
   const panel = () => document.getElementById('panel-content');
+  let rangeCal = null;          // 絞り込みの期間カレンダー（ふりかえりと共通の App.rangeCal）
 
-  function setRecords(records) { all = records; render(); } // 購読から最新を受け取る
+  function setRecords(records) {
+    all = records;
+    if (rangeCal) rangeCal.refresh(); // 記録のある日の印と初期表示月を合わせる
+    render();
+  } // 購読から最新を受け取る
   async function reload() { render(); }                      // 互換用（購読が供給）
   function setFilterState(state) { searchResults = null; filterState = state; render(); }
   function getAll() { return all; }
@@ -851,6 +856,21 @@ App.records = (function () {
     });
   }
 
+  // 期間の絞り込みは、ふりかえりと同じ「1枚のカレンダーを 2 回タップ」で選ぶ。
+  // 真実は隠し入力 #from-input / #to-input のままなので、読む側は今までどおり。
+  function buildRangeCalendar() {
+    const host = document.getElementById('range-cal');
+    if (!host || !App.rangeCal) return;
+    rangeCal = App.rangeCal.mount(host, {
+      getRecords: () => all,
+      onChange: (from, to) => {
+        document.getElementById('from-input').value = from || '';
+        document.getElementById('to-input').value = to || '';
+        applyUiFilter();
+      },
+    });
+  }
+
   function readFilterState() {
     const mode = document.getElementById('mode-select').value;
     const checked = Array.from(
@@ -881,6 +901,14 @@ App.records = (function () {
     document.getElementById('range-inputs').hidden = mode !== 'range';
     const clr = document.getElementById('filter-clear-top');
     if (clr) clr.hidden = !isFiltering(); // 絞り込み中だけ×を出す
+    // リセットや「ふりかえり→本物の地図」のように外から from/to が入ることがあるので、
+    // 隠し入力を真実としてカレンダーを合わせる（同じ値なら setValue は何もしない）
+    if (rangeCal) {
+      rangeCal.setValue(
+        document.getElementById('from-input').value || null,
+        document.getElementById('to-input').value || null,
+      );
+    }
     setFilterState(readFilterState());
     syncModeSegment(); // focusDay/resetFilters 経由でもセグメント表示を合わせる
   }
@@ -938,7 +966,8 @@ App.records = (function () {
     });
     buildGenreFilters();
     buildModeSegment();
-    ['mode-select', 'day-input', 'from-input', 'to-input'].forEach((id) =>
+    buildRangeCalendar();
+    ['mode-select', 'day-input'].forEach((id) =>
       document.getElementById(id).addEventListener('change', applyUiFilter));
     document.getElementById('filter-clear').addEventListener('click', resetFilters);
     const clrTop = document.getElementById('filter-clear-top');
