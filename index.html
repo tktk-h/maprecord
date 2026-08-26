@@ -6,7 +6,7 @@
   <title>あしあと</title>
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#b5675f">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=20260827f">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=20260827g">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="あしあと">
   <!-- ホーム画面アプリのとき、中身をステータスバーの下まで敷く（＝時計の背景が地図になる）。
@@ -19,7 +19,36 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@300;400;500;700&family=Zen+Maru+Gothic:wght@500;700&display=swap">
-  <link rel="stylesheet" href="style.css?v=20260827f">
+  <link rel="stylesheet" href="style.css?v=20260827g">
+  <script>
+    // iPhone のホーム画面アプリでは、ステータスバーの下に潜らせたぶんだけ
+    // 100dvh が実際の画面より短く報告されることがある（画面の下に地図の無い帯が残る）。
+    // standalone のときだけ、画面の実寸との差がステータスバー程度（<=120px）なら、
+    // 実寸を --app-h としてアプリの高さに使う。
+    // ブラウザや PC では screen.height がウィンドウよりずっと大きいので必ず素通りする。
+    // 横向きも iOS は screen.height を縦向きのまま返すため、差が大きくなって素通りする。
+    (function () {
+      var root = document.documentElement;
+      function fit() {
+        var scr = (window.screen && window.screen.height) || 0;
+        var gap = scr - window.innerHeight;
+        if (window.navigator.standalone === true && gap > 0 && gap <= 120) {
+          root.style.setProperty('--app-h', scr + 'px');
+        } else {
+          root.style.removeProperty('--app-h');
+        }
+      }
+      fit();
+      window.addEventListener('resize', fit);
+      window.addEventListener('orientationchange', fit);
+      // 起動直後に iOS が画面を広げた場合、Google マップは自分の大きさを測り直さないと
+      // 下に「タイルの無い帯」を残す。少し待ってから resize を一度知らせて測り直させる。
+      window.addEventListener('load', function () {
+        setTimeout(function () { fit(); window.dispatchEvent(new Event('resize')); }, 400);
+      });
+    })();
+  </script>
+
   <script>
     (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
       key: "AIzaSyC0686dd3grl_KMmLDwTAx1UHomoLgMhDo",
@@ -32,7 +61,7 @@
 <body>
   <div id="splash">
     <div class="splash-inner">
-      <img class="splash-logo" src="icon-512.png?v=20260827f" alt="あしあと">
+      <img class="splash-logo" src="icon-512.png?v=20260827g" alt="あしあと">
       <h1 class="splash-title">あしあと</h1>
       <p class="splash-tag">あなたの足あとを、地図に。</p>
       <div class="splash-spinner"></div>
@@ -41,7 +70,7 @@
 
   <div id="gate" hidden>
     <div class="gate-card">
-      <img class="gate-logo" src="icon-512.png?v=20260827f" alt="あしあと">
+      <img class="gate-logo" src="icon-512.png?v=20260827g" alt="あしあと">
       <h1 class="gate-title">あしあと</h1>
       <div id="gate-login" hidden>
         <p class="gate-lead">行った場所を残して、いつでもたどれる</p>
@@ -169,38 +198,64 @@
           <button id="logout-btn" class="set-row" type="button"><i class="ph ph-sign-out"></i><span>ログアウト</span></button>
         </div>
 
-        <div class="app-ver">ver. 20260827f</div>
+        <div class="app-ver">ver. 20260827g</div>
       </div>
     </div>
     <div id="genre-editor" hidden></div>
   </main>
 
-  <script src="js/genres.js?v=20260827f"></script>
-  <script src="js/filters.js?v=20260827f"></script>
-  <script src="js/range-cal.js?v=20260827f"></script>
-  <script src="js/photo-migrate.js?v=20260827f"></script>
-  <script src="js/notify.js?v=20260827f"></script>
-  <script src="js/map.js?v=20260827f"></script>
-  <script src="js/places.js?v=20260827f"></script>
-  <script src="js/grouping.js?v=20260827f"></script>
-  <script src="js/records.js?v=20260827f"></script>
-  <script src="js/bulk.js?v=20260827f"></script>
-  <script src="js/lightbox.js?v=20260827f"></script>
-  <script src="js/sheet.js?v=20260827f"></script>
-  <script src="js/calendar.js?v=20260827f"></script>
-  <script src="js/backup.js?v=20260827f"></script>
-  <script src="js/memories.js?v=20260827f"></script>
-  <script src="js/review-stats.js?v=20260827f"></script>
-  <script src="js/review-poster.js?v=20260827f"></script>
-  <script src="js/review-ui.js?v=20260827f"></script>
-  <script src="js/genre-edit.js?v=20260827f"></script>
-  <script src="js/search.js?v=20260827f"></script>
-  <script type="module" src="js/app.js?v=20260827f"></script>
+  <!-- TEMP: 画面サイズの実測値。原因が分かったら消す -->
+  <div id="diag" style="position:fixed;left:8px;bottom:120px;z-index:9999;background:rgba(20,16,12,.78);color:#fff;font:11px/1.5 ui-monospace,monospace;padding:6px 8px;border-radius:8px;white-space:pre;pointer-events:none"></div>
+  <script>
+    (function () {
+      var d = document.getElementById('diag');
+      var NL = String.fromCharCode(10);
+      function show() {
+        var cs = getComputedStyle(document.documentElement);
+        var m = document.getElementById('map');
+        var r = m ? m.getBoundingClientRect() : { height: 0, bottom: 0 };
+        d.textContent = [
+          'inner ' + window.innerHeight + '  screen ' + (window.screen && window.screen.height) +
+            '  client ' + document.documentElement.clientHeight,
+          'vv ' + (window.visualViewport ? Math.round(window.visualViewport.height) : '-') +
+            '  body ' + Math.round(document.body.getBoundingClientRect().height) +
+            '  standalone ' + (window.navigator.standalone === true),
+          'safe-top ' + cs.getPropertyValue('--safe-top').trim() +
+            '  safe-bottom ' + cs.getPropertyValue('--safe-bottom').trim(),
+          'map h ' + Math.round(r.height) + '  map bottom ' + Math.round(r.bottom) +
+            '  app-h ' + (document.documentElement.style.getPropertyValue('--app-h') || '-')
+        ].join(NL);
+      }
+      show();
+      setInterval(show, 1000);
+    })();
+  </script>
+  <script src="js/genres.js?v=20260827g"></script>
+  <script src="js/filters.js?v=20260827g"></script>
+  <script src="js/range-cal.js?v=20260827g"></script>
+  <script src="js/photo-migrate.js?v=20260827g"></script>
+  <script src="js/notify.js?v=20260827g"></script>
+  <script src="js/map.js?v=20260827g"></script>
+  <script src="js/places.js?v=20260827g"></script>
+  <script src="js/grouping.js?v=20260827g"></script>
+  <script src="js/records.js?v=20260827g"></script>
+  <script src="js/bulk.js?v=20260827g"></script>
+  <script src="js/lightbox.js?v=20260827g"></script>
+  <script src="js/sheet.js?v=20260827g"></script>
+  <script src="js/calendar.js?v=20260827g"></script>
+  <script src="js/backup.js?v=20260827g"></script>
+  <script src="js/memories.js?v=20260827g"></script>
+  <script src="js/review-stats.js?v=20260827g"></script>
+  <script src="js/review-poster.js?v=20260827g"></script>
+  <script src="js/review-ui.js?v=20260827g"></script>
+  <script src="js/genre-edit.js?v=20260827g"></script>
+  <script src="js/search.js?v=20260827g"></script>
+  <script type="module" src="js/app.js?v=20260827g"></script>
   <script>
     // オフライン対応（アプリシェル）。sw.js?v= は下の全置換で版に追従する。
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js?v=20260827f', { updateViaCache: 'none' }).catch(() => {});
+        navigator.serviceWorker.register('sw.js?v=20260827g', { updateViaCache: 'none' }).catch(() => {});
       });
     }
   </script>
