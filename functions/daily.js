@@ -18,9 +18,19 @@ async function runDaily(db, send, today, deleteValue) {
     const ids = Object.keys(subs);
     if (!ids.length) continue;
 
-    const deadIds = [];
+    // 同じ端末が別のスペースへ移ったとき、古いスペースに購読が残り続ける。
+    // もうメンバーでない uid のものは送らず、その場で捨てる。
+    // uid が無い古い形式は判別できないのでそのまま送る。
+    // members が読めないときは判定をしない。確かめられないものを消すのは行き過ぎ。
+    const members = (Array.isArray(data.members) && data.members.length) ? data.members : null;
+    const deadIds = members ? ids.filter((id) => {
+      const sub = subs[id];
+      return sub && sub.uid && members.indexOf(sub.uid) < 0;
+    }) : [];
+    const live = ids.filter((id) => deadIds.indexOf(id) < 0);
+
     for (const ev of events) {
-      for (const id of ids) {
+      for (const id of live) {
         const sub = subs[id];
         if (!sub || !sub.endpoint || !sub.p256dh || !sub.auth) continue;
         const res = await send(

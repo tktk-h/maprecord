@@ -96,5 +96,59 @@ const eq = (n, got, want) => { const ok = JSON.stringify(got) === JSON.stringify
   eq('skips malformed sub', outbox, ['https://push/3']);
   eq('sent one', stats.sent, 1);
 }
+// --- 複数のカップルが別々の記念日を登録していても混ざらない
+{
+  const db = fakeDb([
+    { __id: 'A', anniversary: '2024-08-12', members: ['ua'], push: { a: { ...sub(1), uid: 'ua' } } },
+    { __id: 'B', anniversary: '2020-08-12', members: ['ub'], push: { b: { ...sub(2), uid: 'ub' } } },
+    { __id: 'C', anniversary: '2024-03-03', members: ['uc'], push: { c: { ...sub(3), uid: 'uc' } } },
+  ]);
+  const outbox = [];
+  const stats = await _runDaily(db, async (s, p) => { outbox.push({ to: s.endpoint, title: p.title }); return { ok: true, gone: false }; }, '2026-08-12', DEL);
+  eq('only the two matching couples', outbox.length, 2);
+  eq('each gets its own years', outbox, [
+    { to: 'https://push/1', title: '今日で2年' },
+    { to: 'https://push/2', title: '今日で6年' },
+  ]);
+  eq('the third couple untouched', stats.sent, 2);
+  eq('no cross-space cleanup', db.updates.length, 0);
+}
+// --- 同じ記念日でも、送り先はそれぞれのスペースの端末だけ
+{
+  const db = fakeDb([
+    { __id: 'A', anniversary: '2024-08-12', members: ['ua'], push: { a: { ...sub(1), uid: 'ua' } } },
+    { __id: 'B', anniversary: '2024-08-12', members: ['ub'], push: { b: { ...sub(2), uid: 'ub' } } },
+  ]);
+  const outbox = [];
+  await _runDaily(db, async (s) => { outbox.push(s.endpoint); return { ok: true, gone: false }; }, '2026-08-12', DEL);
+  eq('same date, still separate', outbox, ['https://push/1', 'https://push/2']);
+}
+// --- スペースを抜けた人の端末には送らない（別のカップルへ移った場合）
+{
+  const db = fakeDb([{ __id: 'A', anniversary: '2024-08-12', members: ['ua'],
+    push: { stay: { ...sub(1), uid: 'ua' }, left: { ...sub(2), uid: 'ugone' } } }]);
+  const outbox = [];
+  const stats = await _runDaily(db, async (s) => { outbox.push(s.endpoint); return { ok: true, gone: false }; }, '2026-08-12', DEL);
+  eq('former member not notified', outbox, ['https://push/1']);
+  eq('former member cleaned up', db.updates, [{ id: 'A', patch: { 'push.left': DEL } }]);
+  eq('counts', [stats.sent, stats.dropped], [1, 1]);
+}
+// --- uid が無い古い形式は判別できないのでそのまま送る
+{
+  const db = fakeDb([{ __id: 'A', anniversary: '2024-08-12', members: ['ua'], push: { old: sub(7) } }]);
+  const outbox = [];
+  await _runDaily(db, async (s) => { outbox.push(s.endpoint); return { ok: true, gone: false }; }, '2026-08-12', DEL);
+  eq('legacy sub still works', outbox, ['https://push/7']);
+}
+
+// --- members が読めないスペースでは、判定できないので消さずに送る
+{
+  const db = fakeDb([{ __id: 'A', anniversary: '2024-08-12', push: { a: { ...sub(1), uid: 'ua' } } }]);
+  const outbox = [];
+  const stats = await _runDaily(db, async (s) => { outbox.push(s.endpoint); return { ok: true, gone: false }; }, '2026-08-12', DEL);
+  eq('no members: still sends', outbox, ['https://push/1']);
+  eq('no members: deletes nothing', [stats.dropped, db.updates.length], [0, 0]);
+}
+
 console.log('\n' + (fail === 0 ? '✅ ALL PASS (' + pass + ')' : '❌ ' + fail + ' FAILED / ' + pass + ' passed'));
 process.exit(fail ? 1 : 0);

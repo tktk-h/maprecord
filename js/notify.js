@@ -55,12 +55,15 @@ App.notify = (function () {
   }
 
   // PushSubscription → 保存する形（純粋）。Firestore に入れるので素の値だけにする。
-  function toStored(sub) {
+  // uid を残すのは、同じ端末が別のスペースへ移ったときに
+  // 古いスペースの分をサーバ側で見分けて止められるようにするため。
+  function toStored(sub, uid) {
     const json = sub.toJSON();
     return {
       endpoint: json.endpoint,
       p256dh: json.keys && json.keys.p256dh,
       auth: json.keys && json.keys.auth,
+      uid: uid || null,
       at: Date.now(),
     };
   }
@@ -76,7 +79,8 @@ App.notify = (function () {
     const spaceId = App.cloud._spaceId();
     if (!spaceId) throw new Error('スペースが未選択です');
     const id = await subId(sub.endpoint);
-    await App.space.setPushSub(spaceId, id, toStored(sub));
+    const user = App.auth && App.auth.user();
+    await App.space.setPushSub(spaceId, id, toStored(sub, user && user.uid));
     try { localStorage.setItem(ENDPOINT_KEY, sub.endpoint); } catch (_) { /* 控えなので無視 */ }
   }
 
@@ -150,7 +154,10 @@ App.notify = (function () {
     // 鍵の変換：長さ65バイト（P-256 の非圧縮点）になること
     const key = 'BEl' + 'A'.repeat(84) + '=';
     eq('vapid-len', urlBase64ToUint8Array(key.replace(/=+$/, '')).length, 65);
-    eq('stored-shape', toStored({ toJSON: () => ({ endpoint: 'https://e', keys: { p256dh: 'p', auth: 'a' } }) }).endpoint, 'https://e');
+    const st = toStored({ toJSON: () => ({ endpoint: 'https://e', keys: { p256dh: 'p', auth: 'a' } }) }, 'u1');
+    eq('stored-shape', st.endpoint, 'https://e');
+    eq('stored-uid', st.uid, 'u1');
+    eq('stored-uid-missing', toStored({ toJSON: () => ({ endpoint: 'https://e', keys: {} }) }).uid, null);
     console.log(fails === 0 ? '✅ notify ALL PASS' : ('❌ notify ' + fails + ' FAIL'));
     return fails;
   }
