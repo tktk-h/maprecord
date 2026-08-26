@@ -76,7 +76,12 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
 #filter-toggle { flex: 0 0 auto; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
   border-radius: 50%; color: var(--text-muted); transition: background .15s, color .15s; }
 #filter-toggle .ph { font-size: 19px; }
-#filter-toggle:hover { color: var(--text); }
+#filter-toggle:hover, #settings-toggle:hover { color: var(--text); }
+/* 設定の歯車（絞り込みの右・検索バー内蔵） */
+#settings-toggle { flex: 0 0 auto; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; color: var(--text-muted); transition: background .15s, color .15s; }
+#settings-toggle .ph { font-size: 19px; }
+body.settings-open #settings-toggle { background: var(--accent-soft); color: var(--accent-strong); }
 #topbar.filters-open #filter-toggle { background: var(--accent-soft); color: var(--accent-strong); }
 #search-box::placeholder { color: var(--text-muted); }
 #search-box:focus { box-shadow: none; }
@@ -405,21 +410,57 @@ button:focus-visible { outline: none; box-shadow: var(--ring); }
   color: var(--text-muted); background: none; padding: 2px 4px; font-size: 12px; }
 #filter-clear:hover { color: var(--accent-strong); }
 
-/* 設定セクション（絞り込みと視覚的に分離） */
-.settings-section { border-top: 1px solid var(--border); padding-top: 14px; }
-.settings-label { font-size: 11px; color: var(--text-muted); letter-spacing: .04em; margin-bottom: 8px; }
-.app-ver { text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 14px; letter-spacing: .04em; }
-#backup-bar { display: flex; flex-direction: column; gap: 2px; }
-#backup-bar button { display: flex; align-items: center; gap: 11px; width: 100%;
+/* ===== 設定画面（検索バーの歯車から開く） =====
+   項目が増えても絞り込みを圧迫しないよう、独立したオーバーレイにする。
+   重なり順：ジャンル編集(62) > 設定(61) > ヘッダー(60) */
+#settings-panel { position: fixed; inset: 0; z-index: 61; overflow: auto;
+  background: rgba(45, 38, 30, .35); display: flex; align-items: flex-start; justify-content: center;
+  padding: calc(env(safe-area-inset-top) + 16px) 12px 40px; }
+#settings-panel[hidden] { display: none; }
+.set-sheet { width: 100%; max-width: 460px; background: var(--bg); border-radius: 18px;
+  box-shadow: var(--shadow-lg); padding: 16px 16px 20px; }
+.set-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.set-title { font-size: 17px; font-weight: 800; font-family: var(--font-display); color: var(--text); }
+.set-x { background: var(--surface-2); color: var(--text-muted); border: none; border-radius: 50%;
+  width: 32px; height: 32px; font-size: 15px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; }
+.set-x:hover { color: var(--text); }
+
+/* ふりかえりは設定ではなく「見るもの」なので、一番上に大きく置く */
+.set-hero { display: flex; align-items: center; gap: 13px; width: 100%; text-align: left;
+  padding: 15px; margin-bottom: 20px; border: 1px solid var(--border); border-radius: 16px;
+  background: var(--surface); box-shadow: var(--cta-shadow); cursor: pointer; }
+.set-hero:hover { background: var(--accent-soft); border-color: var(--accent-soft); }
+.set-hero-icon { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-soft); color: var(--accent-strong); font-size: 21px; }
+.set-hero-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.set-hero-title { font-size: 16px; font-weight: 700; color: var(--text); font-family: var(--font-display); }
+.set-hero-sub { font-size: 12px; color: var(--text-muted); }
+.set-hero-go { flex: 0 0 auto; color: var(--text-muted); font-size: 16px; }
+
+/* 見出し付きのグループ */
+.set-group { margin-bottom: 18px; }
+.set-group:last-of-type { margin-bottom: 0; }
+.set-group-label { font-size: 11px; color: var(--text-muted); letter-spacing: .04em;
+  margin: 0 0 6px 8px; }
+.set-row { display: flex; align-items: center; gap: 11px; width: 100%;
   background: none; color: var(--text); border-radius: var(--radius-sm);
-  padding: 9px 8px; font-size: 14px; text-align: left; }
-#backup-bar button .ph { font-size: 18px; color: var(--text-muted); }
-#backup-bar button:hover { background: var(--surface-2); }
-#backup-bar button.on { background: var(--accent-soft); color: var(--accent-strong); }
-#backup-bar button.on .ph { color: var(--accent-strong); }
+  padding: 11px 8px; font-size: 14px; text-align: left; cursor: pointer; }
+.set-row[hidden] { display: none; } /* display:flex が hidden を打ち消さないように */
+.set-row .ph { font-size: 18px; color: var(--text-muted); flex: 0 0 auto; }
+.set-row:hover { background: var(--surface-2); }
+.set-row.on { background: var(--accent-soft); color: var(--accent-strong); }
+/* 切替の行は、今どちらなのかを右端に字で出す */
+.set-state { margin-left: auto; font-size: 12px; color: var(--text-muted); }
+.set-row.on .set-state { color: var(--accent-strong); font-weight: 600; }
+.set-row.on .ph { color: var(--accent-strong); }
 #anniv-btn .ph { color: var(--accent); }
+#photo-migrate-btn .ph { color: var(--accent-strong); }
 #logout-btn { color: #a86a62; }
 #logout-btn .ph { color: #a86a62; }
+.app-ver { text-align: center; font-size: 11px; color: var(--text-muted);
+  margin-top: 20px; letter-spacing: .04em; }
 
 /* ===== ハッシュタグ ===== */
 .tags { display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0; }
@@ -746,6 +787,14 @@ body.picking #panel { display: none !important; }
 body.reviewing #locate-btn,
 body.reviewing #bulk-btn,
 body.reviewing #review-back { display: none !important; }
+
+/* 設定を開いている間も同じ。これらは z-index:500 で、オーバーレイを突き抜けてしまう。 */
+body.settings-open #locate-btn,
+body.settings-open #bulk-btn,
+body.settings-open #research-btn,
+body.settings-open #memory-card,
+body.settings-open #review-card,
+body.settings-open #review-back { display: none !important; }
 
 /* 地図から総集編へ戻る帯（ふりかえりから地図に出たときだけ出る） */
 #review-back[hidden] { display: none; } /* display:inline-flex が hidden を打ち消さないように */

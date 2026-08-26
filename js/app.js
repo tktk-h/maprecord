@@ -10,6 +10,20 @@ let recordsLoaded = false; // 初回の記録スナップショットが届い�
 let mapDone = false;       // 地図の準備ができたか
 let painted = false;       // 最初の描画（ピン＋思い出カード）を済ませたか
 
+// 設定画面の開閉。body の印は検索バーの歯車を光らせるため。
+function openSettings() {
+  document.getElementById('topbar').classList.remove('filters-open'); // 絞り込みとは同時に開かない
+  refreshPhotoMigrateBtn(); // 開くたびに残り枚数を数え直す
+  document.getElementById('settings-panel').hidden = false;
+  document.body.classList.add('settings-open');
+}
+function closeSettings() {
+  const p = document.getElementById('settings-panel');
+  if (!p || p.hidden) return;
+  p.hidden = true;
+  document.body.classList.remove('settings-open');
+}
+
 function wireUI() {
   const mapBtn = document.getElementById('view-map');
   const calBtn = document.getElementById('view-calendar');
@@ -40,6 +54,16 @@ function wireUI() {
   document.getElementById('filter-toggle').addEventListener('click', () => {
     document.getElementById('topbar').classList.toggle('filters-open');
   });
+
+  // 設定の開閉。ジャンル編集やふりかえりと同じ、独立したオーバーレイ。
+  const settingsPanel = document.getElementById('settings-panel');
+  document.getElementById('settings-toggle').addEventListener('click', () => {
+    if (settingsPanel.hidden) openSettings(); else closeSettings();
+  });
+  document.getElementById('settings-close').addEventListener('click', closeSettings);
+  // シートの外（背景）を押したら閉じる
+  settingsPanel.addEventListener('click', (e) => { if (e.target === settingsPanel) closeSettings(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSettings(); });
 
   // 現在地ボタン
   const locateBtn = document.getElementById('locate-btn');
@@ -98,21 +122,26 @@ function wireUI() {
   });
 
   document.getElementById('review-btn').addEventListener('click', () => {
-    document.getElementById('topbar').classList.remove('filters-open'); // メニューを閉じる
+    closeSettings(); // 別の画面を出すので設定はしまう
     App.review.showPicker();
   });
   document.getElementById('genre-btn').addEventListener('click', () => {
-    document.getElementById('topbar').classList.remove('filters-open'); // メニューを閉じる
     if (!recordsLoaded) { alert('記録を読み込み中です。少し待ってからもう一度お試しください。'); return; }
+    closeSettings();
     App.genreEdit.open();
   });
   // ピンをまとめる（クラスタ）ON/OFF。端末ごとの設定で、既定はON。
   const clusterBtn = document.getElementById('cluster-btn');
-  function paintClusterBtn() { clusterBtn.classList.toggle('on', App.map.clusterEnabled()); }
+  function paintClusterBtn() {
+    const on = App.map.clusterEnabled();
+    clusterBtn.classList.toggle('on', on);
+    clusterBtn.querySelector('.set-state').textContent = on ? 'オン' : 'オフ';
+  }
   clusterBtn.addEventListener('click', () => {
     App.map.setClusterEnabled(!App.map.clusterEnabled());
     paintClusterBtn();
     App.records.render(); // 束ね方が変わるので描き直す
+    closeSettings();      // 変わった地図をその場で見せる
   });
   paintClusterBtn();
 
