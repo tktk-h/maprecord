@@ -12,7 +12,7 @@
   <title>あしあと</title>
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#b5675f">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=20260827n">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=20260827o">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="あしあと">
   <!-- 中身をステータスバーの下まで敷く指定。viewport-fit=cover とセットで効く。 -->
@@ -21,7 +21,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@300;400;500;700&family=Zen+Maru+Gothic:wght@500;700&display=swap">
-  <link rel="stylesheet" href="style.css?v=20260827n">
+  <link rel="stylesheet" href="style.css?v=20260827o">
+  <!-- TEMP: 最後の判定。ページの地色を紫にする。下の帯が紫になれば「窓は画面いっぱいで、
+       中身の座標だけが短い」＝別の組み方に望みがある。紫にならなければ打ち止め。 -->
+  <style>html { background: #7048e8; }</style>
 
   <script>
     (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
@@ -35,7 +38,7 @@
 <body>
   <div id="splash">
     <div class="splash-inner">
-      <img class="splash-logo" src="icon-512.png?v=20260827n" alt="あしあと">
+      <img class="splash-logo" src="icon-512.png?v=20260827o" alt="あしあと">
       <h1 class="splash-title">あしあと</h1>
       <p class="splash-tag">あなたの足あとを、地図に。</p>
       <div class="splash-spinner"></div>
@@ -44,7 +47,7 @@
 
   <div id="gate" hidden>
     <div class="gate-card">
-      <img class="gate-logo" src="icon-512.png?v=20260827n" alt="あしあと">
+      <img class="gate-logo" src="icon-512.png?v=20260827o" alt="あしあと">
       <h1 class="gate-title">あしあと</h1>
       <div id="gate-login" hidden>
         <p class="gate-lead">行った場所を残して、いつでもたどれる</p>
@@ -172,38 +175,57 @@
           <button id="logout-btn" class="set-row" type="button"><i class="ph ph-sign-out"></i><span>ログアウト</span></button>
         </div>
 
-        <div class="app-ver">ver. 20260827n</div>
+        <div class="app-ver">ver. 20260827o</div>
       </div>
     </div>
     <div id="genre-editor" hidden></div>
   </main>
 
-  <script src="js/genres.js?v=20260827n"></script>
-  <script src="js/filters.js?v=20260827n"></script>
-  <script src="js/range-cal.js?v=20260827n"></script>
-  <script src="js/photo-migrate.js?v=20260827n"></script>
-  <script src="js/notify.js?v=20260827n"></script>
-  <script src="js/map.js?v=20260827n"></script>
-  <script src="js/places.js?v=20260827n"></script>
-  <script src="js/grouping.js?v=20260827n"></script>
-  <script src="js/records.js?v=20260827n"></script>
-  <script src="js/bulk.js?v=20260827n"></script>
-  <script src="js/lightbox.js?v=20260827n"></script>
-  <script src="js/sheet.js?v=20260827n"></script>
-  <script src="js/calendar.js?v=20260827n"></script>
-  <script src="js/backup.js?v=20260827n"></script>
-  <script src="js/memories.js?v=20260827n"></script>
-  <script src="js/review-stats.js?v=20260827n"></script>
-  <script src="js/review-poster.js?v=20260827n"></script>
-  <script src="js/review-ui.js?v=20260827n"></script>
-  <script src="js/genre-edit.js?v=20260827n"></script>
-  <script src="js/search.js?v=20260827n"></script>
-  <script type="module" src="js/app.js?v=20260827n"></script>
+  <!-- TEMP: 判定用の実測値 -->
+  <div id="diag" style="position:fixed;left:8px;bottom:120px;z-index:9999;background:rgba(20,16,12,.78);color:#fff;font:12px/1.5 ui-monospace,monospace;padding:6px 8px;border-radius:8px;white-space:pre;pointer-events:none"></div>
+  <script>
+    (function () {
+      var d = document.getElementById('diag');
+      var NL = String.fromCharCode(10);
+      function show() {
+        var m = document.getElementById('map');
+        d.textContent = [
+          'inner ' + window.innerHeight + '  screen ' + ((window.screen && window.screen.height) || 0),
+          'body ' + Math.round(document.body.getBoundingClientRect().height) +
+            '  map bottom ' + (m ? Math.round(m.getBoundingClientRect().bottom) : '-'),
+          '>>> 下の帯が紫かどうかを見る'
+        ].join(NL);
+      }
+      show();
+      setInterval(show, 1000);
+    })();
+  </script>
+  <script src="js/genres.js?v=20260827o"></script>
+  <script src="js/filters.js?v=20260827o"></script>
+  <script src="js/range-cal.js?v=20260827o"></script>
+  <script src="js/photo-migrate.js?v=20260827o"></script>
+  <script src="js/notify.js?v=20260827o"></script>
+  <script src="js/map.js?v=20260827o"></script>
+  <script src="js/places.js?v=20260827o"></script>
+  <script src="js/grouping.js?v=20260827o"></script>
+  <script src="js/records.js?v=20260827o"></script>
+  <script src="js/bulk.js?v=20260827o"></script>
+  <script src="js/lightbox.js?v=20260827o"></script>
+  <script src="js/sheet.js?v=20260827o"></script>
+  <script src="js/calendar.js?v=20260827o"></script>
+  <script src="js/backup.js?v=20260827o"></script>
+  <script src="js/memories.js?v=20260827o"></script>
+  <script src="js/review-stats.js?v=20260827o"></script>
+  <script src="js/review-poster.js?v=20260827o"></script>
+  <script src="js/review-ui.js?v=20260827o"></script>
+  <script src="js/genre-edit.js?v=20260827o"></script>
+  <script src="js/search.js?v=20260827o"></script>
+  <script type="module" src="js/app.js?v=20260827o"></script>
   <script>
     // オフライン対応（アプリシェル）。sw.js?v= は下の全置換で版に追従する。
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js?v=20260827n', { updateViaCache: 'none' }).catch(() => {});
+        navigator.serviceWorker.register('sw.js?v=20260827o', { updateViaCache: 'none' }).catch(() => {});
       });
     }
   </script>
