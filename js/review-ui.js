@@ -336,16 +336,15 @@ App.review = (function () {
     var b = el('review-back'); if (b) b.hidden = true;
   }
 
-  // ×＝この期間はもう見終わった、という意思表示。goToRealMap がかけた期間の
-  // 絞り込みをここで戻す。かけたものだけを戻すので、ジャンルの選択や検索語には触らない
-  // （全体リセットではない）。#filter-clear を押す手もあるが、あちらの配線に依存したくない。
+  // goToRealMap がかけた絞り込み。× で戻すために控えておく。
+  var appliedFilter = null;
+
+  // ×＝この期間はもう見終わった、という意思表示。自分でかけた絞り込みもここで戻す。
+  // 戻すのは自分がかけたぶんだけ。そのあと本人が絞り込みを変えていたら触らない。
   function dismissBackToReview() {
     hideBackToReview();
-    var ms = el('mode-select'); if (ms) ms.value = 'all';
-    var f = el('from-input'), t = el('to-input');
-    if (f) f.value = '';
-    if (t) t.value = '';
-    if (App.records && App.records.applyUiFilter) App.records.applyUiFilter();
+    if (appliedFilter && App.records && App.records.undoFilter) App.records.undoFilter(appliedFilter);
+    appliedFilter = null;
   }
 
   // 「ふりかえりに戻る」を地図の上に出す。押すと同じ期間の総集編をもう一度開く。
@@ -366,11 +365,13 @@ App.review = (function () {
     var ms = el('mode-select');
     if (period.kind === 'all') {
       if (ms) ms.value = 'all';
+      appliedFilter = null; // 「これまで」は絞り込まないので戻すものがない
     } else {
       if (ms) ms.value = 'range';
       var f = el('from-input'), t = el('to-input');
       if (f) f.value = period.start;
       if (t) t.value = period.end;
+      appliedFilter = { mode: 'range', from: period.start, to: period.end };
     }
     if (App.records && App.records.applyUiFilter) App.records.applyUiFilter();
     var mapBtn = el('view-map'); if (mapBtn) mapBtn.click(); // 地図ビューへ

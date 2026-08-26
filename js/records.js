@@ -930,6 +930,34 @@ App.records = (function () {
     if (rec) App.map.flyTo(rec.lat, rec.lng);
   }
 
+  // 自分でかけた絞り込みを、自分の×で外すための共通処理。
+  //
+  // カードやバーが絞り込みをかけたなら、その×はかけたぶんも戻す。ただし戻すのは
+  // 「今の絞り込みが自分のかけたものと同じとき」だけ。そのあと本人が絞り込みを
+  // 変えていたら、それは本人の操作なので触らない（全体リセットではない）。
+  // applied = { mode:'day', day } または { mode:'range', from, to }
+  function undoFilter(applied) {
+    if (!applied) return false;
+    const sel = document.getElementById('mode-select');
+    if (!sel || sel.value !== applied.mode) return false;
+    const val = (id) => document.getElementById(id).value;
+    if (applied.mode === 'day') {
+      if (val('day-input') !== applied.day) return false;
+      document.getElementById('day-input').value = '';
+    } else if (applied.mode === 'range') {
+      if (val('from-input') !== (applied.from || '')) return false;
+      if (val('to-input') !== (applied.to || '')) return false;
+      document.getElementById('from-input').value = '';
+      document.getElementById('to-input').value = '';
+    } else {
+      return false;
+    }
+    sel.value = 'all';
+    clearPanel();  // その日のルートシートも一緒に閉じる
+    applyUiFilter();
+    return true;
+  }
+
   // 絞り込みを最初の状態（全部・全ジャンル）に戻し、検索も解除
   function resetFilters() {
     activeTag = null;
@@ -979,7 +1007,7 @@ App.records = (function () {
   }
 
   return { init, reload, setRecords, render, getAll, setFilterState, applyUiFilter, focusDay,
-           refreshGenres,
+           refreshGenres, undoFilter,
            searchTag, clearTag, searchByName, clearSearch,
            showDetail, showEditForm, showAddForm, showQuickLog, showPlaceCard, suggestRecords,
            _clearPanel: clearPanel, _selfTest };

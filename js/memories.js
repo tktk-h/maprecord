@@ -54,6 +54,8 @@ App.memories = (function () {
 
   let anniv = null;
   function setAnniversary(date) { anniv = date || null; }
+  // このカードを押してかけた絞り込み。×で戻すために覚えておく。
+  let applied = null;
 
   function todayStr() { return new Date().toISOString().slice(0, 10); }
   function dismissedKey(d) { return 'memoryDismissed:' + d; }
@@ -105,6 +107,7 @@ App.memories = (function () {
           ${sideHtml(false)}
         </div>`;
       host.hidden = false;
+      applied = null; // 記念日のカードは絞り込みをかけない
       host.querySelector('.mem-x').onclick = () => dismiss(host, today);
       return;
     }
@@ -129,8 +132,15 @@ App.memories = (function () {
         ${sideHtml(true)}
       </div>`;
     host.hidden = false;
-    host.querySelector('.mem-open').onclick = () => App.records.focusDay(it.date);
-    host.querySelector('.mem-x').onclick = () => dismiss(host, today);
+    host.querySelector('.mem-open').onclick = () => {
+      applied = { mode: 'day', day: it.date }; // × で戻せるように控えておく
+      App.records.focusDay(it.date);
+    };
+    host.querySelector('.mem-x').onclick = () => {
+      // カードを閉じるなら、そのカードがかけた絞り込みも一緒に戻す
+      if (applied) { App.records.undoFilter(applied); applied = null; }
+      dismiss(host, today);
+    };
   }
 
   function show() {
