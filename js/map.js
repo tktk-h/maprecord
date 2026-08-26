@@ -74,6 +74,17 @@ App.map = (function () {
     eq('wants-cluster-off', wantsCluster({ cluster: false }), false);
     eq('wants-cluster-no-opts', wantsCluster(null), false);
     window.markerClusterer = savedMC;
+    // 束ねの顔：同じURLなら同じ <img> を返す（これが崩れると拡大縮小で白くなる）
+    const f1 = clusterFace('https://x/a.jpg', '#c2703f');
+    const f2 = clusterFace('https://x/a.jpg', '#000000');
+    const f3 = clusterFace('https://x/b.jpg', '#7a9471');
+    eq('face-same-url-same-node', f1 === f2, true);
+    eq('face-diff-url-diff-node', f1 === f3, false);
+    eq('face-keeps-first-color', f1.style.background, 'rgb(194, 112, 63)');
+    eq('face-class', f1.className, 'cl-face');
+    for (let i = 0; i < FACE_CACHE_MAX + 5; i++) clusterFace('https://x/fill' + i + '.jpg', '#000000');
+    eq('face-cache-capped', faceCache.size <= FACE_CACHE_MAX, true);
+    eq('face-oldest-evicted', faceCache.has('https://x/a.jpg'), false);
     console.log(fails === 0 ? 'ALL PASS (map)' : (fails + ' FAILED (map)'));
     return fails;
   }
@@ -278,6 +289,30 @@ App.map = (function () {
   // gmpClickable が必須：AdvancedMarkerElement のクラスタをライブラリは 'gmp-click' で
   // 待ち受けるため、これが無いとバッジをタップしても何も起きない。
   // 座標が LatLng で来るため makeMarker（lat,lng を取る）は使わず直接組む。
+  // 束ね直しのたびに <img> を作り直すと、写真が Storage から来るようになった今は
+  // デコードが間に合わず一瞬白く見える（Base64 の頃は目立たなかった）。
+  // URL ごとに読み込み済みの <img> を取っておき、同じ要素を次の束ねへ
+  // 移し替える（作り直しでなく移動なら、再読み込みも再デコードも起きない）。
+  // 同じ写真が同時に2つの束ねの顔になることはない（マーカーはどこか1つの束ねにしか入らない）ので、
+  // 要素を使い回しても取り合いにはならない。
+  const faceCache = new Map(); // url -> HTMLImageElement（古いものから捨てる）
+  const FACE_CACHE_MAX = 80;
+  function clusterFace(url, fallbackColor) {
+    let img = faceCache.get(url);
+    if (img) {
+      faceCache.delete(url);
+      faceCache.set(url, img); // 使ったものを末尾へ（古い順に捨てるため）
+      return img;
+    }
+    img = el('<img class="cl-face" alt="">');
+    img.style.background = fallbackColor; // 初回の読み込み中も白くしない
+    img.decoding = 'sync'; // デコード前に果を出さない（400px のサムネなので重くない）
+    img.src = url;
+    faceCache.set(url, img);
+    if (faceCache.size > FACE_CACHE_MAX) faceCache.delete(faceCache.keys().next().value);
+    return img;
+  }
+
   const clusterRenderer = {
     render(cluster) {
       const c = el('<div class="cluster-pin">'
@@ -289,9 +324,10 @@ App.map = (function () {
       marks.forEach((m) => { m.__from = cluster.position; });
       const withPhoto = marks.find((m) => m.__rec && (m.__rec.photos || []).length);
       if (withPhoto) {
-        const img = el('<img class="cl-face" alt="">');
-        img.src = App.photos.thumbOf(withPhoto.__rec.photos[0]);
-        c.appendChild(img);
+        c.appendChild(clusterFace(
+          App.photos.thumbOf(withPhoto.__rec.photos[0]),
+          App.genres.color(withPhoto.__rec.genre),
+        ));
       } else {
         const face = el('<span class="cl-face"></span>');
         const first = marks.find((m) => m.__rec);
@@ -499,7 +535,7 @@ App.map = (function () {
   // 先にデータが届いても renderPins を呼ばないための見分け。
   function isReady() { return !!map; }
 
-  return { init, isReady, setClickHandler, setPlaceClickHandler, getPlaceClickHandler, setRecordPickHandler, setLongPressHandler, setUserPanHandler, setTapHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
+  return { init, isReady, _clusterFace: clusterFace, setClickHandler, setPlaceClickHandler, getPlaceClickHandler, setRecordPickHandler, setLongPressHandler, setUserPanHandler, setTapHandler, clearPins, renderPins, flyTo, fitTo, refresh, getBounds,
            clusterEnabled, setClusterEnabled,
            renderPlaceResults, clearPlaceResults, hideRecordPins,
            showTempMarker, clearTempMarker,

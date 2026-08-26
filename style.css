@@ -583,8 +583,10 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
 .cluster-pin .cl-back2 { background: #e6dcc8; transform: rotate(8deg) translate(4px, -2px); }
 .cluster-pin .cl-back1 { background: #d9c3ae; transform: rotate(-5deg) translate(2px, -1px); }
 /* 一番手前＝実際の写真（無ければジャンル色） */
+/* 背景を白にしない。写真は Storage から来るので、万一描画が間に合わないときに
+   白だと「抱けた」ように見える。JS がジャンル色を敷くので、ここは透明でよい。 */
 .cluster-pin .cl-face { position: absolute; left: 0; top: 0; width: 46px !important; height: 46px !important;
-  object-fit: cover; border-radius: 12px; border: 2px solid #fff; background: #fff; display: block;
+  object-fit: cover; border-radius: 12px; border: 2px solid #fff; display: block;
   box-shadow: var(--shadow-md); }
 .cluster-pin .cl-count { position: absolute; top: -9px; right: -6px; min-width: 20px; height: 20px;
   padding: 0 5px; border-radius: 10px; background: var(--accent); color: #fff;
