@@ -92,6 +92,10 @@ function wireUI() {
     App.records.focusDay(dateStr);
     showMap();
   });
+  App.calendar.setTripClickHandler((tripId) => {
+    App.records.focusTrip(tripId);
+    showMap();
+  });
 
   // バックアップ（書き出しのみ。クラウド版は読み込み復元なし）
   document.getElementById('export-btn').addEventListener('click', () => App.backup.exportJson());
@@ -154,6 +158,18 @@ function wireUI() {
     } catch (e) {
       alert('保存に失敗しました: ' + e.message);
     }
+  });
+
+  document.getElementById('trip-btn').addEventListener('click', () => {
+    closeSettings();
+    App.tripEdit.open();
+  });
+  // 旅行を足す/直すと、カレンダーの帯と地図の見え方が変わる。
+  // カレンダーはタブを開くたびに描き直すが、開いたまま保存されたときはその場で描き直す。
+  App.tripEdit.setOnSaved(() => {
+    App.records.render();
+    const cal = document.getElementById('calendar-view');
+    if (cal && !cal.hidden) App.calendar.render(App.records.getAll());
   });
 
   document.getElementById('review-btn').addEventListener('click', () => {
@@ -308,7 +324,9 @@ async function startApp(sp) {
   App.memories.setAnniversary(sp.anniversary || null);
   App.review.setAnniversary(sp.anniversary || null);
   App.genres.setList(sp.genres || null);
+  App.trips.setList(sp.trips || []);
   App.genreEdit.setSpaceId(sp.id);
+  App.tripEdit.setSpaceId(sp.id);
 
   // 地図の読み込みと記録の購読は互いに独立している。
   // 地図を待ってから購読するとその分だけ初回同期の開始が遅れるので、同時に進める。

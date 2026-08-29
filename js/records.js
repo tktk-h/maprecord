@@ -82,6 +82,10 @@ App.records = (function () {
     }
     const dayMode = filterState.mode === 'day' && !!filterState.day; // 1日＝1デート
     if (dayMode) visible = visible.slice().sort(byOrder);
+    // 絞り込みの期間が旅行そのものと一致していれば「旅行を見ている」状態
+    const trip = (!dayMode && filterState.mode === 'range' && filterState.from && filterState.to)
+      ? (App.trips.list || []).find((t) => t.start === filterState.from && t.end === filterState.to) || null
+      : null;
     const counts = countsByCoord();
     App.map.renderPins(visible, showDetail, {
       numbered: dayMode,
@@ -90,6 +94,7 @@ App.records = (function () {
     });
     // 1日を選んでいる間は、サイドパネルにルート（順番編集）を表示
     if (dayMode) showDayRoute(visible);
+    else if (trip) showTripRoute(trip, visible);
     else if (document.getElementById('day-route') || document.getElementById('search-results')) clearPanel();
   }
 
@@ -215,6 +220,51 @@ App.records = (function () {
         const rec = all.find((x) => String(x.id) === b.dataset.id);
         if (rec) { App.map.flyTo(rec.lat, rec.lng); showDetail(rec); }
       };
+    });
+  }
+
+  // 旅行の流れ。日をまたぐので、1日目・2日目…で区切って時系列に並べる。
+  // 日の見出しを押すと、その日のルート（順番を編集できる画面）へ移る。
+  function showTripRoute(trip, list) {
+    const byDate = {};
+    list.forEach((r) => { (byDate[r.date] = byDate[r.date] || []).push(r); });
+    const days = App.trips.daysOf(trip).filter((d) => byDate[d]);
+    if (!days.length) {
+      panel().innerHTML = `<div id="day-route"><p class="hint">${esc(trip.label)}の記録はまだありません</p></div>`;
+      return;
+    }
+    const sections = days.map((d) => {
+      const rows = byDate[d].slice().sort(byOrder).map((r, i) => `<li class="flow-row">
+          <span class="flow-no">${i + 1}</span>
+          <button type="button" class="route-name" data-id="${r.id}">
+            <span class="flow-name">${esc(r.name) || '(名称未設定)'}</span>
+            <span class="flow-genre">${esc(App.genres.label(r.genre))}</span>
+          </button>
+        </li>`).join('');
+      return `<div class="trip-day">
+        <button type="button" class="trip-day-head" data-date="${d}">
+          <span class="trip-day-no">${App.trips.dayIndex(trip, d)}日目</span>
+          <span class="trip-day-date">${formatVisitDate(d)}</span>
+          <i class="ph ph-caret-right"></i>
+        </button>
+        <ol class="route-flow">${rows}</ol>
+      </div>`;
+    }).join('');
+    panel().innerHTML = `<div id="day-route">
+      <div class="dr-head">
+        <h2>${esc(trip.label)}の流れ</h2>
+        <span class="trip-len">${App.trips.lengthLabel(trip)}・${list.length}件</span>
+      </div>
+      ${sections}
+    </div>`;
+    panel().querySelectorAll('.route-name').forEach((b) => {
+      b.onclick = () => {
+        const rec = all.find((x) => String(x.id) === b.dataset.id);
+        if (rec) { App.map.flyTo(rec.lat, rec.lng); showDetail(rec); }
+      };
+    });
+    panel().querySelectorAll('.trip-day-head').forEach((b) => {
+      b.onclick = () => focusDay(b.dataset.date); // その日だけのルート（並べ替えはそちらで）
     });
   }
 
@@ -930,6 +980,21 @@ App.records = (function () {
     if (rec) App.map.flyTo(rec.lat, rec.lng);
   }
 
+  // 旅行を開く：その期間で絞り込み、地図を旅行ぜんぶが入る範囲に合わせる。
+  // 日を開くのと同じ入口（カレンダーの帯・旅行の一覧）から呼ぶ。
+  function focusTrip(tripId) {
+    const trip = App.trips.byId(tripId);
+    if (!trip) return;
+    routeEditMode = false;
+    document.getElementById('mode-select').value = 'range';
+    document.getElementById('from-input').value = trip.start;
+    document.getElementById('to-input').value = trip.end;
+    applyUiFilter();
+    if (App.sheet) App.sheet.snapTo('half');
+    const inTrip = all.filter((r) => App.trips.inTrip(r.date, trip));
+    if (inTrip.length) App.map.fitTo(inTrip);
+  }
+
   // 自分でかけた絞り込みを、自分の×で外すための共通処理。
   //
   // カードやバーが絞り込みをかけたなら、その×はかけたぶんも戻す。ただし戻すのは
@@ -1007,7 +1072,7 @@ App.records = (function () {
   }
 
   return { init, reload, setRecords, render, getAll, setFilterState, applyUiFilter, focusDay,
-           refreshGenres, undoFilter,
+           refreshGenres, undoFilter, focusTrip,
            searchTag, clearTag, searchByName, clearSearch,
            showDetail, showEditForm, showAddForm, showQuickLog, showPlaceCard, suggestRecords,
            _clearPanel: clearPanel, _selfTest };

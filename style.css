@@ -151,6 +151,23 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
   background: linear-gradient(to top, rgba(0,0,0,.34), transparent 55%); }
 .cal-num { position: relative; font-size: 12px; font-weight: 500; padding: 5px 7px; }
 .cal-num.on-photo { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
+/* 旅行の帯。日をまたぐまとまりが一目で分かるように、日のマスの上端に線を引く。
+   マスの間には隙間があるので線は途切れるが、上の旅行チップと合わせれば読み取れる。 */
+.cal-cell.in-trip .cal-band { position: absolute; left: 0; right: 0; top: 0; height: 4px;
+  background: var(--accent); z-index: 2; }
+.cal-cell.trip-first .cal-band { left: 3px; border-radius: 3px 0 0 3px; }
+.cal-cell.trip-last .cal-band { right: 3px; border-radius: 0 3px 3px 0; }
+.cal-cell.empty.in-trip { background: var(--accent-soft); } /* 記録の無い日も旅行中だと分かる */
+/* その月にかかっている旅行。押すとその旅行だけに絞り込む。 */
+.cal-trips { display: flex; flex-wrap: wrap; gap: 6px; margin: -8px 4px 12px; }
+.cal-trip-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 6px 12px;
+  font-size: 12px; color: var(--text); cursor: pointer; box-shadow: var(--shadow-sm); }
+.cal-trip-chip .ph { color: var(--accent); }
+.cal-trip-chip:hover { border-color: var(--accent); }
+.ctc-name { font-weight: 700; }
+.ctc-range { color: var(--text-muted); font-size: 11px; }
+
 .cal-badge { position: absolute; top: 5px; right: 5px; background: rgba(255,254,251,.92); color: var(--accent-strong);
   font-size: 10px; font-weight: 700; min-width: 17px; height: 17px; border-radius: var(--radius-pill); padding: 0 4px;
   display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm); z-index: 1; }
@@ -643,6 +660,16 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
 .route-move button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-strong); }
 .route-move button:disabled { opacity: .3; cursor: default; }
 
+/* 旅行の流れ（日ごとに区切ったルート）。見出しを押すとその日のルートへ。 */
+.trip-len { font-size: 12px; color: var(--text-muted); }
+.trip-day { margin-bottom: 12px; }
+.trip-day-head { display: flex; align-items: center; gap: 8px; width: 100%;
+  background: none; border: none; padding: 8px 2px 4px; cursor: pointer; color: var(--text); }
+.trip-day-no { font-weight: 800; font-size: 13px; color: var(--accent-strong); font-family: var(--font-display); }
+.trip-day-date { font-size: 12px; color: var(--text-muted); flex: 1; text-align: left; }
+.trip-day-head .ph { color: var(--text-muted); font-size: 14px; }
+.trip-day-head:hover .trip-day-date { color: var(--text); }
+
 /* ===== 写真サムネイル型のピン ===== */
 .photo-pin { position: relative; text-align: center; }
 /* width/height は Leaflet の img ルールに勝つため !important */
@@ -1117,6 +1144,22 @@ body.settings-open #review-back { display: none !important; }
 .ge-save { flex: 1; border: none; background: var(--cta-grad); color: #fff;
   border-radius: var(--radius-pill); padding: 10px; font-weight: 700; cursor: pointer; box-shadow: var(--cta-shadow); }
 .ge-save:disabled { opacity: .6; cursor: default; }
+
+/* ===== 旅行（日をまたぐまとまり）の編集 ===== */
+#trip-editor { position: fixed; inset: 0; z-index: 62; overflow: auto;
+  background: rgba(45, 38, 30, .35); display: flex; align-items: flex-start; justify-content: center;
+  padding: calc(24px + var(--safe-top)) 12px calc(24px + var(--safe-bottom)); }
+#trip-editor[hidden] { display: none; }
+.te-lead { font-size: 12px; line-height: 1.6; color: var(--text-muted); margin: 0 0 10px; }
+.te-empty { font-size: 13px; color: var(--text-muted); text-align: center; padding: 14px 0; margin: 0; }
+.te-row { padding: 0; }
+.te-open { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+  align-items: flex-start; text-align: left; padding: 10px 12px; background: none; border: none; cursor: pointer; }
+.te-name { font-size: 15px; font-weight: 700; color: var(--text); }
+.te-range { font-size: 11px; color: var(--text-muted); }
+.te-row .ge-del { margin-right: 8px; }
+.te-name-input { width: 100%; margin-bottom: 10px; }
+.te-cal-host .rv-cal { margin-bottom: 0; }
 
 /* ふりかえりの画像保存ボタン */
 .rv-save-wrap { text-align: center; }

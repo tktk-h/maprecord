@@ -109,6 +109,12 @@ App.space = (function () {
     await updateDoc(doc(fb.db, SPACES, spaceId), { ['push.' + id]: deleteField() });
   }
 
+  // 旅行（日をまたぐまとまり）。ジャンルと同じくスペースに持たせる。
+  // 記録の側には何も足さない＝日付が期間に入っていればその旅行、で決まる。
+  async function setTrips(spaceId, trips) {
+    await updateDoc(doc(fb.db, SPACES, spaceId), { trips: trips || [] });
+  }
+
   async function setGenres(spaceId, genres) {
     await updateDoc(doc(fb.db, SPACES, spaceId), { genres: genres || [] });
   }
@@ -124,6 +130,6 @@ App.space = (function () {
   }
 
   return { genInviteCode, normalizeCode, findMySpace, createSpace, joinSpace, removeMember,
-           touchLastSeen, setAnniversary, setGenres, setPushSub, removePushSub, _selfTest };
+           touchLastSeen, setAnniversary, setGenres, setTrips, setPushSub, removePushSub, _selfTest };
 })();
 export const space = App.space;
