@@ -22,5 +22,7 @@ window.App.fb = {
   functions,
   suggestPlace: httpsCallable(functions, 'suggestPlace'),
   pushKey: httpsCallable(functions, 'pushKey'), // 通知の購読に使う公開鍵
+  // 招待コードの照合はサーバでしかできない（js/space.js の joinSpace から呼ぶ）
+  joinSpace: httpsCallable(functions, 'joinSpace'),
 };
 export const fb = window.App.fb;

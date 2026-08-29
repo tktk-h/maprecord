@@ -63,9 +63,14 @@ App.gate = (function () {
     $('gate-join-btn').onclick = async () => {
       $('gate-msg').textContent = '';
       try {
-        const s = await space.joinSpace(auth.user().uid, $('gate-code').value);
-        if (!s) { $('gate-msg').textContent = 'コードが違います'; return; }
-        hideGate(); if (onReady) onReady(s);
+        const r = await space.joinSpace($('gate-code').value);
+        if (!r.ok) {
+          $('gate-msg').textContent = r.reason === 'full'
+            ? 'このスペースはもう二人います'
+            : 'コードが違います';
+          return;
+        }
+        hideGate(); if (onReady) onReady(r.space);
       } catch (e) { $('gate-msg').textContent = '参加に失敗しました: ' + e.message; }
     };
     $('gate-retry').onclick = () => location.reload(); // 再接続して読み直す

@@ -84,6 +84,34 @@ const VAPID_SUBJECT = 'mailto:0525toki0525@gmail.com';
 
 if (!admin.apps.length) admin.initializeApp();
 
+// 招待コードでスペースに参加する。コードの照合はサーバでしかできない。
+// （クライアントに members を書かせると、スペースIDを知っている人がコード無しで
+//   自分を足して入れてしまう。外した相手も、端末に残った ID でそのまま戻れる。）
+// 返り値: { ok: true, spaceId } / { ok: false, reason: 'code' | 'full' }
+// reason を返すのは「コードが違う」と「もう二人いる」を画面で書き分けるため。
+exports.joinSpace = onCall({ region: 'us-central1' }, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'login required');
+  const uid = req.auth.uid;
+  // js/space.js の normalizeCode と同じ規則（大文字化・英数字以外を捨てる）
+  const code = String((req.data && req.data.code) || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!code) return { ok: false, reason: 'code' };
+
+  const db = admin.firestore();
+  const invite = await db.collection('invites').doc(code).get();
+  if (!invite.exists) return { ok: false, reason: 'code' };
+  const spaceId = (invite.data() || {}).spaceId;
+  if (!spaceId) return { ok: false, reason: 'code' };
+
+  const ref = db.collection('spaces').doc(spaceId);
+  const snap = await ref.get();
+  if (!snap.exists) return { ok: false, reason: 'code' };
+  const members = (snap.data() || {}).members || [];
+  if (members.includes(uid)) return { ok: true, spaceId }; // 二重参加は何もしないで成功
+  if (members.length >= 2) return { ok: false, reason: 'full' }; // ふたりのためのアプリ
+  await ref.update({ members: admin.firestore.FieldValue.arrayUnion(uid) });
+  return { ok: true, spaceId };
+});
+
 // 購読に必要な公開鍵をブラウザへ渡す。公開してよい鍵なので認証済みなら誰でも取れる。
 exports.pushKey = onCall({ secrets: [VAPID_PUBLIC], region: 'us-central1' }, async (req) => {
   if (!req.auth) throw new HttpsError('unauthenticated', 'login required');

@@ -9,6 +9,7 @@ let currentSpace = null;
 let recordsLoaded = false; // 初回の記録スナップショットが届いたか（ジャンル編集の使用件数判定に必要）
 let mapDone = false;       // 地図の準備ができたか
 let painted = false;       // 最初の描画（ピン＋思い出カード）を済ませたか
+let leaving = false;       // 自分でログアウト中か（そのときの権限エラーは「外された」ではない）
 
 // 設定画面の開閉。body の印は検索バーの歯車を光らせるため。
 function openSettings() {
@@ -100,7 +101,40 @@ function wireUI() {
   document.getElementById('sheet-close').addEventListener('click', () => App.records._clearPanel());
 
   // 設定：ログアウト・招待コード再表示
-  document.getElementById('logout-btn').addEventListener('click', () => auth.logout());
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    leaving = true; // ログアウトすると記録が読めなくなる。それを「外された」と誤検知しないための印
+    auth.logout();
+  });
+
+  // 相手をスペースから外す。招待コードも作り直すので、相手の持っている古いコードでは戻れない。
+  document.getElementById('kick-btn').addEventListener('click', async () => {
+    const me = auth.user();
+    if (!me || !currentSpace) return;
+    const others = (currentSpace.members || []).filter((u) => u !== me.uid);
+    if (!others.length) { alert('いま相手はいません。参加しているのはあなただけです。'); return; }
+    const uid = others[0];
+    const seen = (currentSpace.lastSeen && currentSpace.lastSeen[uid]) || {};
+    const name = seen.name || '相手';
+    const ok = confirm([
+      name + " をこのスペースから外します。",
+      "",
+      "・相手は記録も写真も見られなくなります",
+      "・招待コードを作り直すので、いまのコードでは戻れません",
+      "・また招待したくなったら、新しいコードを渡せば戻せます",
+      "",
+      "外しますか？",
+    ].join(String.fromCharCode(10)));
+    if (!ok) return;
+    try {
+      const code = await space.removeMember(currentSpace.id, uid);
+      currentSpace.members = (currentSpace.members || []).filter((u) => u !== uid);
+      if (currentSpace.lastSeen) delete currentSpace.lastSeen[uid];
+      currentSpace.inviteCode = code;
+      alert("外しました。" + String.fromCharCode(10) + "新しい招待コード：" + code);
+    } catch (e) {
+      alert('外せませんでした: ' + e.message);
+    }
+  });
   document.getElementById('show-invite-btn').addEventListener('click', async () => {
     const s = await space.findMySpace(auth.user().uid);
     alert('招待コード：' + (s ? s.inviteCode : '不明'));
@@ -301,5 +335,14 @@ async function startApp(sp) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  // 相手に外されると記録が読めなくなる。黙って「読み込み中」のままにせず、事情を出して締める。
+  cloud.setOnDenied(() => {
+    if (leaving) return; // 自分でログアウトしただけ
+    leaving = true;
+    try { localStorage.removeItem('ashiato-space'); } catch (_) { /* 印だけなので無視 */ }
+    alert('このスペースから外されました。');
+    auth.logout().finally(() => location.reload());
+  });
+
   gate.init((sp) => { startApp(sp).catch((e) => console.error('startApp failed', e)); });
 });

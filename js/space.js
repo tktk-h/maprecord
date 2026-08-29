@@ -1,5 +1,6 @@
 import {
-  collection, doc, getDoc, getDocs, setDoc, updateDoc, query, where, arrayUnion, deleteField,
+  collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
+  query, where, arrayRemove, deleteField,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { fb } from './firebaseInit.js';
 
@@ -38,17 +39,50 @@ App.space = (function () {
     return { id, members: [uid], inviteCode };
   }
 
-  // 招待コードで参加：invites/{code} から spaceId を引き、members に自分を追加
-  // 成功でスペース、コード不正で null
-  async function joinSpace(uid, codeInput) {
+  // 招待コードで参加する。members への追加はサーバ（joinSpace 関数）が行う。
+  // クライアントから直接書くと、スペースIDを知っているだけでコード無しに入れてしまい、
+  // 「相手を外す」が成立しない（外した相手が端末に残ったIDで戻れる）。
+  // 返り値: { ok: true, space } / { ok: false, reason: 'code' | 'full' }
+  async function joinSpace(codeInput) {
     const code = normalizeCode(codeInput);
-    if (!code) return null;
-    const inviteSnap = await getDoc(doc(fb.db, INVITES, code));
-    if (!inviteSnap.exists()) return null;
-    const spaceId = inviteSnap.data().spaceId;
-    await updateDoc(doc(fb.db, SPACES, spaceId), { members: arrayUnion(uid) });
-    const fresh = await getDoc(doc(fb.db, SPACES, spaceId));
-    return { id: spaceId, ...fresh.data() };
+    if (!code) return { ok: false, reason: 'code' };
+    const res = await fb.joinSpace({ code });
+    const d = (res && res.data) || {};
+    if (!d.ok) return { ok: false, reason: d.reason || 'code' };
+    const fresh = await getDoc(doc(fb.db, SPACES, d.spaceId));
+    return { ok: true, space: { id: d.spaceId, ...fresh.data() } };
+  }
+
+  // 相手をスペースから外す。招待コードも作り直すので、相手が持っている古いコードでは戻れない
+  // （コードの照合はサーバが行い、クライアントは自分を members に足せない）。
+  // 記録と写真はスペースに残る。また招待したくなったら、新しいコードを渡せば戻せる。
+  // 返り値: 新しい招待コード
+  async function removeMember(spaceId, uid) {
+    const ref = doc(fb.db, SPACES, spaceId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) throw new Error('スペースが見つかりません');
+    const data = snap.data() || {};
+    const oldCode = normalizeCode(data.inviteCode || '');
+    const newCode = genInviteCode();
+    // 新しいコードを先に有効にしてから古いものを消す（どちらも効かない瞬間を作らない）
+    await setDoc(doc(fb.db, INVITES, normalizeCode(newCode)), { spaceId });
+    const patch = {
+      members: arrayRemove(uid),
+      inviteCode: newCode,
+      ['lastSeen.' + uid]: deleteField(),
+    };
+    // 相手の端末の通知購読も消す。残すと外したあとも記念日通知が届き続ける。
+    const push = data.push || {};
+    Object.keys(push).forEach((id) => {
+      if (push[id] && push[id].uid === uid) patch['push.' + id] = deleteField();
+    });
+    await updateDoc(ref, patch);
+    if (oldCode && oldCode !== normalizeCode(newCode)) {
+      // 消せなくても新しいコードは有効なので、致命的ではない
+      try { await deleteDoc(doc(fb.db, INVITES, oldCode)); }
+      catch (e) { console.warn('古い招待コードを消せませんでした', e); }
+    }
+    return newCode;
   }
 
   // アプリを開いたことを記録：スペースに「メンバーごとの最終アクセス日時と名前」を書く。
@@ -89,7 +123,7 @@ App.space = (function () {
     eq('match', normalizeCode('abcd-2345') === normalizeCode('ABCD2345'), true);
   }
 
-  return { genInviteCode, normalizeCode, findMySpace, createSpace, joinSpace,
+  return { genInviteCode, normalizeCode, findMySpace, createSpace, joinSpace, removeMember,
            touchLastSeen, setAnniversary, setGenres, setPushSub, removePushSub, _selfTest };
 })();
 export const space = App.space;

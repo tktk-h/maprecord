@@ -461,6 +461,8 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
 /* 見出し付きのグループ */
 .set-group { margin-bottom: 18px; }
 .set-group:last-of-type { margin-bottom: 0; }
+/* 取り返しのつかない操作（相手を外す）。押し間違いが痛いので色で区別する。 */
+.set-row.danger, .set-row.danger .ph { color: var(--accent-deep); }
 .set-group-label { font-size: 11px; color: var(--text-muted); letter-spacing: .04em;
   margin: 0 0 6px 8px; }
 .set-row { display: flex; align-items: center; gap: 11px; width: 100%;
