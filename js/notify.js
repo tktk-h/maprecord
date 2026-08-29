@@ -68,6 +68,18 @@ App.notify = (function () {
     };
   }
 
+  // 保存し直すべきか（純粋）。
+  // ブラウザが購読を入れ替えたとき／サーバ側に控えが無いとき／
+  // 控えの uid が空（古い形式）や別人のままのときに true。
+  // uid の無い購読は「誰の端末か」が分からず、相手を外したときに消せない。
+  // だから起動のたびに見直して、自分のものだと分かる形に直しておく。
+  function needsSave(knownEndpoint, endpoint, stored, uid) {
+    if (knownEndpoint !== endpoint) return true;
+    if (!uid) return false;      // 誰か分からないうちは書かない
+    if (!stored) return true;    // サーバ側から消えている
+    return stored.uid !== uid;
+  }
+
   // endpoint から端末ごとの id を作る。Firestore のマップのキーにするので英数字だけにする。
   async function subId(endpoint) {
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(endpoint));
@@ -123,7 +135,9 @@ App.notify = (function () {
 
   // ブラウザが購読を勝手に入れ替えることがある。起動時に控えと見比べて、
   // 変わっていたときだけ保存し直す（毎回書かない）。
-  async function refresh() {
+  // スペースに預けてある購読（storedMap）も渡すと、uid の入っていない古い購読を
+  // 自分のものとして書き直す。これをしないと、相手を外しても誰の端末か分からず消せない。
+  async function refresh(storedMap) {
     if (!supported()) return;
     try {
       const reg = await navigator.serviceWorker.getRegistration();
@@ -131,7 +145,9 @@ App.notify = (function () {
       if (!sub) return;
       let known = null;
       try { known = localStorage.getItem(ENDPOINT_KEY); } catch (_) { /* noop */ }
-      if (known !== sub.endpoint) await save(sub);
+      const id = await subId(sub.endpoint);
+      const user = App.auth && App.auth.user();
+      if (needsSave(known, sub.endpoint, (storedMap || {})[id], user && user.uid)) await save(sub);
     } catch (e) {
       console.warn('push refresh skip', e);
     }
@@ -158,11 +174,18 @@ App.notify = (function () {
     eq('stored-shape', st.endpoint, 'https://e');
     eq('stored-uid', st.uid, 'u1');
     eq('stored-uid-missing', toStored({ toJSON: () => ({ endpoint: 'https://e', keys: {} }) }).uid, null);
+    // 保存し直しの判定
+    eq('needs-endpoint-changed', needsSave('https://old', 'https://new', { uid: 'u1' }, 'u1'), true);
+    eq('needs-same-uid', needsSave('https://e', 'https://e', { uid: 'u1' }, 'u1'), false);
+    eq('needs-uid-missing', needsSave('https://e', 'https://e', { uid: null }, 'u1'), true);
+    eq('needs-other-uid', needsSave('https://e', 'https://e', { uid: 'u2' }, 'u1'), true);
+    eq('needs-not-stored', needsSave('https://e', 'https://e', undefined, 'u1'), true);
+    eq('needs-no-login', needsSave('https://e', 'https://e', { uid: null }, null), false);
     console.log(fails === 0 ? '✅ notify ALL PASS' : ('❌ notify ' + fails + ' FAIL'));
     return fails;
   }
 
   return { supported, state, enable, disable, refresh,
            _isIOS: isIOS, _isStandalone: isStandalone, _urlBase64ToUint8Array: urlBase64ToUint8Array,
-           _toStored: toStored, _selfTest };
+           _toStored: toStored, _needsSave: needsSave, _selfTest };
 })();

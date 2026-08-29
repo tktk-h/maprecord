@@ -331,7 +331,8 @@ async function startApp(sp) {
   }
   mapDone = true;
   firstPaint();
-  if (App.notify) App.notify.refresh(); // ブラウザが購読を入れ替えていたら保存し直す
+  // 購読が入れ替わっていたら保存し直す。スペースの控えも渡して、uid の無い古い購読を直す。
+  if (App.notify) App.notify.refresh(currentSpace && currentSpace.push);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
