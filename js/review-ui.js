@@ -271,6 +271,12 @@ App.review = (function () {
   var anniversary = null;
   function setAnniversary(d) { anniversary = d || null; }
   function todayStr() { return new Date().toISOString().slice(0, 10); }
+  // 期間に入る記録の数。0件の期間を開くと空の総集編になるので、その判断にも使う。
+  function countInRange(records, from, to) {
+    return (records || []).filter(function (r) {
+      return r && r.date && String(r.date) >= from && String(r.date) <= to;
+    }).length;
+  }
   function esc(s) {
     return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
@@ -591,6 +597,10 @@ App.review = (function () {
     document.body.classList.add('reviewing'); // 地図画面用ボタンを隠す
     var all = App.records.getAll();
     var years = App.reviewStats.yearsWithRecords(all);
+    // 開始の早い順に保存されているので、逆にして「最近の旅行が上」にする。
+    // clone を使うのは、並べ替えで App.trips.list そのものを壊さないため。
+    var trips = (App.trips && App.trips.clone)
+      ? App.trips.clone(App.trips.list).reverse() : [];
     var host = el('review-picker');
     if (!years.length) {
       host.innerHTML = '<div class="rv-picker"><div class="rv-picker-head">ふりかえり</div>' +
@@ -605,6 +615,10 @@ App.review = (function () {
     }).join('');
     host.innerHTML = '<div class="rv-picker"><div class="rv-picker-head">どの期間をふりかえる？</div>' +
       '<div class="rv-years">' + items + '<button class="rv-year rv-all">これまで</button></div>' +
+      (trips.length
+        ? '<button class="rv-trip-open">旅行から選ぶ</button>' +
+          '<div class="rv-trip-list" hidden><p class="rv-trip-msg" hidden></p></div>'
+        : '') +
       '<button class="rv-range-open">期間を選ぶ</button>' +
       '<div class="rv-range-form" hidden>' +
       '<div class="rv-cal-host"></div>' +
@@ -634,13 +648,34 @@ App.review = (function () {
       if (from > to) { warn('開始日と終了日が逆だよ'); return; }
       var p = App.reviewStats.makeRangePeriod(from, to, host.querySelector('.rv-f-label').value);
       // 0件の期間を開くと空の総集編になってしまうので、ここで止めて理由を出す
-      var has = all.some(function (r) {
-        return r && r.date && String(r.date) >= p.start && String(r.date) <= p.end;
-      });
-      if (!has) { warn('この期間の記録はまだないみたい'); return; }
+      if (!countInRange(all, p.start, p.end)) { warn('この期間の記録はまだないみたい'); return; }
       msg.hidden = true;
       open(p);
     };
+    if (trips.length) {
+      var listHost = host.querySelector('.rv-trip-list');
+      var tmsg = host.querySelector('.rv-trip-msg');
+      var warnTrip = function (t) { tmsg.textContent = t; tmsg.hidden = false; };
+      host.querySelector('.rv-trip-open').onclick = function () {
+        listHost.hidden = !listHost.hidden;
+      };
+      trips.forEach(function (t) {
+        var n = countInRange(all, t.start, t.end);
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'rv-trip';
+        // 旅行名はふたりが打った文字なので必ず esc する
+        b.innerHTML = '<span class="rv-trip-name">' + esc(t.label) + '</span>' +
+          '<span class="rv-trip-sub">' + esc(App.trips.lengthLabel(t)) + ' ・ ' + n + '件</span>';
+        b.onclick = function () {
+          // 0件の旅行を開くと空の総集編になるので、ここで止めて理由を出す
+          if (!n) { warnTrip('「' + t.label + '」の記録はまだないみたい'); return; }
+          tmsg.hidden = true;
+          open(App.reviewStats.makeTripPeriod(t));
+        };
+        listHost.appendChild(b);
+      });
+    }
     host.querySelector('.rv-close').onclick = hideAll;
     host.hidden = false;
   }
