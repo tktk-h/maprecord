@@ -55,7 +55,8 @@ input, select, textarea {
 input:focus, select:focus, textarea:focus {
   outline: none; border-color: var(--accent); box-shadow: var(--ring); }
 textarea { resize: vertical; }
-button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+button { font: inherit; cursor: pointer; border: none; background: none; color: inherit;
+  -webkit-tap-highlight-color: transparent; } /* iOS が押した所に出す灰色の四角を消す。押した手応えは :active の縮みと下地の動きで出す */
 button:focus-visible { outline: none; box-shadow: var(--ring); }
 
 /* ===== ヘッダー ===== */
@@ -435,14 +436,19 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
 #mode-segment { position: relative; display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: var(--radius-pill); }
 /* 選ばれているところへ滑る下地。ボタン側は背景を持たず、動くのはこれだけ。
    位置と幅は js/records.js が測って入れる（地図/カレンダーのタブと同じ作り）。 */
+/* 色は --accent-soft ではなく、アクセントを混ぜて濃くする。
+   下地の --surface-2(#efebe4) と --accent-soft(#f1e6e3) は明るさがほぼ同じで、
+   重ねてもまったく見えなかった（タブの下地が見えるのは、下が白い --surface だから）。 */
 .seg-thumb { position: absolute; top: 4px; bottom: 4px; left: 0; width: 0;
-  border-radius: var(--radius-pill); background: var(--accent-soft); pointer-events: none;
+  border-radius: var(--radius-pill); pointer-events: none;
+  background: color-mix(in srgb, var(--accent) 55%, #fff);
   transition: transform var(--ov-dur) var(--ov-ease), width var(--ov-dur) var(--ov-ease); }
 .seg-thumb.no-anim { transition: none; } /* 絞り込みを開いた瞬間の初回配置。付けたままだと左から滑ってくる */
 #mode-segment .seg-btn { position: relative; z-index: 1; /* 下地の上に文字を出す */
   flex: 1; padding: 8px 0; border-radius: var(--radius-pill);
   font-size: 13px; color: var(--text-muted); transition: color .15s; }
-#mode-segment .seg-btn.active { color: var(--accent-strong); font-weight: 600; }
+/* 下地を濃くしたぶん文字も暗くする。実測: 下地との読みやすさ 2.78 → 4.94 */
+#mode-segment .seg-btn.active { color: color-mix(in srgb, var(--accent-strong), #000 35%); font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .seg-thumb { transition: none; } }
 
 /* 日付入力（温かい枠）。font-size:16px 未満だと iOS Safari が入力時に自動ズームする */
