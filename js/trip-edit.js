@@ -66,7 +66,7 @@ App.tripEdit = (function () {
       box.innerHTML =
         '<div class="ge-panel">' +
         '<div class="ge-head"><div class="ge-title">旅行</div>' +
-        '<button class="ge-x" aria-label="閉じる"><i class="ph ph-x"></i></button></div>' +
+        '<button class="x-btn" aria-label="閉じる"><i class="ph ph-x"></i></button></div>' +
         '<p class="te-lead">期間を決めておくと、その間の記録はぜんぶこの旅行のものになります。' +
         'あとから足した記録も自動で入ります。</p>' +
         '<div class="ge-rows"></div>' +
@@ -101,7 +101,7 @@ App.tripEdit = (function () {
         rowsBox.appendChild(r);
       });
       box.querySelector('.ge-add').onclick = function () { renderForm(-1); };
-      box.querySelector('.ge-x').onclick = close;
+      box.querySelector('.x-btn').onclick = close;
     }
 
     // ---- 追加/編集 ----
@@ -112,7 +112,7 @@ App.tripEdit = (function () {
       box.innerHTML =
         '<div class="ge-panel">' +
         '<div class="ge-head"><div class="ge-title">' + (index >= 0 ? '旅行を編集' : '旅行を追加') + '</div>' +
-        '<button class="ge-x" aria-label="閉じる"><i class="ph ph-x"></i></button></div>' +
+        '<button class="x-btn" aria-label="閉じる"><i class="ph ph-x"></i></button></div>' +
         '<input type="text" class="ge-label te-name-input" placeholder="旅行の名前（例 沖縄旅行）" maxlength="20">' +
         '<div class="te-cal-host"></div>' +
         '<div class="ge-err" hidden></div>' +
@@ -132,7 +132,7 @@ App.tripEdit = (function () {
       });
 
       box.querySelector('.ge-cancel').onclick = renderList;
-      box.querySelector('.ge-x').onclick = close;
+      box.querySelector('.x-btn').onclick = close;
       box.querySelector('.ge-save').onclick = function () {
         // 1日だけ押したときは日帰りとして扱う（終了を押し忘れても保存できる）
         if (draft.start && !draft.end) draft.end = draft.start;

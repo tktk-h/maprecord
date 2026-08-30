@@ -101,7 +101,7 @@ App.genreEdit = (function () {
       host.innerHTML =
         '<div class="ge-panel">' +
         '<div class="ge-head"><div class="ge-title">ジャンル編集</div>' +
-        '<button class="ge-x" aria-label="閉じる"><i class="ph ph-x"></i></button></div>' +
+        '<button class="x-btn" aria-label="閉じる"><i class="ph ph-x"></i></button></div>' +
         '<div class="ge-rows"></div>' +
         '<button class="ge-add" type="button"><i class="ph ph-plus"></i> 種類を追加</button>' +
         '<div class="ge-err" hidden></div>' +
@@ -133,7 +133,7 @@ App.genreEdit = (function () {
         rows.push({ key: App.genreEdit.newKey(keys), label: '', color: PALETTE[rows.length % PALETTE.length] });
         render();
       };
-      host.querySelector('.ge-x').onclick = close;
+      host.querySelector('.x-btn').onclick = close;
       host.querySelector('.ge-cancel').onclick = close;
       host.querySelector('.ge-save').onclick = save;
     }

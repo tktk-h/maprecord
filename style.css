@@ -273,10 +273,6 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
 .x-btn.x-fixed { position: absolute; top: calc(14px + var(--safe-top)); right: 14px; z-index: 3; }
 /* 写真やポスターの上に載るもの */
 .x-btn.on-dark { background: rgba(255,255,255,.14); color: #fff; backdrop-filter: blur(6px); }
-.mem-x { width: 24px; height: 24px; border-radius: 50%; flex: 0 0 auto;
-  background: var(--surface-2); color: var(--text-muted); font-size: 13px;
-  display: flex; align-items: center; justify-content: center; }
-.mem-x:hover { background: var(--border); color: var(--text); }
 @media (max-width: 700px) {
   #memory-card { top: calc(116px + var(--safe-top)); right: 64px; } /* 2段ヘッダーの下・右上の現在地ボタンを避ける */
 }
@@ -295,11 +291,8 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
 /* ===== パネル / ボトムシート ===== */
 #panel { width: 340px; background: var(--surface); border-left: 1px solid var(--border);
   display: flex; flex-direction: column; min-height: 0; position: relative; }
-/* シートを閉じる×ボタン（右上・固定） */
-#sheet-close { position: absolute; top: 10px; right: 12px; z-index: 6;
-  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
-  border-radius: 50%; background: var(--surface-2); color: var(--text-muted); font-size: 15px; }
-#sheet-close:hover { background: var(--border); color: var(--text); }
+/* シートの右上。見た目は .x-btn。ここは画面ではなくシートの角に付ける */
+#sheet-close { position: absolute; top: 10px; right: 12px; z-index: 6; }
 #sheet-grip { display: none; }
 #panel-content { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden;
   -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
@@ -470,10 +463,6 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
   box-shadow: var(--shadow-lg); padding: 16px 16px 20px; }
 .set-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .set-title { font-size: 17px; font-weight: 800; font-family: var(--font-display); color: var(--text); }
-.set-x { background: var(--surface-2); color: var(--text-muted); border: none; border-radius: 50%;
-  width: 32px; height: 32px; font-size: 15px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; }
-.set-x:hover { color: var(--text); }
 
 /* ふりかえりは設定ではなく「見るもの」なので、一番上に大きく置く */
 .set-hero { display: flex; align-items: center; gap: 13px; width: 100%; text-align: left;
@@ -990,7 +979,7 @@ body.editor-open #review-back { display: none !important; }
   padding-top: var(--safe-top); }
 .review-overlay[hidden] { display: none; }
 #review-show { background: #ece6db; color: var(--text); overflow: hidden; }
-.rv-x, .rv-card-x { position: absolute; top: calc(14px + var(--safe-top)); right: 14px; z-index: 3; background: var(--surface-2);
+.rv-x { position: absolute; top: calc(14px + var(--safe-top)); right: 14px; z-index: 3; background: var(--surface-2);
   color: var(--text-muted); border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 16px; cursor: pointer;
   display: flex; align-items: center; justify-content: center; }
 
@@ -1135,8 +1124,6 @@ body.editor-open #review-back { display: none !important; }
 .rv-card-title { font-size: 14px; font-weight: 600; color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rv-card-sub { font-size: 11px; color: var(--text-muted); }
-.rv-card-x { position: static; background: var(--surface-2); color: var(--text-muted);
-  width: 24px; height: 24px; font-size: 13px; flex: 0 0 auto; }
 @media (max-width: 700px) {
   #review-card { top: calc(116px + var(--safe-top)); right: 64px; }
 }
@@ -1150,8 +1137,6 @@ body.editor-open #review-back { display: none !important; }
   box-shadow: var(--shadow-lg); padding: 16px; }
 .ge-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .ge-title { font-size: 17px; font-weight: 800; font-family: var(--font-display); color: var(--text); }
-.ge-x { background: var(--surface-2); color: var(--text-muted); border: none; border-radius: 50%;
-  width: 32px; height: 32px; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .ge-rows { display: flex; flex-direction: column; gap: 8px; }
 .ge-row { display: flex; align-items: center; gap: 8px; background: var(--surface);
   border: 1px solid var(--border); border-radius: 12px; padding: 8px; }

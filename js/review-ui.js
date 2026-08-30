@@ -720,11 +720,11 @@ App.review = (function () {
       '<button class="rv-card-open"><div class="rv-card-label">ふりかえり</div>' +
       '<div class="rv-card-title">' + targetYear + '年のふりかえりができました</div>' +
       '<div class="rv-card-sub">タップで再生 ・ ' + data.outingDays + '日のおでかけ</div></button>' +
-      '<button class="rv-card-x" aria-label="閉じる"><i class="ph ph-x"></i></button></div>';
+      '<button class="x-btn" aria-label="閉じる"><i class="ph ph-x"></i></button></div>';
     host.querySelector('.rv-card-open').onclick = function () {
       host.hidden = true; open(App.reviewStats.makeYearPeriod(targetYear));
     };
-    host.querySelector('.rv-card-x').onclick = function () {
+    host.querySelector('.x-btn').onclick = function () {
       try { localStorage.setItem(key, '1'); } catch (e) {}
       host.hidden = true;
     };

@@ -87,7 +87,7 @@ App.memories = (function () {
   // 右側（×と、押せるカードだけに出す矢印）
   function sideHtml(withGo) {
     return '<div class="mem-side">'
-      + '<button type="button" class="mem-x" aria-label="閉じる"><i class="ph ph-x"></i></button>'
+      + '<button type="button" class="x-btn" aria-label="閉じる"><i class="ph ph-x"></i></button>'
       + (withGo ? '<i class="ph ph-caret-right mem-go" aria-hidden="true"></i>' : '')
       + '</div>';
   }
@@ -108,7 +108,7 @@ App.memories = (function () {
         </div>`;
       host.hidden = false;
       applied = null; // 記念日のカードは絞り込みをかけない
-      host.querySelector('.mem-x').onclick = () => dismiss(host, today);
+      host.querySelector('.x-btn').onclick = () => dismiss(host, today);
       return;
     }
     const it = mem.items[0]; // 一番新しい過去の年
@@ -136,7 +136,7 @@ App.memories = (function () {
       applied = { mode: 'day', day: it.date }; // × で戻せるように控えておく
       App.records.focusDay(it.date);
     };
-    host.querySelector('.mem-x').onclick = () => {
+    host.querySelector('.x-btn').onclick = () => {
       // カードを閉じるなら、そのカードがかけた絞り込みも一緒に戻す
       if (applied) { App.records.undoFilter(applied); applied = null; }
       dismiss(host, today);
