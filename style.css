@@ -1004,14 +1004,24 @@ body.settings-open #review-back { display: none !important; }
 .rv-years { display: flex; flex-wrap: wrap; gap: 10px; }
 /* 期間の選択肢は「年」「これまで」「期間を選ぶ」で見た目を揃える。
    影は 閉じる（.rv-btn 由来の --cta-shadow）と同じものを使う。 */
-.rv-year, .rv-range-open { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+.rv-year, .rv-range-open, .rv-trip-open { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
   padding: 14px 18px; font-size: 16px; font-weight: 700; color: var(--text); cursor: pointer;
   box-shadow: var(--cta-shadow); }
 .rv-empty { color: var(--text-muted); }
-/* 「期間を選ぶ」は横いっぱい。見た目は年ボタンと同じ（上の .rv-year と共通指定） */
-.rv-range-open { display: block; width: 100%; margin-top: 14px; }
+/* 「期間を選ぶ」「旅行から選ぶ」は横いっぱい。見た目は年ボタンと同じ（上の .rv-year と共通指定） */
+.rv-range-open, .rv-trip-open { display: block; width: 100%; margin-top: 14px; }
 .rv-range-form { margin-top: 12px; padding: 14px; background: var(--surface);
   border: 1px solid var(--border); border-radius: 14px; }
+/* 旅行の一覧。1行に名前と「3泊4日・N件」を積む */
+.rv-trip-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+/* display:flex は [hidden] を打ち消すので、明示的に隠す */
+.rv-trip-list[hidden] { display: none; }
+.rv-trip { display: flex; flex-direction: column; gap: 2px; text-align: left;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 12px 14px; font: inherit; color: inherit; cursor: pointer; }
+.rv-trip-name { font-family: var(--font-display); font-size: 15px; }
+.rv-trip-sub { font-size: 12px; color: var(--text-muted); }
+.rv-trip-msg { margin: 0 0 4px; font-size: 13px; color: var(--accent); }
 .rv-f-l { display: block; margin-bottom: 12px; font-size: 13px; color: var(--text-muted); }
 .rv-f-l input { display: block; width: 100%; margin-top: 5px; box-sizing: border-box;
   padding: 10px; font: inherit; font-size: 15px; color: var(--text);
