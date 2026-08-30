@@ -96,13 +96,22 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
 #search-wrap:focus-within > .ph { color: var(--accent); }
 
 /* ビュー切替（白いピルグループ） */
-#view-toggle { display: flex; gap: 4px; background: var(--surface); padding: 4px;
+#view-toggle { position: relative; display: flex; gap: 4px; background: var(--surface); padding: 4px;
   border-radius: var(--radius-pill); box-shadow: 0 4px 16px rgba(45,38,30,.1); }
+/* 選ばれているほうへ滑る下地。ボタン側は背景を持たず、動くのはこれだけ。
+   位置と幅は js/app.js が測って入れる（「地図」と「カレンダー」は幅が違ううえ、
+   選ばれると太字になってさらに変わるので、CSSに数値を書くと必ずズレる）。
+   速さは地図↔カレンダーのスライドと同じ値で揃えている。 */
+#vt-thumb { position: absolute; top: 4px; bottom: 4px; left: 0; width: 0;
+  border-radius: var(--radius-pill); background: var(--accent-soft); pointer-events: none;
+  transition: transform .32s cubic-bezier(.32,.72,0,1), width .32s cubic-bezier(.32,.72,0,1); }
+#vt-thumb.no-anim { transition: none; } /* 起動時の初回配置。付けたまま動かすと左から滑ってくる */
 #view-toggle button {
+  position: relative; z-index: 1; /* 下地の上に文字を出す */
   display: inline-flex; align-items: center; gap: 6px;
   padding: 8px 14px; border-radius: var(--radius-pill); font-size: 13px;
-  color: var(--text-muted); transition: background .15s, color .15s; }
-#view-toggle button.active { background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
+  color: var(--text-muted); transition: color .15s; }
+#view-toggle button.active { color: var(--accent-strong); font-weight: 600; }
 /* 絞り込みの×（絞り込み中のみ・絞り込みボタンの右） */
 #filter-clear-top { display: inline-flex; align-items: center; justify-content: center;
   width: 41px; height: 41px; border-radius: 50%;

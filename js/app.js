@@ -29,6 +29,25 @@ function closeSettings() {
 function wireUI() {
   const mapBtn = document.getElementById('view-map');
   const calBtn = document.getElementById('view-calendar');
+
+  // タブの下地を、選ばれているボタンの位置と幅に合わせる。
+  // 幅を測るのは、文字数の違いに加えて「選ばれると太字になる」ぶんも変わるため。
+  // first=true のときはアニメーションさせない（起動時に左から滑ってきてしまう）。
+  function moveThumb(first) {
+    const wrap = document.getElementById('view-toggle');
+    const thumb = document.getElementById('vt-thumb');
+    const on = wrap.querySelector('button.active');
+    if (!thumb || !on) return;
+    if (first) thumb.classList.add('no-anim');
+    thumb.style.width = on.offsetWidth + 'px';
+    thumb.style.transform = 'translateX(' + on.offsetLeft + 'px)';
+    // 次のフレームで戻す。同じフレームで外すと、この配置ごと滑ってしまう
+    if (first) requestAnimationFrame(() => requestAnimationFrame(() => thumb.classList.remove('no-anim')));
+  }
+  moveThumb(true);
+  // 文字の幅は、フォントを読み終わった時点と画面幅が変わった時点で変わる
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => moveThumb(true));
+  window.addEventListener('resize', () => moveThumb(true));
   // カレンダーは地図の上を右から覆う。地図は動かさない（生きている地図を transform で動かすと
   // タイルの描き直しでカクつく）。display:none は途中の状態を持てないので、hidden は
   // アニメーションが終わってから付ける。
@@ -70,6 +89,7 @@ function wireUI() {
     // パネル（下シート）は選択したときだけ出す。ここでは表示状態を触らない。
     mapBtn.classList.add('active');
     calBtn.classList.remove('active');
+    moveThumb(); // 太字が移ったあとに測る（幅が変わるので、先に測ると合わない）
     document.getElementById('locate-btn').hidden = false;
     document.getElementById('bulk-btn').hidden = false;
     App.map.refresh();
@@ -81,6 +101,7 @@ function wireUI() {
     slideCalendarIn();
     calBtn.classList.add('active');
     mapBtn.classList.remove('active');
+    moveThumb(); // 太字が移ったあとに測る（幅が変わるので、先に測ると合わない）
     // この2つは z-index:500 でカレンダー(40)より上に出てしまうので、覆う前に消す
     document.getElementById('locate-btn').hidden = true;
     document.getElementById('bulk-btn').hidden = true;
