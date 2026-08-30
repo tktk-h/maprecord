@@ -70,7 +70,12 @@ App.genreEdit = (function () {
     var busy = false;
 
     // 保存中(busy)は閉じない＝保存は必ず完走して適用（stale状態を作らない）。保存は一瞬なので実害なし。
-    function close() { if (busy) return; host.hidden = true; host.innerHTML = ''; }
+    function close() {
+      if (busy) return;
+      host.hidden = true;
+      host.innerHTML = '';
+      document.body.classList.remove('editor-open');
+    }
     function showErr(msg) { var e = host.querySelector('.ge-err'); if (e) { e.textContent = msg; e.hidden = false; } }
     function save() {
       if (busy) return;
@@ -135,6 +140,8 @@ App.genreEdit = (function () {
 
     render();
     host.hidden = false;
+    // 地図の上に浮くボタン（z-index:500）はこのオーバーレイを突き抜けるので、印を付けて隠す
+    document.body.classList.add('editor-open');
   }
 
   return { validate: validate, usageCount: usageCount, newKey: newKey, normalize: normalize,

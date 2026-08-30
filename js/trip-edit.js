@@ -35,7 +35,12 @@ App.tripEdit = (function () {
     var rows = App.trips.clone(App.trips.list); // 作業用コピー（保存するまで本体は触らない）
     var busy = false;
 
-    function close() { if (busy) return; box.hidden = true; box.innerHTML = ''; }
+    function close() {
+      if (busy) return;
+      box.hidden = true;
+      box.innerHTML = '';
+      document.body.classList.remove('editor-open');
+    }
 
     function persist(next, errBox) {
       var check = App.trips.validate(next);
@@ -144,6 +149,8 @@ App.tripEdit = (function () {
 
     renderList();
     box.hidden = false;
+    // 地図の上に浮くボタン（z-index:500）はこのオーバーレイを突き抜けるので、印を付けて隠す
+    document.body.classList.add('editor-open');
   }
 
   return { open: open, setSpaceId: setSpaceId, setOnSaved: setOnSaved, _short: short };

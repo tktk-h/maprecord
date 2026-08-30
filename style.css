@@ -841,13 +841,21 @@ body.reviewing #locate-btn,
 body.reviewing #bulk-btn,
 body.reviewing #review-back { display: none !important; }
 
-/* 設定を開いている間も同じ。これらは z-index:500 で、オーバーレイを突き抜けてしまう。 */
+/* 設定と、その先の編集画面（ジャンル・旅行）を開いている間も同じ。
+   これらは z-index:500 で、オーバーレイを突き抜けてしまう。
+   編集画面は設定を閉じてから開くので settings-open では守れない＝専用の印が要る。 */
 body.settings-open #locate-btn,
 body.settings-open #bulk-btn,
 body.settings-open #research-btn,
 body.settings-open #memory-card,
 body.settings-open #review-card,
-body.settings-open #review-back { display: none !important; }
+body.settings-open #review-back,
+body.editor-open #locate-btn,
+body.editor-open #bulk-btn,
+body.editor-open #research-btn,
+body.editor-open #memory-card,
+body.editor-open #review-card,
+body.editor-open #review-back { display: none !important; }
 
 /* 地図から総集編へ戻る帯（ふりかえりから地図に出たときだけ出る） */
 #review-back[hidden] { display: none; } /* display:inline-flex が hidden を打ち消さないように */
