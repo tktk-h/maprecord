@@ -131,7 +131,10 @@ function wireUI() {
     } else {
       bar.classList.add('filters-open');
       App.overlay.open(panel);
-      setFilterOrigin(); // hidden が外れて場所が測れるようになった直後に決める
+      // hidden が外れて場所が測れるようになった直後に決める。
+      // 閉じている間は display:none で幅が 0 なので、開くこの瞬間しか測れない。
+      setFilterOrigin();
+      App.records.placeSegThumb(); // モードの下地も、動かさずにその場へ置く
     }
   });
 

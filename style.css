@@ -432,10 +432,18 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
 
 /* モード：セグメント式ピル（地図/カレンダー切替と同じ手触り） */
 #mode-select { display: none; }
-#mode-segment { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: var(--radius-pill); }
-#mode-segment .seg-btn { flex: 1; padding: 8px 0; border-radius: var(--radius-pill);
-  font-size: 13px; color: var(--text-muted); transition: background .15s, color .15s; }
-#mode-segment .seg-btn.active { background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
+#mode-segment { position: relative; display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: var(--radius-pill); }
+/* 選ばれているところへ滑る下地。ボタン側は背景を持たず、動くのはこれだけ。
+   位置と幅は js/records.js が測って入れる（地図/カレンダーのタブと同じ作り）。 */
+.seg-thumb { position: absolute; top: 4px; bottom: 4px; left: 0; width: 0;
+  border-radius: var(--radius-pill); background: var(--accent-soft); pointer-events: none;
+  transition: transform var(--ov-dur) var(--ov-ease), width var(--ov-dur) var(--ov-ease); }
+.seg-thumb.no-anim { transition: none; } /* 絞り込みを開いた瞬間の初回配置。付けたままだと左から滑ってくる */
+#mode-segment .seg-btn { position: relative; z-index: 1; /* 下地の上に文字を出す */
+  flex: 1; padding: 8px 0; border-radius: var(--radius-pill);
+  font-size: 13px; color: var(--text-muted); transition: color .15s; }
+#mode-segment .seg-btn.active { color: var(--accent-strong); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .seg-thumb { transition: none; } }
 
 /* 日付入力（温かい枠）。font-size:16px 未満だと iOS Safari が入力時に自動ズームする */
 #filter-bar input[type=date] { width: 100%; min-width: 0; padding: 11px 13px; font-size: 16px;

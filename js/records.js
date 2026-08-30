@@ -889,7 +889,8 @@ App.records = (function () {
     const sel = document.getElementById('mode-select');
     const seg = document.getElementById('mode-segment');
     if (!sel || !seg) return;
-    seg.innerHTML = Array.from(sel.options).map((o) =>
+    // 先頭の下地が、選ばれているボタンの位置と幅へ滑る（地図/カレンダーのタブと同じ作り）
+    seg.innerHTML = '<span class="seg-thumb"></span>' + Array.from(sel.options).map((o) =>
       `<button type="button" class="seg-btn" data-val="${o.value}">${o.textContent}</button>`).join('');
     seg.querySelectorAll('.seg-btn').forEach((b) => {
       b.onclick = () => {
@@ -900,13 +901,32 @@ App.records = (function () {
     syncModeSegment();
   }
   // #mode-select の現在値に合わせてセグメントの active 表示を更新
-  function syncModeSegment() {
+  // instant=true なら下地を animation 無しで置く（絞り込みを開いた瞬間に左から滑ってこないように）
+  function syncModeSegment(instant) {
     const sel = document.getElementById('mode-select');
     const seg = document.getElementById('mode-segment');
     if (!sel || !seg) return;
     seg.querySelectorAll('.seg-btn').forEach((b) => {
       b.classList.toggle('active', b.dataset.val === sel.value);
     });
+    moveSegThumb(instant === true);
+  }
+  // 下地を、選ばれているボタンの位置と幅に合わせる。
+  // ⚠️offsetLeft/offsetWidth を使う。絞り込みパネルは開く途中で縮んでいるので、
+  // getBoundingClientRect だと変形後の箱を測ってしまい、位置がずれる。
+  function moveSegThumb(instant) {
+    const seg = document.getElementById('mode-segment');
+    if (!seg) return;
+    const thumb = seg.querySelector('.seg-thumb');
+    const on = seg.querySelector('.seg-btn.active');
+    // 閉じている間は display:none で幅が 0。測れないので触らない（開いたときに置き直す）
+    if (!thumb || !on || !on.offsetWidth) return;
+    if (instant) thumb.classList.add('no-anim');
+    thumb.style.width = on.offsetWidth + 'px';
+    thumb.style.transform = 'translateX(' + on.offsetLeft + 'px)';
+    if (instant) {
+      requestAnimationFrame(() => requestAnimationFrame(() => thumb.classList.remove('no-anim')));
+    }
   }
 
   // 期間の絞り込みは、ふりかえりと同じ「1枚のカレンダーを 2 回タップ」で選ぶ。
@@ -1072,6 +1092,7 @@ App.records = (function () {
   }
 
   return { init, reload, setRecords, render, getAll, setFilterState, applyUiFilter, focusDay,
+           placeSegThumb: () => syncModeSegment(true), // 絞り込みを開いた直後に置き直す（js/app.js）
            refreshGenres, undoFilter, focusTrip,
            searchTag, clearTag, searchByName, clearSearch,
            showDetail, showEditForm, showAddForm, showQuickLog, showPlaceCard, suggestRecords,
