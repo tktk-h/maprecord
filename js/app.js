@@ -32,12 +32,20 @@ function openSettings() {
   App.overlay.open(document.getElementById('settings-panel'));
   document.body.classList.add('settings-open');
 }
-function closeSettings() {
+// after を渡すと、設定が下りきってから呼ばれる。設定の中から別の画面へ渡るとき用で、
+// 同時に動かすと下りる設定と上がる画面が重なって何が起きたか読めない。
+// ⚠️×ボタンや Escape はこの関数をそのまま listener に渡しているので、
+// 第1引数にイベントが来る。関数かどうかを見てから呼ぶこと。
+function closeSettings(after) {
+  const run = () => { if (typeof after === 'function') after(); };
   const p = document.getElementById('settings-panel');
-  if (!p || p.hidden) return;
+  if (!p || p.hidden) { run(); return; }
   // 印を外すのは閉じ終わってから。先に外すと、まだ滑っている画面の上に
   // 地図の浮きボタン（z-index:500）が顔を出す。
-  App.overlay.close(p, () => document.body.classList.remove('settings-open'));
+  App.overlay.close(p, () => {
+    document.body.classList.remove('settings-open');
+    run();
+  });
 }
 
 function wireUI() {
@@ -233,8 +241,7 @@ function wireUI() {
   });
 
   document.getElementById('trip-btn').addEventListener('click', () => {
-    closeSettings();
-    App.tripEdit.open();
+    closeSettings(() => App.tripEdit.open()); // 設定が下りきってから出す
   });
   // 旅行を足す/直すと、カレンダーの帯と地図の見え方が変わる。
   // カレンダーはタブを開くたびに描き直すが、開いたまま保存されたときはその場で描き直す。
@@ -245,13 +252,11 @@ function wireUI() {
   });
 
   document.getElementById('review-btn').addEventListener('click', () => {
-    closeSettings(); // 別の画面を出すので設定はしまう
-    App.review.showPicker();
+    closeSettings(() => App.review.showPicker()); // 下りきってから出す
   });
   document.getElementById('genre-btn').addEventListener('click', () => {
     if (!recordsLoaded) { alert('記録を読み込み中です。少し待ってからもう一度お試しください。'); return; }
-    closeSettings();
-    App.genreEdit.open();
+    closeSettings(() => App.genreEdit.open()); // 下りきってから出す
   });
   // ピンをまとめる（クラスタ）ON/OFF。端末ごとの設定で、既定はON。
   const clusterBtn = document.getElementById('cluster-btn');
