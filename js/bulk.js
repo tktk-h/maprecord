@@ -198,8 +198,8 @@ App.bulk = (function () {
       : '「＋写真を追加」で写真を選ぶと、日付と場所で自動グループ分けします。';
     ov.innerHTML = `
       <div class="bulk-head">
-        <button id="bulk-cancel" class="bulk-x">✕</button>
         <div class="bulk-title">まとめて追加</div>
+        <button id="bulk-cancel" class="x-btn" type="button" aria-label="閉じる"><i class="ph ph-x"></i></button>
       </div>
       <button id="bulk-add" class="bulk-addbtn">＋ 写真を追加</button>
       <div class="bulk-lead">${lead}</div>
