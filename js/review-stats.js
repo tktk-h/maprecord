@@ -55,6 +55,12 @@ App.reviewStats = (function () {
       label: t || formatRangeLabel(start, end), autoLabel: !t };
   }
 
+  // 旅行（名前＋日付の範囲）は、そのままふりかえりの期間になる。
+  // 名前は必ずあるので autoLabel は false になり、見出しの下に日付行が出る。
+  function makeTripPeriod(trip) {
+    return makeRangePeriod(trip.start, trip.end, trip.label);
+  }
+
   // 記念日 a から基準日 b までの日数（両端含む＝記念日当日を1日目）。不正なら null。
   function daysBetweenInclusive(a, b) {
     const da = Date.parse(a + 'T00:00:00Z');
@@ -243,6 +249,13 @@ App.reviewStats = (function () {
     eq('range-null-label-falls-back', makeRangePeriod('2026-03-01', '2026-03-05', null).label, '3/1〜3/5');
     eq('range-kind', makeRangePeriod('2026-03-01', '2026-03-05', 'x').kind, 'range');
 
+    // 旅行はそのまま期間になる。名前が必ずあるので autoLabel は false ＝ 日付行が出る。
+    var trip1 = { id: 'trip1', label: '京都旅行', start: '2026-03-01', end: '2026-03-05' };
+    eq('trip-period', makeTripPeriod(trip1),
+      { kind: 'range', start: '2026-03-01', end: '2026-03-05', label: '京都旅行', autoLabel: false });
+    eq('trip-period-keeps-name', makeTripPeriod(trip1).label, '京都旅行');
+    eq('trip-period-shows-dateline', formatDateLine(makeTripPeriod(trip1)), '2026.3.1 〜 3.5');
+
     eq('dateline-same-year',
       formatDateLine({ kind: 'range', start: '2026-03-01', end: '2026-03-05' }), '2026.3.1 〜 3.5');
     eq('dateline-cross-year',
@@ -400,6 +413,6 @@ App.reviewStats = (function () {
   }
 
   return { computePeriodReview, yearsWithRecords, planSlides, placeKey, daysBetweenInclusive,
-    formatRangeLabel, formatDateLine, makeYearPeriod, makeAllPeriod, makeRangePeriod,
+    formatRangeLabel, formatDateLine, makeYearPeriod, makeAllPeriod, makeRangePeriod, makeTripPeriod,
     bucketize, pickBusiest, _selfTest };
 })();
