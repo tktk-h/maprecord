@@ -10,14 +10,14 @@ App.lightbox = (function () {
     overlay.id = 'lightbox';
     overlay.hidden = true;
     overlay.innerHTML =
-      '<button class="lb-close" aria-label="閉じる"><i class="ph ph-x"></i></button>'
+      '<button class="x-btn x-fixed on-dark" aria-label="閉じる"><i class="ph ph-x"></i></button>'
       + '<button class="lb-prev" aria-label="前へ"><i class="ph ph-caret-left"></i></button>'
       + '<img class="lb-img" alt="">'
       + '<button class="lb-next" aria-label="次へ"><i class="ph ph-caret-right"></i></button>'
       + '<div class="lb-counter"></div>';
     document.body.appendChild(overlay);
 
-    overlay.querySelector('.lb-close').onclick = close;
+    overlay.querySelector('.x-btn').onclick = close;
     overlay.querySelector('.lb-prev').onclick = (e) => { e.stopPropagation(); prev(); };
     overlay.querySelector('.lb-next').onclick = (e) => { e.stopPropagation(); next(); };
     overlay.onclick = (e) => { if (e.target === overlay) close(); }; // 背景タップで閉じる

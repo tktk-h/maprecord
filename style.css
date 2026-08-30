@@ -394,12 +394,11 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
   display: flex; align-items: center; justify-content: center; }
 #lightbox[hidden] { display: none; }
 .lb-img { max-width: 92vw; max-height: 86vh; object-fit: contain; border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); }
-.lb-close, .lb-prev, .lb-next { position: absolute; color: #fff; display: flex; align-items: center; justify-content: center;
+.lb-prev, .lb-next { position: absolute; color: #fff; display: flex; align-items: center; justify-content: center;
   background: rgba(255,255,255,.10); border-radius: var(--radius-pill); backdrop-filter: blur(6px); }
-.lb-close { top: calc(16px + var(--safe-top)); right: 16px; width: 44px; height: 44px; font-size: 22px; }
 .lb-prev, .lb-next { top: 50%; transform: translateY(-50%); width: 46px; height: 46px; font-size: 24px; }
 .lb-prev { left: 12px; } .lb-next { right: 12px; }
-.lb-close:hover, .lb-prev:hover, .lb-next:hover { background: rgba(255,255,255,.2); }
+.lb-prev:hover, .lb-next:hover { background: rgba(255,255,255,.2); }
 .lb-counter { position: absolute; bottom: calc(20px + var(--safe-bottom)); left: 0; right: 0; text-align: center; color: rgba(255,255,255,.85); font-size: 13px; }
 
 /* ===== 絞り込みパネル（温かみ・エモい・作り込み） ===== */
@@ -979,9 +978,6 @@ body.editor-open #review-back { display: none !important; }
   padding-top: var(--safe-top); }
 .review-overlay[hidden] { display: none; }
 #review-show { background: #ece6db; color: var(--text); overflow: hidden; }
-.rv-x { position: absolute; top: calc(14px + var(--safe-top)); right: 14px; z-index: 3; background: var(--surface-2);
-  color: var(--text-muted); border: none; border-radius: 50%; width: 34px; height: 34px; font-size: 16px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; }
 
 /* スライドショー */
 .rv-progress { position: absolute; top: calc(12px + var(--safe-top)); left: 12px; right: 56px; display: flex; gap: 4px; z-index: 2; }

@@ -302,7 +302,7 @@ App.review = (function () {
     var bars = ids.map(function () { return '<span></span>'; }).join('');
     host.innerHTML =
       '<div class="rv-progress">' + bars + '</div>' +
-      '<button class="rv-x" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
+      '<button class="x-btn x-fixed" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
       '<div class="rv-nav rv-prev"></div><div class="rv-nav rv-next"></div>' +
       '<div class="rv-stage"></div>';
     host.hidden = false;
@@ -330,7 +330,7 @@ App.review = (function () {
         if (c) stopAnim = countUp(c, Number(c.getAttribute('data-to')), 900);
       }
     }
-    host.querySelector('.rv-x').onclick = function () { cleanup(); hideAll(); };
+    host.querySelector('.x-btn').onclick = function () { cleanup(); hideAll(); };
     host.querySelector('.rv-next').onclick = function () { go(idx + 1); };
     host.querySelector('.rv-prev').onclick = function () { go(idx - 1); };
     go(0);
@@ -539,7 +539,7 @@ App.review = (function () {
     var dateLine = App.reviewStats.formatDateLine(period);
     host.innerHTML =
       '<div class="rv-page">' +
-      '<button class="rv-x" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
+      '<button class="x-btn x-fixed" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
       '<div class="rv-hero"><div class="rv-hero-sub">' + title + '</div>' +
       (dateLine ? '<div class="rv-hero-dates">' + dateLine + '</div>' : '') +
       daysLine + '<div class="rv-hero-count">おでかけ ' + data.outingDays + '日</div>' +
@@ -555,7 +555,7 @@ App.review = (function () {
       (data.isEmpty ? '' : '<div class="rv-section rv-save-wrap"><button class="rv-save">画像で保存・共有</button></div>') +
       '</div>';
 
-    host.querySelector('.rv-x').onclick = hideAll;
+    host.querySelector('.x-btn').onclick = hideAll;
     var mapEl = host.querySelector('.rv-map');
     if (data.pins.length) renderMap(mapEl, data.pins, { animate: false });
     host.querySelector('.rv-realmap').onclick = function () { goToRealMap(period); };
@@ -689,12 +689,12 @@ App.review = (function () {
     document.body.classList.add('reviewing'); // 地図画面用ボタンを隠す
     var host = el('review-show');
     host.innerHTML = '<div class="rv-slide rv-sparse">' +
-      '<button class="rv-x" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
+      '<button class="x-btn x-fixed" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
       '<div class="rv-sparse-emoji">🌱</div>' +
       '<div class="rv-mid">まだ' + esc(data.period.label) + '年のあしあとは少なめ</div>' +
       '<div class="rv-cap">これからだね</div>' +
       '<button class="rv-btn rv-topage">記録を見る</button></div>';
-    host.querySelector('.rv-x').onclick = hideAll;
+    host.querySelector('.x-btn').onclick = hideAll;
     host.querySelector('.rv-topage').onclick = function () { hideAll(); showPage(data); };
     host.hidden = false;
   }
