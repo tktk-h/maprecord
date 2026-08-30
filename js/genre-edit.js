@@ -72,9 +72,12 @@ App.genreEdit = (function () {
     // 保存中(busy)は閉じない＝保存は必ず完走して適用（stale状態を作らない）。保存は一瞬なので実害なし。
     function close() {
       if (busy) return;
-      host.hidden = true;
-      host.innerHTML = '';
-      document.body.classList.remove('editor-open');
+      // 中身を捨てるのは閉じ終わってから。先に捨てると滑っている最中の画面が空になる。
+      // 印を外すのも同じで、先に外すと地図の浮きボタンが滑っている画面の上に顔を出す。
+      App.overlay.close(host, function () {
+        host.innerHTML = '';
+        document.body.classList.remove('editor-open');
+      });
     }
     function showErr(msg) { var e = host.querySelector('.ge-err'); if (e) { e.textContent = msg; e.hidden = false; } }
     function save() {
@@ -99,7 +102,7 @@ App.genreEdit = (function () {
 
     function render() {
       host.innerHTML =
-        '<div class="ge-panel">' +
+        '<div class="ge-panel ov-card">' +
         '<div class="ge-head"><div class="ge-title">ジャンル編集</div>' +
         '<button class="x-btn" aria-label="閉じる"><i class="ph ph-x"></i></button></div>' +
         '<div class="ge-rows"></div>' +
@@ -139,7 +142,7 @@ App.genreEdit = (function () {
     }
 
     render();
-    host.hidden = false;
+    App.overlay.open(host);
     // 地図の上に浮くボタン（z-index:500）はこのオーバーレイを突き抜けるので、印を付けて隠す
     document.body.classList.add('editor-open');
   }

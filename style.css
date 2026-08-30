@@ -721,7 +721,7 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
      速さは下シート（App.sheet）と同じ値を借りて、動きの手触りを揃えている。 */
   #calendar-view { position: absolute; inset: 0; z-index: 40;
     transform: translateX(100%); transition: transform .32s cubic-bezier(.32,.72,0,1); }
-  #calendar-view.showing { transform: translateX(0); }
+  #calendar-view.ov-open { transform: translateX(0); }
   /* 高さで表示量を決める＝見えている分だけが中身のスクロール範囲になる */
   #panel { position: absolute; left: 0; right: 0; bottom: 0; width: auto;
     height: var(--sheet-h, 12dvh); max-height: none; border: none;
@@ -1195,4 +1195,26 @@ body.editor-open #review-back { display: none !important; }
    このとき transitionend が来なくなるので、hidden を付ける保険は js/app.js のタイマー側にある。 */
 @media (prefers-reduced-motion: reduce) {
   #calendar-view { transition: none; }
+}
+
+/* ===== 画面が出るときの動き（クラスの付け外しは js/overlay.js） =====
+   アプリ全体で速さを1つに揃えている（地図↔カレンダー、タブの下地と同じ値）。 */
+
+/* 全面が中身の画面：全体を下から持ち上げる */
+.ov-slide { transform: translateY(100%); transition: transform .32s cubic-bezier(.32,.72,0,1); }
+.ov-slide.ov-open { transform: translateY(0); }
+
+/* 幕＋カードの画面：幕はフェード、カードだけが下から。
+   幕ごと持ち上げると、暗い幕が下からせり上がってきて変に見える。 */
+.ov-fade { opacity: 0; transition: opacity .32s cubic-bezier(.32,.72,0,1); }
+.ov-fade.ov-open { opacity: 1; }
+/* 動かす距離を画面の高さぶんにしないのは、器が overflow:auto を持っていて、
+   中身を大きくずらすとスクロール領域が伸びて開いた瞬間に跳ねるため。 */
+.ov-fade > .ov-card { transform: translateY(24px); transition: transform .32s cubic-bezier(.32,.72,0,1); }
+.ov-fade.ov-open > .ov-card { transform: translateY(0); }
+
+/* 動きを減らす設定では滑らせない。待ち時間は js/overlay.js が CSS から読むので、
+   ここで切れば「待たずに閉じる」も自動的にそうなる。 */
+@media (prefers-reduced-motion: reduce) {
+  .ov-slide, .ov-fade, .ov-fade > .ov-card { transition: none; }
 }

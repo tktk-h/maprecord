@@ -16,14 +16,15 @@ function openSettings() {
   document.getElementById('topbar').classList.remove('filters-open'); // 絞り込みとは同時に開かない
   refreshPhotoMigrateBtn(); // 開くたびに残り枚数を数え直す
   paintNotifyBtn();         // 通知のオンオフも見直す（端末の設定で外されていることがある）
-  document.getElementById('settings-panel').hidden = false;
+  App.overlay.open(document.getElementById('settings-panel'));
   document.body.classList.add('settings-open');
 }
 function closeSettings() {
   const p = document.getElementById('settings-panel');
   if (!p || p.hidden) return;
-  p.hidden = true;
-  document.body.classList.remove('settings-open');
+  // 印を外すのは閉じ終わってから。先に外すと、まだ滑っている画面の上に
+  // 地図の浮きボタン（z-index:500）が顔を出す。
+  App.overlay.close(p, () => document.body.classList.remove('settings-open'));
 }
 
 function wireUI() {
@@ -49,42 +50,12 @@ function wireUI() {
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => moveThumb(true));
   window.addEventListener('resize', () => moveThumb(true));
   // カレンダーは地図の上を右から覆う。地図は動かさない（生きている地図を transform で動かすと
-  // タイルの描き直しでカクつく）。display:none は途中の状態を持てないので、hidden は
-  // アニメーションが終わってから付ける。
+  // タイルの描き直しでカクつく）。出し入れの作法は App.overlay と同じなのでそちらに任せる
+  // （向きが横なのは CSS 側の話で、モジュールは向きを知らない）。
   const calView = () => document.getElementById('calendar-view');
-  let hideTimer = null;
-  let onHidden = null;
-
-  // 「隠す」予約を取り消す。出ていく途中で開き直したとき、前の予約が後から発火して
-  // 開いたばかりのカレンダーを消してしまうのを防ぐ。
-  function cancelHide() {
-    if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-    if (onHidden) { calView().removeEventListener('transitionend', onHidden); onHidden = null; }
-  }
-  function slideCalendarIn() {
-    const el = calView();
-    cancelHide();
-    el.hidden = false;
-    // 同じフレームで .showing を付けると「最初からそこにあった」と見なされ、動かずに現れる
-    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('showing')));
-  }
-  function slideCalendarOut() {
-    const el = calView();
-    if (el.hidden) return;
-    cancelHide();
-    el.classList.remove('showing');
-    // 滑らない場面（広い画面・動きを減らす設定）は待たずに消す。ここで待つと、
-    // 横並びのレイアウトで地図とカレンダーが一瞬いっしょに見えてしまう。
-    if (parseFloat(getComputedStyle(el).transitionDuration) === 0) { el.hidden = true; return; }
-    onHidden = () => { cancelHide(); el.hidden = true; };
-    // 動きを減らす設定や広い画面では transition が走らず transitionend が来ない。
-    // 来ないまま hidden を付けそびれると、透明なカレンダーが画面を覆って地図が触れなくなる。
-    hideTimer = setTimeout(onHidden, 400);
-    el.addEventListener('transitionend', onHidden);
-  }
 
   function showMap() {
-    slideCalendarOut();
+    App.overlay.close(calView());
     document.getElementById('map').hidden = false;
     // パネル（下シート）は選択したときだけ出す。ここでは表示状態を触らない。
     mapBtn.classList.add('active');
@@ -98,7 +69,7 @@ function wireUI() {
     App.calendar.render(App.records.getAll());
     // 地図は隠さない。スライド中に下に見えている必要がある（カレンダーは不透明なので覆えば見えない）
     document.getElementById('panel').hidden = true;
-    slideCalendarIn();
+    App.overlay.open(calView());
     calBtn.classList.add('active');
     mapBtn.classList.remove('active');
     moveThumb(); // 太字が移ったあとに測る（幅が変わるので、先に測ると合わない）

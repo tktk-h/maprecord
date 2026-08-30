@@ -8,11 +8,12 @@ App.lightbox = (function () {
     if (overlay) return overlay;
     overlay = document.createElement('div');
     overlay.id = 'lightbox';
+    overlay.className = 'ov-fade'; // 幕はフェード、写真は下から（js/overlay.js）
     overlay.hidden = true;
     overlay.innerHTML =
       '<button class="x-btn x-fixed on-dark" aria-label="閉じる"><i class="ph ph-x"></i></button>'
       + '<button class="lb-prev" aria-label="前へ"><i class="ph ph-caret-left"></i></button>'
-      + '<img class="lb-img" alt="">'
+      + '<img class="lb-img ov-card" alt="">'
       + '<button class="lb-next" aria-label="次へ"><i class="ph ph-caret-right"></i></button>'
       + '<div class="lb-counter"></div>';
     document.body.appendChild(overlay);
@@ -57,12 +58,12 @@ App.lightbox = (function () {
     urls = (urlList || []).slice(); // url 文字列の配列
     if (!urls.length) return;
     idx = Math.min(Math.max(startIndex || 0, 0), urls.length - 1);
-    ensureOverlay().hidden = false;
+    App.overlay.open(ensureOverlay());
     document.addEventListener('keydown', keyHandler);
     show();
   }
   function close() {
-    if (overlay) overlay.hidden = true;
+    if (overlay) App.overlay.close(overlay);
     document.removeEventListener('keydown', keyHandler);
     urls = [];
   }

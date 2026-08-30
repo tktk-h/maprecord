@@ -290,9 +290,25 @@ App.review = (function () {
   }
 
   function hideAll() {
-    ['review-picker', 'review-show', 'review-page', 'poster-preview'].forEach(function (i) { var e = el(i); if (e) { e.hidden = true; e.innerHTML = ''; } });
-    clearPreview();
-    document.body.classList.remove('reviewing'); // 現在地/写真追加ボタンの抑制を解除
+    var ids = ['review-picker', 'review-show', 'review-page', 'poster-preview'];
+    var closing = 0;
+    // 中身を捨てるのも、写真の後始末も、印を外すのも「閉じ終わってから」。
+    // 先にやると、滑って降りていく最中の画面が空になり、
+    // 抑えていた地図の浮きボタン（z-index:500）がその上に顔を出す。
+    function finished() {
+      closing -= 1;
+      if (closing > 0) return;
+      clearPreview();
+      document.body.classList.remove('reviewing'); // 現在地/写真追加ボタンの抑制を解除
+    }
+    ids.forEach(function (i) {
+      var e = el(i);
+      if (!e) return;
+      if (e.hidden) { e.innerHTML = ''; return; } // 出ていないものは待つ必要がない
+      closing += 1;
+      App.overlay.close(e, function () { e.innerHTML = ''; finished(); });
+    });
+    if (!closing) { clearPreview(); document.body.classList.remove('reviewing'); }
   }
 
   function showSlides(data) {
@@ -305,7 +321,7 @@ App.review = (function () {
       '<button class="x-btn x-fixed" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
       '<div class="rv-nav rv-prev"></div><div class="rv-nav rv-next"></div>' +
       '<div class="rv-stage"></div>';
-    host.hidden = false;
+    App.overlay.open(host);
     var stage = host.querySelector('.rv-stage');
     var progs = host.querySelectorAll('.rv-progress span');
     var idx = -1, stopAnim = null;
@@ -445,11 +461,12 @@ App.review = (function () {
       '</div></div>';
     host.querySelector('.pv-share').onclick = function () { sharePoster(blob, period); };
     host.querySelector('.x-btn').onclick = function () {
-      host.hidden = true; host.innerHTML = '';
-      clearPreview();
+      // 写真の後始末も中身を捨てるのも閉じ終わってから。先にやると、
+      // 滑って降りていく最中のプレビューから写真が消える。
+      App.overlay.close(host, function () { host.innerHTML = ''; clearPreview(); });
     };
     host.scrollTop = 0;
-    host.hidden = false;
+    App.overlay.open(host);
   }
 
   // ボタンから呼ぶ。生成中は押せなくする。
@@ -565,7 +582,7 @@ App.review = (function () {
       b.onclick = function () { hideAll(); App.records.focusDay(b.getAttribute('data-date')); };
     });
     host.scrollTop = 0;
-    host.hidden = false;
+    App.overlay.open(host);
   }
 
   // 対象期間のデータを作って開く
@@ -609,7 +626,7 @@ App.review = (function () {
         '<p class="rv-empty">まだ記録がありません。おでかけを記録するとここに出ます。</p>' +
         '</div>';
       host.querySelector('.x-btn').onclick = hideAll;
-      host.hidden = false;
+      App.overlay.open(host);
       return;
     }
     var items = years.map(function (y) {
@@ -685,7 +702,7 @@ App.review = (function () {
       });
     }
     host.querySelector('.x-btn').onclick = hideAll;
-    host.hidden = false;
+    App.overlay.open(host);
   }
 
   // 件数が少ない年
@@ -700,7 +717,7 @@ App.review = (function () {
       '<button class="rv-btn rv-topage">記録を見る</button></div>';
     host.querySelector('.x-btn').onclick = hideAll;
     host.querySelector('.rv-topage').onclick = function () { hideAll(); showPage(data); };
-    host.hidden = false;
+    App.overlay.open(host);
   }
 
   // 年末ウィンドウ(12/20〜翌1/10)に、対象年(12月=今年 / 1月=前年)の件数>=3 かつ未dismissなら

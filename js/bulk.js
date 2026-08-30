@@ -100,15 +100,20 @@ App.bulk = (function () {
 
   function showLoading(n) {
     const ov = document.getElementById('bulk-overlay');
-    ov.hidden = false;
+    App.overlay.open(ov);
     ov.innerHTML = `<div class="bulk-loading">写真を読み込み中…（${n}枚）</div>`;
   }
 
   function close() {
     const ov = document.getElementById('bulk-overlay');
-    ov.hidden = true; ov.innerHTML = '';
-    for (const g of groups.concat(pending)) for (const p of g.photos) URL.revokeObjectURL(p.url);
+    const toRevoke = groups.concat(pending);
     groups = []; pending = [];
+    // 中身を捨てるのも写真のURLを捨てるのも、閉じ終わってから。
+    // 先にやると、滑って降りていく最中の画面から写真が消える。
+    App.overlay.close(ov, () => {
+      ov.innerHTML = '';
+      for (const g of toRevoke) for (const p of g.photos) URL.revokeObjectURL(p.url);
+    });
   }
 
   function esc(s) {
@@ -192,7 +197,7 @@ App.bulk = (function () {
 
   function renderReview() {
     const ov = document.getElementById('bulk-overlay');
-    ov.hidden = false;
+    App.overlay.open(ov);
     const lead = groups.length
       ? `${countPhotos()}枚を ${groups.length}グループに整理しました。直してまとめて保存。`
       : '「＋写真を追加」で写真を選ぶと、日付と場所で自動グループ分けします。';
@@ -213,7 +218,7 @@ App.bulk = (function () {
   // ×：閉じるだけ。表示中の未保存カードは退避して保持（再オープンで戻る）
   function hide() {
     pending = pending.concat(groups); groups = [];
-    document.getElementById('bulk-overlay').hidden = true;
+    App.overlay.close(document.getElementById('bulk-overlay'));
   }
 
   // 保存ボタン。場所を選んだグループが0なら無効化して促す。
@@ -602,7 +607,7 @@ App.bulk = (function () {
   function pickLocationFor(i) {
     const start = groupLatLng(groups[i]) || mapCenter();
     document.body.classList.add('picking'); // 集中モード：関係ないUIをCSSで隠す
-    document.getElementById('bulk-overlay').hidden = true; // 地図を見せる
+    App.overlay.close(document.getElementById('bulk-overlay')); // 地図を見せる
     App.map.startPickLocation(start.lat, start.lng);
     // ピック中は「地図上の店(POI)タップ」でその店を選べるようにする（finishPickで元に戻す）
     prevPlaceClick = App.map.getPlaceClickHandler ? App.map.getPlaceClickHandler() : null;
@@ -695,7 +700,7 @@ App.bulk = (function () {
     prevPlaceClick = null;
     document.body.classList.remove('picking');    // 集中モード解除＝UIが元に戻る
     const bar = document.getElementById('bulk-pickbar'); if (bar) bar.hidden = true;
-    document.getElementById('bulk-overlay').hidden = false;
+    App.overlay.open(document.getElementById('bulk-overlay'));
     renderReview();
   }
 

@@ -37,9 +37,12 @@ App.tripEdit = (function () {
 
     function close() {
       if (busy) return;
-      box.hidden = true;
-      box.innerHTML = '';
-      document.body.classList.remove('editor-open');
+      // 中身を捨てるのは閉じ終わってから。先に捨てると滑っている最中の画面が空になる。
+      // 印を外すのも同じで、先に外すと地図の浮きボタンが滑っている画面の上に顔を出す。
+      App.overlay.close(box, function () {
+        box.innerHTML = '';
+        document.body.classList.remove('editor-open');
+      });
     }
 
     function persist(next, errBox) {
@@ -64,7 +67,7 @@ App.tripEdit = (function () {
     // ---- 一覧 ----
     function renderList() {
       box.innerHTML =
-        '<div class="ge-panel">' +
+        '<div class="ge-panel ov-card">' +
         '<div class="ge-head"><div class="ge-title">旅行</div>' +
         '<button class="x-btn" aria-label="閉じる"><i class="ph ph-x"></i></button></div>' +
         '<p class="te-lead">期間を決めておくと、その間の記録はぜんぶこの旅行のものになります。' +
@@ -110,7 +113,7 @@ App.tripEdit = (function () {
       var editing = index >= 0 ? rows[index] : { id: '', label: '', start: '', end: '' };
       var draft = { id: editing.id, label: editing.label, start: editing.start, end: editing.end };
       box.innerHTML =
-        '<div class="ge-panel">' +
+        '<div class="ge-panel ov-card">' +
         '<div class="ge-head"><div class="ge-title">' + (index >= 0 ? '旅行を編集' : '旅行を追加') + '</div>' +
         '<button class="x-btn" aria-label="閉じる"><i class="ph ph-x"></i></button></div>' +
         '<input type="text" class="ge-label te-name-input" placeholder="旅行の名前（例 沖縄旅行）" maxlength="20">' +
@@ -148,7 +151,7 @@ App.tripEdit = (function () {
     }
 
     renderList();
-    box.hidden = false;
+    App.overlay.open(box);
     // 地図の上に浮くボタン（z-index:500）はこのオーバーレイを突き抜けるので、印を付けて隠す
     document.body.classList.add('editor-open');
   }
