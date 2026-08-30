@@ -260,6 +260,19 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
 .mem-side { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center;
   justify-content: space-between; padding: 1px 2px 1px 4px; }
 .mem-go { color: #c4bdb2; font-size: 16px; }
+/* 閉じるはアプリ中これ1つ。見た目は32pxの丸、指の当たり判定だけ44pxに広げる。
+   丸そのものを44pxにすると、思い出カードのような小さいカードで×が主役になってしまう。 */
+.x-btn { position: relative; width: 32px; height: 32px; flex: 0 0 auto;
+  border: none; border-radius: 50%; background: var(--surface-2); color: var(--text-muted);
+  font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+/* ⚠️この当たり判定はボタンの外へはみ出している。親に overflow:hidden を足すと
+   黙って切り取られ、見た目は変わらないまま押しにくさだけ戻る。 */
+.x-btn::after { content: ''; position: absolute; inset: -6px; } /* 32+6+6 = 44 */
+.x-btn:active { transform: scale(.96); }
+/* 全画面で出るものは画面の右上に置く（カードの中に流し込むものは何も付けない） */
+.x-btn.x-fixed { position: absolute; top: calc(14px + var(--safe-top)); right: 14px; z-index: 3; }
+/* 写真やポスターの上に載るもの */
+.x-btn.on-dark { background: rgba(255,255,255,.14); color: #fff; backdrop-filter: blur(6px); }
 .mem-x { width: 24px; height: 24px; border-radius: 50%; flex: 0 0 auto;
   background: var(--surface-2); color: var(--text-muted); font-size: 13px;
   display: flex; align-items: center; justify-content: center; }
