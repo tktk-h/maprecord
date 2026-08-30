@@ -1212,8 +1212,11 @@ body.editor-open #review-back { display: none !important; }
    色を変えるだけなら合成が起きず、幕とカードを別々に動かせる利点もある。 */
 .ov-fade { background-color: transparent; transition: background-color var(--ov-dur) var(--ov-ease); }
 .ov-fade.ov-open { background-color: var(--ov-scrim); }
-/* カードは画面の外（自分の高さぶん下）から上がってくる */
-.ov-fade > .ov-card { transform: translateY(100%); transition: transform var(--ov-dur) var(--ov-ease); }
+/* カードは画面の外から上がってくる。
+   ⚠️100% にしない。あれは「カード自身の高さ」ぶんなので、中身が少なくて背の低いカード
+   （旅行が0件のときの一覧など）は下げても画面の中に残り、途中で止まって消えたように見える。
+   画面の高さで下げれば、カードの背丈にかかわらず必ず外まで出る。 */
+.ov-fade > .ov-card { transform: translateY(100dvh); transition: transform var(--ov-dur) var(--ov-ease); }
 .ov-fade.ov-open > .ov-card { transform: translateY(0); }
 /* ⚠️カードを画面の外まで下げているので、そのぶんスクロール領域が伸びて開いた瞬間に跳ねる。
    出入りしている間と閉じている間はスクロールを止める。
