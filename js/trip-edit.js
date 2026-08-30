@@ -41,7 +41,10 @@ App.tripEdit = (function () {
       // 印を外すのも同じで、先に外すと地図の浮きボタンが滑っている画面の上に顔を出す。
       App.overlay.close(box, function () {
         box.innerHTML = '';
-        document.body.classList.remove('editor-open');
+        // ⚠️閉じている間にもう片方の編集画面が開いていることがある。印は共有しているので、
+        // 無条件に外すと開いたばかりの画面から剥がれ、地図の浮きボタンがその上に出る。
+        var other = document.getElementById('genre-editor');
+        if (!other || other.hidden) document.body.classList.remove('editor-open');
       });
     }
 

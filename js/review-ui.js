@@ -295,11 +295,20 @@ App.review = (function () {
     // 中身を捨てるのも、写真の後始末も、印を外すのも「閉じ終わってから」。
     // 先にやると、滑って降りていく最中の画面が空になり、
     // 抑えていた地図の浮きボタン（z-index:500）がその上に顔を出す。
+    // ⚠️閉じている間に、次のふりかえり画面がもう開いていることがある
+    // （スライド→まとめ は hideAll(); showPage(); と続けて呼ぶ）。
+    // 予約した後始末を無条件に走らせると、開いたばかりの総集編から印を剥がしてしまい、
+    // 抑えていた地図のボタン（現在地・まとめて）がその上に出てくる。
+    // だから「いま出ているか」は予約した時点ではなく、発火した時点で見る。
+    function anyOpen() {
+      return ids.some(function (i) { var e = el(i); return e && !e.hidden; });
+    }
     function finished() {
       closing -= 1;
       if (closing > 0) return;
-      clearPreview();
-      document.body.classList.remove('reviewing'); // 現在地/写真追加ボタンの抑制を解除
+      var poster = el('poster-preview');
+      if (!poster || poster.hidden) clearPreview(); // 新しいポスターが出ていれば、その写真は捨てない
+      if (!anyOpen()) document.body.classList.remove('reviewing');
     }
     ids.forEach(function (i) {
       var e = el(i);
@@ -308,7 +317,10 @@ App.review = (function () {
       closing += 1;
       App.overlay.close(e, function () { e.innerHTML = ''; finished(); });
     });
-    if (!closing) { clearPreview(); document.body.classList.remove('reviewing'); }
+    if (!closing) {
+      clearPreview();
+      if (!anyOpen()) document.body.classList.remove('reviewing');
+    }
   }
 
   function showSlides(data) {
