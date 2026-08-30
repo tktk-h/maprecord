@@ -100,10 +100,18 @@ function wireUI() {
     const panel = document.getElementById('filter-panel');
     const btn = document.getElementById('filter-toggle');
     if (!panel || !btn) return;
-    const p = panel.getBoundingClientRect();
+    // ⚠️パネル自身の getBoundingClientRect を基準にしてはいけない。あれは transform を
+    // 「かけたあと」の見た目の箱で、測る時点のパネルは scale(.1) に縮んでいる。
+    // 縮んだ箱の左端を基準にすると原点がずれ、その原点でまた縮むので、
+    // 開くたびに左右へ振れながら中央へ寄っていく（実測 180→342→196→327…）。
+    // 親（topbar）は変形されないので座標を信用でき、offsetLeft は変形を無視した
+    // レイアウト値なので、この2つを足せばパネルの素の左端が出る。
+    const op = panel.offsetParent || panel.parentElement;
+    if (!op) return;
+    const panelLeft = op.getBoundingClientRect().left + panel.offsetLeft;
     const b = btn.getBoundingClientRect();
-    if (!p.width) return; // 隠れていて測れないときは触らない
-    panel.style.setProperty('--fp-origin', Math.round(b.left + b.width / 2 - p.left) + 'px 0');
+    if (!b.width) return; // 隠れていて測れないときは触らない
+    panel.style.setProperty('--fp-origin', Math.round(b.left + b.width / 2 - panelLeft) + 'px 0');
   }
   document.getElementById('filter-toggle').addEventListener('click', () => {
     const bar = document.getElementById('topbar');
