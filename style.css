@@ -1,7 +1,10 @@
 /* ===== デザイントークン ===== */
 :root {
   --ov-dur: .5s;          /* 画面が出入りする速さ。ここ1つで全部変わる */
-  --ov-ease: cubic-bezier(.32,.72,0,1);
+  --ov-ease: cubic-bezier(.32,.72,0,1);   /* 出るとき：すっと入って落ち着く */
+  --ov-dur-out: .3s;      /* しまうときは短く。降りきったあとの「間」を詰める */
+  --ov-exit: cubic-bezier(.4,0,1,1);      /* しまうとき：加速して抜ける。ease-out だと
+                                             見た目は降りきっているのに時間だけ残り、間に見える */
   --bg: #f4f1ec;          /* 温かみのあるオフホワイト（アプリ背景） */
   --surface: #fffefb;     /* パネル・シート・カード */
   --surface-2: #efebe4;   /* 少し沈んだ面・ホバー */
@@ -423,8 +426,9 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
   box-shadow: 0 12px 34px rgba(45,38,30,.14), 0 2px 8px rgba(45,38,30,.06);
   padding: 18px; margin-top: 2px; max-width: 360px;
   transform-origin: var(--fp-origin, 100% 0); transform: scale(.1); opacity: 0;
+  transition: transform var(--ov-dur-out) var(--ov-exit), opacity var(--ov-dur-out) var(--ov-exit); }
+#filter-panel.ov-open { transform: scale(1); opacity: 1;
   transition: transform var(--ov-dur) var(--ov-ease), opacity var(--ov-dur) var(--ov-ease); }
-#filter-panel.ov-open { transform: scale(1); opacity: 1; }
 @media (prefers-reduced-motion: reduce) { #filter-panel { transition: none; } }
 .filter-title { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; color: var(--text); }
 .filter-title .ph { color: var(--accent-strong); font-size: 17px; }
@@ -743,8 +747,8 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
      transform をスマホ幅の中だけに書くのは、広い画面では流れの中にいて画面外へ飛ぶため。
      速さは下シート（App.sheet）と同じ値を借りて、動きの手触りを揃えている。 */
   #calendar-view { position: absolute; inset: 0; z-index: 40;
-    transform: translateX(100%); transition: transform var(--ov-dur) var(--ov-ease); }
-  #calendar-view.ov-open { transform: translateX(0); }
+    transform: translateX(100%); transition: transform var(--ov-dur-out) var(--ov-exit); }
+  #calendar-view.ov-open { transform: translateX(0); transition: transform var(--ov-dur) var(--ov-ease); }
   /* 高さで表示量を決める＝見えている分だけが中身のスクロール範囲になる */
   #panel { position: absolute; left: 0; right: 0; bottom: 0; width: auto;
     height: var(--sheet-h, 12dvh); max-height: none; border: none;
@@ -1224,21 +1228,21 @@ body.editor-open #review-back { display: none !important; }
    速さは :root の --ov-dur ひとつで決まる。地図↔カレンダー、タブの下地も同じ値を使う。 */
 
 /* 全面が中身の画面：全体を下から持ち上げる */
-.ov-slide { transform: translateY(100%); transition: transform var(--ov-dur) var(--ov-ease); }
-.ov-slide.ov-open { transform: translateY(0); }
+.ov-slide { transform: translateY(100%); transition: transform var(--ov-dur-out) var(--ov-exit); }
+.ov-slide.ov-open { transform: translateY(0); transition: transform var(--ov-dur) var(--ov-ease); }
 
 /* 幕＋カードの画面。
    ⚠️幕は opacity ではなく背景色そのものを濃くする。opacity は要素まるごとを透かすので
    iOS が合成レイヤーを作り直し、背景が一瞬ちらつくことがある。
    色を変えるだけなら合成が起きず、幕とカードを別々に動かせる利点もある。 */
-.ov-fade { background-color: transparent; transition: background-color var(--ov-dur) var(--ov-ease); }
-.ov-fade.ov-open { background-color: var(--ov-scrim); }
+.ov-fade { background-color: transparent; transition: background-color var(--ov-dur-out) var(--ov-exit); }
+.ov-fade.ov-open { background-color: var(--ov-scrim); transition: background-color var(--ov-dur) var(--ov-ease); }
 /* カードは画面の外から上がってくる。
    ⚠️100% にしない。あれは「カード自身の高さ」ぶんなので、中身が少なくて背の低いカード
    （旅行が0件のときの一覧など）は下げても画面の中に残り、途中で止まって消えたように見える。
    画面の高さで下げれば、カードの背丈にかかわらず必ず外まで出る。 */
-.ov-fade > .ov-card { transform: translateY(100dvh); transition: transform var(--ov-dur) var(--ov-ease); }
-.ov-fade.ov-open > .ov-card { transform: translateY(0); }
+.ov-fade > .ov-card { transform: translateY(100dvh); transition: transform var(--ov-dur-out) var(--ov-exit); }
+.ov-fade.ov-open > .ov-card { transform: translateY(0); transition: transform var(--ov-dur) var(--ov-ease); }
 /* ⚠️カードを画面の外まで下げているので、そのぶんスクロール領域が伸びて開いた瞬間に跳ねる。
    出入りしている間と閉じている間はスクロールを止める。
    !important なのは、各画面が #settings-panel のような ID で overflow:auto を指定していて、
