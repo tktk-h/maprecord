@@ -1063,13 +1063,9 @@ body.editor-open #review-back { display: none !important; }
   border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
 .pv-actions { display: flex; align-items: center; gap: 12px; }
 .pv-actions .rv-btn { margin-top: 0; }
-.pv-close { background: none; border: 1px solid rgba(255,255,255,.35); border-radius: var(--radius-pill);
-  padding: 10px 18px; color: rgba(255,255,255,.85); font-size: 14px; cursor: pointer; }
 .rv-f-msg { margin: 0 0 10px; font-size: 13px; color: var(--accent); }
 .rv-f-go { width: 100%; }
 .rv-hero-dates { margin-top: 4px; font-size: 13px; color: var(--text-muted); }
-.rv-close { display: block; margin-top: 22px; background: none; border: 1px solid var(--border);
-  border-radius: var(--radius-pill); padding: 8px 18px; color: var(--text); cursor: pointer; }
 
 /* 総集編 */
 .rv-page { max-width: 480px; margin: 0 auto; padding: 0 0 48px; }

@@ -437,14 +437,14 @@ App.review = (function () {
     clearPreview();
     previewUrl = URL.createObjectURL(blob);
     host.innerHTML =
+      '<button class="x-btn x-fixed on-dark" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
       '<div class="pv-wrap">' +
       '<img class="pv-img" alt="" src="' + previewUrl + '">' +
       '<div class="pv-actions">' +
       '<button class="rv-btn pv-share">共有・保存</button>' +
-      '<button class="pv-close">閉じる</button>' +
       '</div></div>';
     host.querySelector('.pv-share').onclick = function () { sharePoster(blob, period); };
-    host.querySelector('.pv-close').onclick = function () {
+    host.querySelector('.x-btn').onclick = function () {
       host.hidden = true; host.innerHTML = '';
       clearPreview();
     };
@@ -603,17 +603,21 @@ App.review = (function () {
       ? App.trips.clone(App.trips.list).reverse() : [];
     var host = el('review-picker');
     if (!years.length) {
-      host.innerHTML = '<div class="rv-picker"><div class="rv-picker-head">ふりかえり</div>' +
+      host.innerHTML =
+        '<button class="x-btn x-fixed" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
+        '<div class="rv-picker"><div class="rv-picker-head">ふりかえり</div>' +
         '<p class="rv-empty">まだ記録がありません。おでかけを記録するとここに出ます。</p>' +
-        '<button class="rv-btn rv-close">閉じる</button></div>';
-      host.querySelector('.rv-close').onclick = hideAll;
+        '</div>';
+      host.querySelector('.x-btn').onclick = hideAll;
       host.hidden = false;
       return;
     }
     var items = years.map(function (y) {
       return '<button class="rv-year" data-year="' + y + '">' + y + '年</button>';
     }).join('');
-    host.innerHTML = '<div class="rv-picker"><div class="rv-picker-head">どの期間をふりかえる？</div>' +
+    host.innerHTML =
+      '<button class="x-btn x-fixed" aria-label="閉じる"><i class="ph ph-x"></i></button>' +
+      '<div class="rv-picker"><div class="rv-picker-head">どの期間をふりかえる？</div>' +
       '<div class="rv-years">' + items + '<button class="rv-year rv-all">これまで</button></div>' +
       (trips.length
         ? '<button class="rv-trip-open">旅行から選ぶ</button>' +
@@ -627,7 +631,7 @@ App.review = (function () {
       '<input type="text" class="rv-f-label" maxlength="10" placeholder="沖縄旅行"></label>' +
       '<p class="rv-f-msg" hidden></p>' +
       '<button class="rv-btn rv-f-go">見る</button></div>' +
-      '<button class="rv-btn rv-close">閉じる</button></div>';
+      '</div>';
 
     host.querySelectorAll('.rv-year[data-year]').forEach(function (b) {
       b.onclick = function () { open(App.reviewStats.makeYearPeriod(Number(b.getAttribute('data-year')))); };
@@ -680,7 +684,7 @@ App.review = (function () {
         listHost.appendChild(b);
       });
     }
-    host.querySelector('.rv-close').onclick = hideAll;
+    host.querySelector('.x-btn').onclick = hideAll;
     host.hidden = false;
   }
 
