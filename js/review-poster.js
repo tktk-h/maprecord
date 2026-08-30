@@ -66,16 +66,35 @@ App.reviewPoster = (function () {
       if (!(w > 0)) return HEAD_BASE;
       return Math.min(HEAD_BASE, Math.floor(HEAD_BASE * HEAD_MAX_W / w));
     };
+    const two = (a, b) => ({ lines: [a, b],
+      size: Math.max(HEAD_MIN, Math.min(HEAD_WRAP_MAX, Math.min(fit(a), fit(b)))) });
     const one = fit(text);
     const at = text.indexOf('〜');
-    // 先頭が 〜 のときに割ると空行ができるので、at<=0 は1行のまま
-    if (one >= HEAD_WRAP_AT || at <= 0) {
-      return { lines: [text], size: Math.max(HEAD_MIN, one) };
+    if (one >= HEAD_WRAP_AT) return { lines: [text], size: one }; // 十分大きいまま1行に収まる
+    // 日付のラベルは 〜 の前で割る。2行目は 〜 から始める。
+    // 先頭が 〜 のときに割ると空行ができるので、at<=0 はここを通さない。
+    if (at > 0) return two(text.slice(0, at), text.slice(at));
+    // 縮めれば1行に収まるならそのまま
+    if (one >= HEAD_MIN) return { lines: [text], size: one };
+    // 下限まで縮めても収まらない＝そのまま描くと左右にはみ出して切れる。
+    // 旅行名（20文字まで）がここに来る。見出しの手入力は10文字までなので、以前は起きなかった。
+    const half = splitInHalf(text, measure);
+    return half.length === 2 ? two(half[0], half[1]) : { lines: [text], size: HEAD_MIN };
+  }
+
+  // 幅がなるべく半々になるところで2つに割る。文字数で割ると 'Kyoto旅行' のような
+  // 半角混じりで偏るので、実際に測って決める。絵文字を壊さないよう符号点で扱う。
+  function splitInHalf(text, measure) {
+    const chars = Array.from(text);
+    if (chars.length < 2) return [text];
+    const total = measure(text, HEAD_BASE);
+    let best = 1;
+    let bestGap = Infinity;
+    for (let i = 1; i < chars.length; i += 1) {
+      const gap = Math.abs(measure(chars.slice(0, i).join(''), HEAD_BASE) * 2 - total);
+      if (gap < bestGap) { bestGap = gap; best = i; }
     }
-    const a = text.slice(0, at);
-    const b = text.slice(at); // 2行目は 〜 から始める
-    const size = Math.min(HEAD_WRAP_MAX, Math.min(fit(a), fit(b)));
-    return { lines: [a, b], size: Math.max(HEAD_MIN, size) };
+    return [chars.slice(0, best).join(''), chars.slice(best).join('')];
   }
 
   // 共有・保存のファイル名。ラベルはユーザーが打った文字なので、
@@ -459,10 +478,26 @@ App.reviewPoster = (function () {
     const long10 = planHeadline('あいうえおかきくけこ', measure);
     eq('head-long-1-line', long10.lines.length, 1);
     eq('head-long-size', long10.size, 92);
-    // 下限を割らない（入力は10文字までだが関数としては守る）
-    eq('head-min-size', planHeadline(new Array(21).join('あ'), measure).size, 72);
     // 先頭が 〜 のときは空行を作らない
     eq('head-leading-tilde-1-line', planHeadline('〜あいうえおかきくけこ', measure).lines.length, 1);
+
+    // 旅行名は20文字まで入る（見出しの手入力は10文字まで）。縮めるだけでは収まらないので割る。
+    // ここが守れないと、ポスターの見出しが左右にはみ出して切れる。
+    const widest = (p) => Math.max.apply(null, p.lines.map((t) => measure(t, p.size)));
+    ['あ', 'あいうえおかきくけこ', new Array(14).join('あ'), new Array(16).join('あ'),
+      new Array(21).join('あ'), '2026', 'これまで', '2025/12/30〜2026/1/3', '〜あいうえおかきくけこ',
+    ].forEach(function (label) {
+      const p = planHeadline(label, measure);
+      eq('head-fits(' + label.length + '文字)', widest(p) <= 920, true);
+    });
+    const long20 = planHeadline(new Array(21).join('あ'), measure);
+    eq('head-20-wraps', long20.lines.length, 2);
+    eq('head-20-halves', long20.lines.map(function (t) { return t.length; }), [10, 10]);
+    // 半角混じりは文字数でなく幅で半分にする（'Kyoto' は全角5文字ぶんではない）
+    eq('head-mixed-split', planHeadline('Kyotoあいうえおかきくけこさしすせそ', measure).lines[0], 'Kyotoあいうえおか');
+    // 絵文字を符号点の途中で割らない
+    eq('head-emoji-intact', planHeadline('🐣あいうえおかきくけこさしすせそたち', measure).lines.join(''),
+      '🐣あいうえおかきくけこさしすせそたち');
 
     // --- 共有ファイル名 ---
     eq('file-year', posterFileName('2026'), 'ashiato-2026.png');
