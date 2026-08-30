@@ -658,20 +658,24 @@ App.review = (function () {
       var warnTrip = function (t) { tmsg.textContent = t; tmsg.hidden = false; };
       host.querySelector('.rv-trip-open').onclick = function () {
         listHost.hidden = !listHost.hidden;
+        tmsg.hidden = true; // 前に出した「記録がない」を畳んだ先まで持ち越さない
       };
       trips.forEach(function (t) {
         var n = countInRange(all, t.start, t.end);
+        var period = App.reviewStats.makeTripPeriod(t);
         var b = document.createElement('button');
         b.type = 'button';
         b.className = 'rv-trip';
-        // 旅行名はふたりが打った文字なので必ず esc する
+        // 日付を出すのは、同じ名前の旅行（「京都」を2年続けて等）を見分けるため。
+        // 旅行名はふたりが打った文字なので必ず esc する（日付は組み立てた文字なので不要）。
         b.innerHTML = '<span class="rv-trip-name">' + esc(t.label) + '</span>' +
-          '<span class="rv-trip-sub">' + esc(App.trips.lengthLabel(t)) + ' ・ ' + n + '件</span>';
+          '<span class="rv-trip-sub">' + App.reviewStats.formatDateLine(period) +
+          ' ・ ' + n + '件</span>';
         b.onclick = function () {
           // 0件の旅行を開くと空の総集編になるので、ここで止めて理由を出す
           if (!n) { warnTrip('「' + t.label + '」の記録はまだないみたい'); return; }
           tmsg.hidden = true;
-          open(App.reviewStats.makeTripPeriod(t));
+          open(period);
         };
         listHost.appendChild(b);
       });
