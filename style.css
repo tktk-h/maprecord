@@ -1,5 +1,7 @@
 /* ===== デザイントークン ===== */
 :root {
+  --ov-dur: .5s;          /* 画面が出入りする速さ。ここ1つで全部変わる */
+  --ov-ease: cubic-bezier(.32,.72,0,1);
   --bg: #f4f1ec;          /* 温かみのあるオフホワイト（アプリ背景） */
   --surface: #fffefb;     /* パネル・シート・カード */
   --surface-2: #efebe4;   /* 少し沈んだ面・ホバー */
@@ -104,7 +106,7 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
    速さは地図↔カレンダーのスライドと同じ値で揃えている。 */
 #vt-thumb { position: absolute; top: 4px; bottom: 4px; left: 0; width: 0;
   border-radius: var(--radius-pill); background: var(--accent-soft); pointer-events: none;
-  transition: transform .32s cubic-bezier(.32,.72,0,1), width .32s cubic-bezier(.32,.72,0,1); }
+  transition: transform var(--ov-dur) var(--ov-ease), width var(--ov-dur) var(--ov-ease); }
 #vt-thumb.no-anim { transition: none; } /* 起動時の初回配置。付けたまま動かすと左から滑ってくる */
 #view-toggle button {
   position: relative; z-index: 1; /* 下地の上に文字を出す */
@@ -399,7 +401,7 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
   overflow-wrap: anywhere; word-break: break-word; }
 
 /* ===== ライトボックス ===== */
-#lightbox { position: fixed; inset: 0; z-index: 2000; background: rgba(28,24,20,.94);
+#lightbox { position: fixed; inset: 0; z-index: 2000; --ov-scrim: rgba(28,24,20,.94);
   display: flex; align-items: center; justify-content: center; }
 #lightbox[hidden] { display: none; }
 .lb-img { max-width: 92vw; max-height: 86vh; object-fit: contain; border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); }
@@ -464,7 +466,7 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
    項目が増えても絞り込みを圧迫しないよう、独立したオーバーレイにする。
    重なり順：ジャンル編集(62) > 設定(61) > ヘッダー(60) */
 #settings-panel { position: fixed; inset: 0; z-index: 61; overflow: auto;
-  background: rgba(45, 38, 30, .35); display: flex; align-items: flex-start; justify-content: center;
+  --ov-scrim: rgba(45, 38, 30, .35); display: flex; align-items: flex-start; justify-content: center;
   padding: calc(16px + var(--safe-top)) 12px calc(40px + var(--safe-bottom)); }
 #settings-panel[hidden] { display: none; }
 .set-sheet { width: 100%; max-width: 460px; background: var(--bg); border-radius: 18px;
@@ -720,7 +722,7 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
      transform をスマホ幅の中だけに書くのは、広い画面では流れの中にいて画面外へ飛ぶため。
      速さは下シート（App.sheet）と同じ値を借りて、動きの手触りを揃えている。 */
   #calendar-view { position: absolute; inset: 0; z-index: 40;
-    transform: translateX(100%); transition: transform .32s cubic-bezier(.32,.72,0,1); }
+    transform: translateX(100%); transition: transform var(--ov-dur) var(--ov-ease); }
   #calendar-view.ov-open { transform: translateX(0); }
   /* 高さで表示量を決める＝見えている分だけが中身のスクロール範囲になる */
   #panel { position: absolute; left: 0; right: 0; bottom: 0; width: auto;
@@ -1136,7 +1138,7 @@ body.editor-open #review-back { display: none !important; }
 
 /* ===== ジャンル編集 ===== */
 #genre-editor { position: fixed; inset: 0; z-index: 62; overflow: auto;
-  background: rgba(45, 38, 30, .35); display: flex; align-items: flex-start; justify-content: center;
+  --ov-scrim: rgba(45, 38, 30, .35); display: flex; align-items: flex-start; justify-content: center;
   padding: calc(24px + var(--safe-top)) 12px calc(24px + var(--safe-bottom)); }
 #genre-editor[hidden] { display: none; }
 .ge-panel { width: 100%; max-width: 460px; background: var(--bg); border-radius: 16px;
@@ -1169,7 +1171,7 @@ body.editor-open #review-back { display: none !important; }
 
 /* ===== 旅行（日をまたぐまとまり）の編集 ===== */
 #trip-editor { position: fixed; inset: 0; z-index: 62; overflow: auto;
-  background: rgba(45, 38, 30, .35); display: flex; align-items: flex-start; justify-content: center;
+  --ov-scrim: rgba(45, 38, 30, .35); display: flex; align-items: flex-start; justify-content: center;
   padding: calc(24px + var(--safe-top)) 12px calc(24px + var(--safe-bottom)); }
 #trip-editor[hidden] { display: none; }
 .te-lead { font-size: 12px; line-height: 1.6; color: var(--text-muted); margin: 0 0 10px; }
@@ -1198,20 +1200,26 @@ body.editor-open #review-back { display: none !important; }
 }
 
 /* ===== 画面が出るときの動き（クラスの付け外しは js/overlay.js） =====
-   アプリ全体で速さを1つに揃えている（地図↔カレンダー、タブの下地と同じ値）。 */
+   速さは :root の --ov-dur ひとつで決まる。地図↔カレンダー、タブの下地も同じ値を使う。 */
 
 /* 全面が中身の画面：全体を下から持ち上げる */
-.ov-slide { transform: translateY(100%); transition: transform .32s cubic-bezier(.32,.72,0,1); }
+.ov-slide { transform: translateY(100%); transition: transform var(--ov-dur) var(--ov-ease); }
 .ov-slide.ov-open { transform: translateY(0); }
 
-/* 幕＋カードの画面：幕はフェード、カードだけが下から。
-   幕ごと持ち上げると、暗い幕が下からせり上がってきて変に見える。 */
-.ov-fade { opacity: 0; transition: opacity .32s cubic-bezier(.32,.72,0,1); }
-.ov-fade.ov-open { opacity: 1; }
-/* 動かす距離を画面の高さぶんにしないのは、器が overflow:auto を持っていて、
-   中身を大きくずらすとスクロール領域が伸びて開いた瞬間に跳ねるため。 */
-.ov-fade > .ov-card { transform: translateY(24px); transition: transform .32s cubic-bezier(.32,.72,0,1); }
+/* 幕＋カードの画面。
+   ⚠️幕は opacity ではなく背景色そのものを濃くする。opacity は要素まるごとを透かすので
+   iOS が合成レイヤーを作り直し、背景が一瞬ちらつくことがある。
+   色を変えるだけなら合成が起きず、幕とカードを別々に動かせる利点もある。 */
+.ov-fade { background-color: transparent; transition: background-color var(--ov-dur) var(--ov-ease); }
+.ov-fade.ov-open { background-color: var(--ov-scrim); }
+/* カードは画面の外（自分の高さぶん下）から上がってくる */
+.ov-fade > .ov-card { transform: translateY(100%); transition: transform var(--ov-dur) var(--ov-ease); }
 .ov-fade.ov-open > .ov-card { transform: translateY(0); }
+/* ⚠️カードを画面の外まで下げているので、そのぶんスクロール領域が伸びて開いた瞬間に跳ねる。
+   出入りしている間と閉じている間はスクロールを止める。
+   !important なのは、各画面が #settings-panel のような ID で overflow:auto を指定していて、
+   クラス指定では必ず負けるため（実際これで一度すり抜けた）。 */
+.ov-fade:not(.ov-open), .ov-fade.ov-anim { overflow: hidden !important; }
 
 /* 動きを減らす設定では滑らせない。待ち時間は js/overlay.js が CSS から読むので、
    ここで切れば「待たずに閉じる」も自動的にそうなる。 */

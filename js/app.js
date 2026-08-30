@@ -88,7 +88,9 @@ function wireUI() {
   // 設定の開閉。ジャンル編集やふりかえりと同じ、独立したオーバーレイ。
   const settingsPanel = document.getElementById('settings-panel');
   document.getElementById('settings-toggle').addEventListener('click', () => {
-    if (settingsPanel.hidden) openSettings(); else closeSettings();
+    // 開いているかどうかは ov-open で見る。hidden は閉じ終わるまで false のままなので、
+    // 閉じかけの最中に歯車を押すと「開く」と「閉じる」を取り違える。
+    if (settingsPanel.classList.contains('ov-open')) closeSettings(); else openSettings();
   });
   document.getElementById('settings-close').addEventListener('click', closeSettings);
   // シートの外（背景）を押したら閉じる

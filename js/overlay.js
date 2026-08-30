@@ -35,9 +35,27 @@ App.overlay = (function () {
     if (!el) return;
     cancel(el);
     el.hidden = false;
+    // 動いている間はスクロールを止める。カードを画面の外まで下げているので、
+    // そのぶんスクロール領域が伸びて、開いた瞬間に中身が跳ねる（実測で 809→1522 に増えた）。
+    el.classList.add('ov-anim');
+    // ⚠️ページが見えていないと requestAnimationFrame は永久に来ない。
+    // そのまま待つと ov-open が付かず、透明な幕が画面を覆ったまま操作できなくなる。
+    // 見えていないなら動かす意味もないので、その場で開いた状態にする。
+    if (document.hidden) {
+      el.classList.add('ov-open');
+      el.classList.remove('ov-anim');
+      return;
+    }
     // 同じフレームでクラスを付けると「最初からそこにあった」と見なされ、動かずに現れる
     requestAnimationFrame(function () {
-      requestAnimationFrame(function () { el.classList.add('ov-open'); });
+      requestAnimationFrame(function () {
+        el.classList.add('ov-open');
+        var ms = durationMs(el);
+        pending[key(el)] = setTimeout(function () {
+          cancel(el);
+          el.classList.remove('ov-anim');
+        }, ms + 20);
+      });
     });
   }
 
@@ -46,10 +64,12 @@ App.overlay = (function () {
   function close(el, done) {
     if (!el) { if (done) done(); return; }
     cancel(el);
-    if (el.hidden) { el.classList.remove('ov-open'); if (done) done(); return; }
+    if (el.hidden) { el.classList.remove('ov-open', 'ov-anim'); if (done) done(); return; }
     el.classList.remove('ov-open');
+    el.classList.add('ov-anim'); // 降りていく間もスクロールを止める（open 側と同じ理由）
     var finish = function () {
       cancel(el);
+      el.classList.remove('ov-anim');
       el.hidden = true;
       if (done) done();
     };
