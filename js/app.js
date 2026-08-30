@@ -11,9 +11,22 @@ let mapDone = false;       // 地図の準備ができたか
 let painted = false;       // 最初の描画（ピン＋思い出カード）を済ませたか
 let leaving = false;       // 自分でログアウト中か（そのときの権限エラーは「外された」ではない）
 
+// 絞り込みを閉じる。絞り込みボタン以外に、地図のタップ（js/records.js）と
+// 設定を開いたときからも呼ばれる。印だけ外してパネルを閉じ忘れると、
+// パネルが出たまま浮きボタンの抑制が解けてしまう。
+function closeFilters() {
+  const bar = document.getElementById('topbar');
+  const panel = document.getElementById('filter-panel');
+  if (!bar) return;
+  if (!panel || !panel.classList.contains('ov-open')) { bar.classList.remove('filters-open'); return; }
+  App.overlay.close(panel, () => bar.classList.remove('filters-open'));
+}
+window.App = window.App || {};
+App.closeFilters = closeFilters; // js/records.js（地図タップ）から呼ぶ
+
 // 設定画面の開閉。body の印は検索バーの歯車を光らせるため。
 function openSettings() {
-  document.getElementById('topbar').classList.remove('filters-open'); // 絞り込みとは同時に開かない
+  closeFilters(); // 絞り込みとは同時に開かない
   refreshPhotoMigrateBtn(); // 開くたびに残り枚数を数え直す
   paintNotifyBtn();         // 通知のオンオフも見直す（端末の設定で外されていることがある）
   App.overlay.open(document.getElementById('settings-panel'));
@@ -81,8 +94,29 @@ function wireUI() {
   calBtn.addEventListener('click', showCalendar);
 
   // 絞り込みの開閉（スマホ用）
+  // 絞り込みは押したボタンの位置から広がる。原点は測って入れる（検索バーの幅や
+  // 文字サイズで動くので、決め打ちだと関係ない場所から広がってしまう）。
+  function setFilterOrigin() {
+    const panel = document.getElementById('filter-panel');
+    const btn = document.getElementById('filter-toggle');
+    if (!panel || !btn) return;
+    const p = panel.getBoundingClientRect();
+    const b = btn.getBoundingClientRect();
+    if (!p.width) return; // 隠れていて測れないときは触らない
+    panel.style.setProperty('--fp-origin', Math.round(b.left + b.width / 2 - p.left) + 'px 0');
+  }
   document.getElementById('filter-toggle').addEventListener('click', () => {
-    document.getElementById('topbar').classList.toggle('filters-open');
+    const bar = document.getElementById('topbar');
+    const panel = document.getElementById('filter-panel');
+    if (panel.classList.contains('ov-open')) {
+      // filters-open は絞り込みボタンを光らせるほかに、地図の浮きボタンも抑えている。
+      // 先に外すと、まだ縮んでいる途中のパネルの上にそのボタンが出てくる。
+      App.overlay.close(panel, () => bar.classList.remove('filters-open'));
+    } else {
+      bar.classList.add('filters-open');
+      App.overlay.open(panel);
+      setFilterOrigin(); // hidden が外れて場所が測れるようになった直後に決める
+    }
   });
 
   // 設定の開閉。ジャンル編集やふりかえりと同じ、独立したオーバーレイ。

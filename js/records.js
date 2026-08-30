@@ -1053,7 +1053,7 @@ App.records = (function () {
       // 絞り込みパネルを開いているときは、地図タップで閉じる
       const topbar = document.getElementById('topbar');
       if (topbar && topbar.classList.contains('filters-open')) {
-        topbar.classList.remove('filters-open');
+        App.closeFilters(); // 印を外すだけでなくパネルも閉じる（js/app.js）
         return;
       }
       // 詳細を開いているときは地図タップで閉じる。それ以外はシートを下げるだけ

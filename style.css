@@ -413,11 +413,18 @@ body.settings-open #settings-toggle { background: var(--accent-soft); color: var
 .lb-counter { position: absolute; bottom: calc(20px + var(--safe-bottom)); left: 0; right: 0; text-align: center; color: rgba(255,255,255,.85); font-size: 13px; }
 
 /* ===== 絞り込みパネル（温かみ・エモい・作り込み） ===== */
-#filter-panel { display: none; flex-basis: 100%; }
-#topbar.filters-open #filter-panel { display: flex; flex-direction: column; gap: 14px;
+/* 出し入れは App.overlay（hidden はアニメーションが終わってから付く）。
+   絞り込みボタンの位置を原点にして広がる。原点は js/app.js が測って --fp-origin に入れる
+   （検索バーの幅や文字サイズで動くので、決め打ちだと変な場所から広がる）。 */
+#filter-panel[hidden] { display: none; }
+#filter-panel { display: flex; flex-basis: 100%; flex-direction: column; gap: 14px;
   background: var(--surface); border-radius: var(--radius);
   box-shadow: 0 12px 34px rgba(45,38,30,.14), 0 2px 8px rgba(45,38,30,.06);
-  padding: 18px; margin-top: 2px; max-width: 360px; }
+  padding: 18px; margin-top: 2px; max-width: 360px;
+  transform-origin: var(--fp-origin, 100% 0); transform: scale(.9); opacity: 0;
+  transition: transform var(--ov-dur) var(--ov-ease), opacity var(--ov-dur) var(--ov-ease); }
+#filter-panel.ov-open { transform: scale(1); opacity: 1; }
+@media (prefers-reduced-motion: reduce) { #filter-panel { transition: none; } }
 .filter-title { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; color: var(--text); }
 .filter-title .ph { color: var(--accent-strong); font-size: 17px; }
 
