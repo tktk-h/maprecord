@@ -292,11 +292,11 @@ App.map = (function () {
   // upTo = その段の上限ズーム。radius を小さくするほど、ほどけやすい。
   // 見え方を変えたいときは、この表の数字だけ動かせばよい。
   const CLUSTER_STEPS = [
-    { upTo: 8,  radius: 220 }, // 地方をまたぐ引き
-    { upTo: 10, radius: 180 },
-    { upTo: 11, radius: 140 },
-    { upTo: 12, radius: 100 },
-    { upTo: 13, radius: 60 },  // ほどける直前。14以上は束ねない
+    { upTo: 8,  radius: 300 }, // 地方をまたぐ引き
+    { upTo: 10, radius: 260 },
+    { upTo: 11, radius: 220 },
+    { upTo: 12, radius: 180 },
+    { upTo: 13, radius: 140 }, // ほどける直前。14以上は束ねない
   ];
   // 何件から束ねるか。2件から束ねる。
   // 以前は5にしていた（radius 140 の一律だった頃、少し寄るだけで小さな束へ細かく
