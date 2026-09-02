@@ -287,17 +287,33 @@ App.map = (function () {
   // 近くても束ねてほしくないため。ここが「もう束ねない」の境目。
   const CLUSTER_MAX_ZOOM = 13;
 
-  // ズームを5段に区切り、段ごとに「これだけ近ければくっつく」距離(px)を変える。
-  // 引きでは大きくまとまり、寄るにつれて段を踏んでほどけ、16以上で必ず個別ピン。
-  // upTo = その段の上限ズーム。radius を小さくするほど、ほどけやすい。
-  // 見え方を変えたいときは、この表の数字だけ動かせばよい。
+  // 「どれくらい離れていたら別の場所か」を、画面のピクセルではなく地面の距離(km)で決める。
+  //
+  // ⚠️ライブラリの radius は画面ピクセル。引くほど 1px が地面の何百mにもなるので、
+  // ピクセルで書くとズームごとに意味が変わる。実際 z9・radius 260 は地面で約33kmに
+  // 相当し、30km離れた神戸と梅田がひとつに束ねられた。同じ場所かどうかは地面の話なので、
+  // 表はkmで書き、ピクセルへの換算はコードにやらせる。
+  //
+  // upTo = その段の上限ズーム。数字は「このズームでは何km以内を同じ場所とみなすか」。
+  // 神戸〜梅田が約30km。それを超えないかぎり、街どうしがくっつくことはない。
   const CLUSTER_STEPS = [
-    { upTo: 8,  radius: 300 }, // 地方をまたぐ引き
-    { upTo: 10, radius: 260 },
-    { upTo: 11, radius: 220 },
-    { upTo: 12, radius: 180 },
-    { upTo: 13, radius: 140 }, // ほどける直前。14以上は束ねない
+    { upTo: 8,  km: 25 },  // 地方をまたぐ引き
+    { upTo: 9,  km: 15 },
+    { upTo: 11, km: 6 },
+    { upTo: 12, km: 3 },
+    { upTo: 13, km: 1.5 }, // ほどける直前。14以上は束ねない
   ];
+
+  // 地面の距離(km) → ライブラリに渡す radius。
+  // supercluster は「512幅のタイル」基準の座標で距離を測るので、世界の横幅に対する
+  // 割合から逆算する。緯度で横幅が縮む分だけ効くが、この地図は日本しか映さないので
+  // 代表値ひとつで足りる。
+  const EARTH_M = 40075017;   // 赤道での世界一周
+  const CLUSTER_LAT = 35;     // 日本のだいたいの緯度
+  function radiusForKm(km, zoom) {
+    const worldM = EARTH_M * Math.cos(CLUSTER_LAT * Math.PI / 180);
+    return (km * 1000) * 512 * Math.pow(2, zoom) / worldM;
+  }
   // 何件から束ねるか。2件から束ねる。
   // 以前は5にしていた（radius 140 の一律だった頃、少し寄るだけで小さな束へ細かく
   // 割れるのが煩わしく、5未満を束ねないことで抑えていた）。いまは段ごとに距離が
@@ -432,22 +448,32 @@ App.map = (function () {
   // 段ごとの算出器を1つずつ持ち、いまのズームに当たる段へ渡すだけの入れ物。
   // ライブラリは algorithm の calculate() しか呼ばないので、これで差し替えられる。
   // 束ね方そのものは各段の SuperClusterAlgorithm に任せる（自前で書き直さない）。
+  // km は同じでも、ピクセルに直した値はズームごとに変わる。だからズーム1つにつき
+  // 算出器を1つ持つ（実際に見たズームぶんだけ、必要になってから作る）。
   function makeSteppedAlgorithm() {
     const Algo = markerClusterer.SuperClusterAlgorithm;
-    const steps = CLUSTER_STEPS.map((s) => ({
-      upTo: s.upTo,
-      algo: new Algo({ maxZoom: CLUSTER_MAX_ZOOM, radius: s.radius, minPoints: CLUSTER_MIN_POINTS }),
-    }));
+    const byZoom = new Map();
     let last = -1;
+    function algoFor(z) {
+      if (!byZoom.has(z)) {
+        const step = CLUSTER_STEPS.find((s) => z <= s.upTo)
+          || CLUSTER_STEPS[CLUSTER_STEPS.length - 1]; // 表より寄っていれば最後の段
+        byZoom.set(z, new Algo({
+          maxZoom: CLUSTER_MAX_ZOOM,
+          radius: radiusForKm(step.km, z),
+          minPoints: CLUSTER_MIN_POINTS,
+        }));
+      }
+      return byZoom.get(z);
+    }
     return {
       calculate(input) {
         const z = Math.round((input.map && input.map.getZoom()) || 0);
-        let idx = steps.findIndex((s) => z <= s.upTo);
-        if (idx === -1) idx = steps.length - 1; // 表より寄っていれば最後の段（16以上は個別になる）
-        const out = steps[idx].algo.calculate(input);
-        // 段をまたいだ回は必ず描き直させる。呼ばれた算出器から見れば「同じズームで
-        // 前と変わらない」でも、画面に出ているのは別の段が作った束だから。
-        if (idx !== last) { last = idx; return { clusters: out.clusters, changed: true }; }
+        const out = algoFor(z).calculate(input);
+        // ズームが動いた回は必ず描き直させる。呼ばれた算出器から見れば「前に来たときと
+        // 同じズーム」でも、画面に出ているのは別のズーム用の算出器が作った束だから。
+        // 同じズームのまま地図を動かしただけなら、ここは false のまま＝無駄に描き直さない。
+        if (z !== last) { last = z; return { clusters: out.clusters, changed: true }; }
         return out;
       },
     };
