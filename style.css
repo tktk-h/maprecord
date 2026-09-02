@@ -1341,23 +1341,47 @@ body.editor-open #review-back { display: none !important; }
    「いちばん通った場所／ジャンル／濃かった月」は答えが最初から出ていて、
    めくるだけの画面だった。候補をパラパラ回してから止まるようにする。 */
 
-/* 回っている間。文字が入れ替わるので、幅が動いても行が跳ねないよう高さを固定する。
-   一段暗くして「まだ確定していない」ことを見せる。 */
-.rv-spin { min-height: 1.2em; transition: color .18s, opacity .18s; }
-.rv-spin.rv-spinning { opacity: .55; }
-/* 止まった瞬間だけ、軽く前に出る */
-.rv-spin.rv-landed { animation: rv-land .34s cubic-bezier(.2,1.4,.4,1) both; }
-@keyframes rv-land { from { transform: scale(.82); opacity: .4; } to { transform: scale(1); opacity: 1; } }
+/* 回っている間。文字が入れ替わるので、行が跳ねないよう高さを確保する。
+   薄くしてぼかす＝「まだ確定していない」。着地したときの輪郭の差がそのまま効く。 */
+.rv-spin { position: relative; z-index: 0; min-height: 1.2em; }
+.rv-spin.rv-spinning { opacity: .42; filter: blur(2.5px); }
+
+/* 着地。前は0.82倍から育てていたが、育つ動きは柔らかく見える（＝ぬるっと）。
+   大きい所からぼけたまま落としてきて、行き過ぎてから戻す＝叩きつける動きにする。 */
+.rv-spin.rv-landed { animation: rv-land .46s cubic-bezier(.16,.9,.2,1) both; }
+@keyframes rv-land {
+  0%   { transform: scale(1.55); opacity: 0; filter: blur(9px); }
+  38%  { transform: scale(.93);  opacity: 1; filter: blur(0); }
+  58%  { transform: scale(1.07); }
+  76%  { transform: scale(.985); }
+  100% { transform: scale(1); }
+}
+/* 決まった瞬間、答えの後ろが一瞬光る。
+   最初は外へ弾ける輪にしていたが、#review-show は overflow:hidden なので、
+   長い店名だと輪が横にはみ出して端で切られる。切れた輪は壊れて見える。
+   文字の箱に収まる光なら、名前がどれだけ長くても切れない。 */
+.rv-spin.rv-landed::after {
+  content: ''; position: absolute; inset: -14% -5%; border-radius: 16px;
+  background: var(--accent-soft); z-index: -1; pointer-events: none;
+  animation: rv-flash .52s cubic-bezier(.2,.7,.3,1) both;
+}
+@keyframes rv-flash {
+  0%   { opacity: 0; transform: scale(.88); }
+  16%  { opacity: .95; }
+  100% { opacity: 0; transform: scale(1.05); }
+}
 
 /* 答えのあとに続くもの（回数・棒グラフ・「この月だけで N日」）。
    回り終わるまでは場所だけ取って隠しておき、席が動かないようにする。 */
-.rv-after { opacity: 0; transition: opacity .3s ease .05s; }
+.rv-after { opacity: 0; transition: opacity .3s ease .08s; }
 .rv-after.on { opacity: 1; }
 /* 棒は高さを --h に持たせ、出るときに下から伸ばす */
 .rv-bar { height: 0; transition: height .5s cubic-bezier(.32,.72,0,1); }
 .rv-after.on .rv-bar { height: var(--h); }
 
 @media (prefers-reduced-motion: reduce) {
+  .rv-spin.rv-spinning { filter: none; }
   .rv-spin.rv-landed { animation: none; }
+  .rv-spin.rv-landed::after { display: none; }
   .rv-after, .rv-bar { transition: none; }
 }

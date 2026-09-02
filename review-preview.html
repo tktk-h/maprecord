@@ -50,9 +50,11 @@ slots.querySelectorAll('button.again').forEach(b=>b.onclick=()=>play(b.dataset.i
 ids.forEach(play);
 
 // 検査：間の伸び方と合計時間
-const g = App.review._spinGaps(App.review._SPIN.steps, App.review._SPIN.first, App.review._SPIN.last);
+const S = App.review._SPIN;
+const g = App.review._spinGaps(S.steps, S.first, S.last, S.hold);
+const shuffle = g.slice(0,-1), hold = g[g.length-1];
 const total = g.reduce((a,b)=>a+b,0);
-const mono = g.every((v,i)=>i===0||v>=g[i-1]);
+const mono = shuffle.every((v,i)=>i===0||v>=shuffle[i-1]);
 document.getElementById('log').textContent =
   '間隔(ms): ' + g.join(', ') + '\n合計: ' + total + 'ms\n単調に伸びる: ' + mono +
   '\n候補数 topspot/genre/busiest: ' + [ 'topspot','genre','busiest' ].map(id=>App.review._spinPlan(id,data).pool.length).join(' / ');

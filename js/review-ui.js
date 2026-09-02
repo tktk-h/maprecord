@@ -63,17 +63,19 @@ App.review = (function () {
     { featureType: 'water', elementType: 'labels', stylers: [{ visibility: 'off' }] },
   ];
 
-  // 通常マーカー用の雫ピン（data URI）。tip を anchor に合わせて座標に立てる。
   // 答えが出る前に候補をパラパラ回す（スロット）。だんだん遅くして最後に答えで止まる。
   // countUp と同じ作法：止める関数を返し、動きを減らす設定なら即座に答えを出す。
   // pool = 回す候補の文字列、final = 最後に必ず出るもの、done = 止まったあとにやること。
-  var SPIN_STEPS = 14, SPIN_FIRST = 45, SPIN_LAST = 210; // 合計 約1.4秒
-  function _spinGaps(n, first, last) {
+  var SPIN_STEPS = 11, SPIN_FIRST = 42, SPIN_LAST = 165, SPIN_HOLD = 420; // 合計 約1.4秒
+  function _spinGaps(n, first, last, hold) {
     var gaps = [];
     for (var i = 0; i < n; i++) {
       var t = n === 1 ? 1 : i / (n - 1);
       gaps.push(Math.round(first + (last - first) * t * t)); // 後半ほど間が伸びる
     }
+    // 答えを出す前に一拍おく。溜めが無いと、遅くなってそのまま流れ着いたようにしか
+    // 見えない（「ぬるっと決まる」）。ここで一度止まるから「決まった」になる。
+    gaps.push(hold);
     return gaps;
   }
   function spinTo(node, pool, final, done) {
@@ -85,7 +87,7 @@ App.review = (function () {
       if (done) done();
       return function () {};
     }
-    var gaps = _spinGaps(SPIN_STEPS, SPIN_FIRST, SPIN_LAST);
+    var gaps = _spinGaps(SPIN_STEPS, SPIN_FIRST, SPIN_LAST, SPIN_HOLD);
     var timers = [], at = 0, prev = null;
     node.classList.add('rv-spinning');
     gaps.forEach(function (g, i) {
@@ -112,6 +114,7 @@ App.review = (function () {
     };
   }
 
+  // 通常マーカー用の雫ピン（data URI）。tip を anchor に合わせて座標に立てる。
   function pinIcon(color) {
     // viewBox に上下の余白を確保（頭の丸が切れないように）。tip=(12,31) を anchor に。
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32">' +
@@ -863,5 +866,5 @@ App.review = (function () {
     _pinSchedule: _pinSchedule, _selfTestSchedule: _selfTestSchedule, _TEMPO: TEMPO,
     // 見た目の確認・検査用（review-preview.html から使う）。本編からは呼ばない。
     _slideHTML: slideHTML, _spinGaps: _spinGaps, _spinTo: spinTo, _spinPlan: spinPlan,
-    _SPIN: { steps: SPIN_STEPS, first: SPIN_FIRST, last: SPIN_LAST } };
+    _SPIN: { steps: SPIN_STEPS, first: SPIN_FIRST, last: SPIN_LAST, hold: SPIN_HOLD } };
 })();
