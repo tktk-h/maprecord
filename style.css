@@ -1261,3 +1261,72 @@ body.editor-open #review-back { display: none !important; }
 .bulk-ai-detail pre { margin: 6px 0 0; padding: 8px; border-radius: 8px; white-space: pre-wrap;
   word-break: break-all; background: rgba(127,127,127,.1); font-size: 11px; line-height: 1.5;
   max-height: 220px; overflow: auto; -webkit-user-select: text; user-select: text; }
+
+/* ===== 一括カードの整理（2026-09-03） =====
+   不満は2つ。「ボタンが全部同じ強さ」と「7段が同じ間隔で積まれている」。
+   処方は強さの差と間隔の差。ここから下は、上の古いルールを意図的に上書きする。 */
+
+/* まとまり：中は詰めて、間は空ける。継ぎ目に髪の毛一本 */
+.bulk-sec { margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border); }
+.bulk-seclabel { font-size: 11.5px; color: var(--text-muted); margin-bottom: 7px; letter-spacing: .02em; }
+.bulk-sec > .bulk-fields, .bulk-sec > .bulk-memo, .bulk-sec > .bulk-aiwrap { margin-top: 6px; }
+
+/* 見出し：日付を主、時刻と枚数を従に。「閉じる」は float をやめて行に並べる */
+.bulk-top { align-items: center; }
+.bulk-date { font-weight: 600; font-size: 15px; }
+.bulk-count { display: block; margin-left: 0; font-size: 11.5px; opacity: .65; }
+.bulk-collapsebtn { float: none; flex: none; align-self: flex-start; }
+
+.bulk-name { margin-top: 0; background: var(--surface); border-color: var(--border); }
+
+/* 場所の決め方：箱を外して、地の文の重さまで下げる */
+.bulk-locrow { gap: 16px; margin-top: 9px; }
+.bulk-locbtn { border: none; background: transparent; color: var(--text-muted);
+  padding: 2px 0; font-size: 12.5px; font-weight: 500; }
+.bulk-locstat { margin-left: auto; font-size: 11.5px; color: var(--text-muted); opacity: 1; }
+/* AI提案だけは一段強く。枠線ではなく淡い地で「おすすめの道」を示す */
+.bulk-locbtn.ai { display: block; width: 100%; margin-top: 8px; padding: 8px;
+  border: none; border-radius: 10px; background: var(--accent-soft);
+  color: var(--accent-strong); font-size: 13px; font-weight: 600; text-align: center; }
+.bulk-locbtn.ai.retry { background: rgba(180,70,58,.10); color: #b4463a; margin-top: 0; }
+
+/* 候補：幅ばらばらのピルをやめ、行頭を揃えた縦のリストに */
+.bulk-cands { display: block; margin-top: 8px; border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden; background: var(--surface); }
+.bulk-cand { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  border: none; border-top: 1px solid var(--border); border-radius: 0; background: transparent;
+  color: inherit; padding: 9px 11px; font-size: 13px; cursor: pointer; }
+.bulk-cand:first-child { border-top: none; }
+.bulk-candname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bulk-candmark { flex: none; font-size: 12px; }
+.bulk-cand.pick { border: none; border-top: 1px solid var(--border); background: transparent; color: inherit; }
+.bulk-cand.pick:first-child { border-top: none; }
+.bulk-cand.pick .bulk-candname { font-weight: 600; }
+.bulk-cand.sel { outline: none; background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
+.bulk-candmore { display: block; width: 100%; border: none; border-top: 1px solid var(--border);
+  background: transparent; color: var(--text-muted); padding: 8px; font-size: 12px; cursor: pointer; }
+
+/* 写真：帯と説明を一行に。分割は写真を選ぶまで出さない */
+.bulk-striprow { display: flex; align-items: center; gap: 10px; }
+.bulk-strip { flex: 1; min-width: 0; margin-top: 0; }
+.bulk-splithint { flex: none; margin-top: 0; font-size: 11px; color: var(--text-muted); }
+.bulk-act.split { display: block; width: 100%; margin-top: 9px; }
+.bulk-act.split[hidden] { display: none; }
+
+/* 保存だけが塗り。結合と削除はいちばん小さく、保存の下へ退ける */
+.bulk-savecard.wide { margin-top: 16px; border-radius: 12px; padding: 12px; font-weight: 600; }
+.bulk-quietacts { display: flex; gap: 22px; justify-content: center; margin-top: 10px; }
+.bulk-act.quiet { border: none; background: transparent; padding: 4px 2px;
+  font-size: 12px; color: var(--text-muted); }
+.bulk-act.quiet.warn { color: #b58f89; border: none; }
+
+/* 未入力の知らせ：オレンジの枠と黄色いピルをやめ、静かな一行に */
+.bulk-card.incomplete { border-color: rgba(127,127,127,.25); box-shadow: none; }
+.bulk-badge { display: block; margin: 8px 0 0; padding: 0; border-radius: 0;
+  background: none; color: var(--text-muted); font-size: 12px; font-weight: 500; text-align: center; }
+.bulk-card.collapsed .bulk-badge { text-align: left; margin: 3px 0 0; }
+
+/* 畳んだカードも同じ序列に。保存だけを右端の塗りに、結合と削除は文字だけ */
+.bulk-collapsed-acts { gap: 14px; align-items: center; margin-top: 10px; }
+.bulk-collapsed-acts .bulk-act.quiet { flex: none; }
+.bulk-collapsed-acts .bulk-savecard { flex: none; margin-left: auto; padding: 7px 18px; font-weight: 600; }

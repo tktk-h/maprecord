@@ -1,0 +1,47 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>card preview</title>
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@300;400;500;700&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<script>document.write('<link rel="stylesheet" href="style.css?t='+Date.now()+'">')</script>
+<style>
+  html,body{position:static !important;overflow:visible !important;height:auto !important;display:block !important;inset:auto !important}
+  #wrap{max-width:420px;margin:0 auto;padding:16px}
+  h3{font-size:13px;color:#8c867d;font-weight:500;margin:18px 0 8px}
+</style>
+<div id="wrap"><div id="bulk-list"></div></div>
+<script>
+window.App = {
+  genres: { list: [ {key:'food',label:'ごはん'}, {key:'cafe',label:'カフェ'}, {key:'play',label:'あそび'} ] },
+  grouping: { dateOf: () => '2026-09-02' },
+  overlay: { open(){}, close(){} },
+};
+</script>
+<script>document.write('<scr'+'ipt src="js/bulk.js?t='+Date.now()+'"></scr'+'ipt>')</script>
+<script>
+  const PH = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="%23cfc3b2"/></svg>');
+  const photo = (t) => ({ file:null, time:t, gps:null, url:PH });
+  const base = () => ({
+    photos:[photo(Date.parse('2026-09-02T14:55')),photo(Date.parse('2026-09-02T14:56')),photo(Date.parse('2026-09-02T14:56'))],
+    date:'2026-09-02', center:{lat:35,lng:136}, hasGps:true, placeId:null, place:null, manualLoc:null,
+    name:'', genre:'food', candidates:[], aiState:'idle', aiPickId:null, collapsed:false, memo:'', userPicked:false,
+  });
+  const cands = [
+    {placeId:'p1',name:'犬山丸の内緑地',lat:35,lng:136},
+    {placeId:'p2',name:'犬山丸の内緑地公衆トイレ',lat:35,lng:136},
+    {placeId:'p3',name:'名古屋市上下水道局 犬山取水場',lat:35,lng:136},
+    {placeId:'p4',name:'犬山城第１駐車場（キャッスルパーキング西面）',lat:35,lng:136},
+    {placeId:'p5',name:'犬山頭首工管理所',lat:35,lng:136},
+    {placeId:'p6',name:'犬山市武道館',lat:35,lng:136},
+  ];
+  const cases = [
+    ['候補が出そろった状態（未入力）', Object.assign(base(), {candidates:cands, aiState:'done', aiPickId:'p1'})],
+    ['店を選んだあと', Object.assign(base(), {candidates:cands, aiState:'done', aiPickId:'p1', placeId:'p1', name:'犬山丸の内緑地', userPicked:true, memo:'ぶらんこ。よく晴れてた。'})],
+    ['AI判定中', Object.assign(base(), {aiState:'loading'})],
+    ['AI未実行', base()],
+    ['畳んだ状態', Object.assign(base(), {collapsed:true})],
+  ];
+  const wrap = document.getElementById('wrap');
+  wrap.innerHTML = cases.map(([label,g],k)=>`<h3>${label}</h3><div id="bulk-list">${App.bulk._cardHtml(g,k)}</div>`).join('');
+</script>

@@ -135,7 +135,6 @@ App.bulk = (function () {
     const first = g.photos[0], last = g.photos[g.photos.length - 1];
     const cover = g.photos[0].url;
     const timeRange = g.photos.length > 1 ? `${hhmm(first.time)}〜${hhmm(last.time)}` : hhmm(first.time);
-    const mergeBtn = i > 0 ? `<button class="bulk-act" data-act="merge" data-i="${i}">↑ 前と結合</button>` : '';
 
     // --- 畳んだ状態 ---
     if (g.collapsed) {
@@ -154,8 +153,8 @@ App.bulk = (function () {
           <span class="bulk-chev">▾</span>
         </div>
         <div class="bulk-collapsed-acts">
-          ${mergeBtn}
-          <button class="bulk-act warn" data-act="del" data-i="${i}">🗑 削除</button>
+          ${i > 0 ? `<button class="bulk-act quiet" data-act="merge" data-i="${i}">前と結合</button>` : ''}
+          <button class="bulk-act quiet warn" data-act="del" data-i="${i}">削除</button>
           ${saveCardBtnHtml(g, i, '保存')}
         </div>
       </div>`;
@@ -164,35 +163,53 @@ App.bulk = (function () {
     // --- 開いた状態 ---
     const strip = g.photos.map((p, j) =>
       `<div class="bulk-ph" data-i="${i}" data-j="${j}" style="background-image:url(${p.url})"></div>`).join('');
+    // まとまりごとに区切る。中は詰めて、まとまりの間は空ける。
+    // ボタンは4段階：保存(塗り) > AI提案(淡い地) > 検索/ピン(箱なし) > 結合/削除(いちばん小さく下)。
     return `
       <div class="bulk-card${isSaveable(g) ? '' : ' incomplete'}" data-i="${i}">
         <div class="bulk-top">
           <div class="bulk-cover" data-act="collapse" data-i="${i}" style="background-image:url(${cover})"><span>${g.photos.length}枚</span></div>
           <div class="bulk-meta">
-            <div class="bulk-date">${g.date} <span class="bulk-count">${timeRange} ・ ${g.photos.length}枚</span><button class="bulk-collapsebtn" data-act="collapse" data-i="${i}">▲ 閉じる</button></div>
-            <div class="bulk-badge">${esc(missingMsg(g))}</div>
-            <input class="bulk-name" type="text" placeholder="場所の名前（必須）" value="${esc(g.name || '')}" data-i="${i}">
-            <div class="bulk-aiwrap" data-i="${i}">${aiAreaHtml(g, i)}</div>
-            <div class="bulk-locrow">
-              <button class="bulk-locbtn" data-act="search" data-i="${i}">🔍 店名で検索</button>
-              <button class="bulk-locbtn" data-act="pin" data-i="${i}">🗺 地図でピン</button>
-              <span class="bulk-locstat">${locStatus(g)}</span>
-            </div>
-            <div class="bulk-fields">
-              <select class="bulk-genre" data-i="${i}">${genreOptions(g.genre)}</select>
-              <input class="bulk-datefld" type="date" value="${g.date}" data-i="${i}">
-            </div>
-            <label class="bulk-memolabel">メモ・感想<textarea class="bulk-memo" rows="3" placeholder="今日はどんな一日だった？" data-i="${i}">${esc(g.memo || '')}</textarea></label>
+            <div class="bulk-date">${g.date}</div>
+            <div class="bulk-count">${timeRange} ・ 写真${g.photos.length}枚</div>
+          </div>
+          <button class="bulk-collapsebtn" data-act="collapse" data-i="${i}">▲ 閉じる</button>
+        </div>
+
+        <div class="bulk-sec">
+          <div class="bulk-seclabel">ここはどこ</div>
+          <input class="bulk-name" type="text" placeholder="場所の名前" value="${esc(g.name || '')}" data-i="${i}">
+          <div class="bulk-aiwrap" data-i="${i}">${aiAreaHtml(g, i)}</div>
+          <div class="bulk-locrow">
+            <button class="bulk-locbtn" data-act="search" data-i="${i}"><i class="ph ph-magnifying-glass"></i> 検索</button>
+            <button class="bulk-locbtn" data-act="pin" data-i="${i}"><i class="ph ph-map-pin"></i> 地図でピン</button>
+            <span class="bulk-locstat">${locStatus(g)}</span>
           </div>
         </div>
-        <div class="bulk-strip">${strip}</div>
-        <div class="bulk-splithint">▸ 写真をタップ →「ここで分割」でその位置から下を別グループに</div>
-        <div class="bulk-acts">
-          ${mergeBtn}
-          <button class="bulk-act" data-act="split" data-i="${i}" disabled>✂️ ここで分割</button>
-          <button class="bulk-act warn" data-act="del" data-i="${i}">🗑 削除</button>
+
+        <div class="bulk-sec">
+          <div class="bulk-seclabel">この日のこと</div>
+          <div class="bulk-fields">
+            <select class="bulk-genre" data-i="${i}">${genreOptions(g.genre)}</select>
+            <input class="bulk-datefld" type="date" value="${g.date}" data-i="${i}">
+          </div>
+          <textarea class="bulk-memo" rows="3" placeholder="今日はどんな一日だった？" data-i="${i}">${esc(g.memo || '')}</textarea>
         </div>
+
+        <div class="bulk-sec">
+          <div class="bulk-striprow">
+            <div class="bulk-strip">${strip}</div>
+            <span class="bulk-splithint">タップで分割</span>
+          </div>
+          <button class="bulk-act split" data-act="split" data-i="${i}" hidden>✂️ ここから下を別のまとまりに</button>
+        </div>
+
         ${saveCardBtnHtml(g, i, 'この1件を保存', true)}
+        <div class="bulk-badge">${esc(missingMsg(g))}</div>
+        <div class="bulk-quietacts">
+          ${i > 0 ? `<button class="bulk-act quiet" data-act="merge" data-i="${i}">前と結合</button>` : ''}
+          <button class="bulk-act quiet warn" data-act="del" data-i="${i}">削除</button>
+        </div>
       </div>`;
   }
 
@@ -271,10 +288,10 @@ App.bulk = (function () {
   function saveableCount() { return groups.filter(isSaveable).length; }
   // 位置の由来を1行で
   function locStatus(g) {
-    if (g.manualLoc) return '📍 地図ピン';
-    if (g.placeId) return '📍 検索した店';
-    if (g.hasGps) return '📍 写真のGPS';
-    return '⚠️ 位置なし';
+    if (g.manualLoc) return '<i class=\"ph ph-map-pin\"></i> 地図ピン';
+    if (g.placeId) return '<i class=\"ph ph-storefront\"></i> 検索した店';
+    if (g.hasGps) return '<i class=\"ph ph-crosshair\"></i> 写真のGPS';
+    return '<i class=\"ph ph-warning\"></i> 位置なし';
   }
 
   // Blob → base64本体（data:...;base64, の後ろだけ）
@@ -475,20 +492,34 @@ App.bulk = (function () {
     return !!groupLatLng(g);
   }
 
-  // カードのAIエリア（名前欄の下）：判定中／候補チップ／手動ボタン
+  // 近くの店の候補。以前は枠線ピルの折り返しだったが、日本語の店名は長さの差が
+  // 大きく（「犬山丸の内緑地」と「犬山城第１駐車場（キャッスルパーキング西面）」で3倍）、
+  // 幅がまちまちのピルが折り返すと必ずガタつく。行の頭を揃えた縦のリストにする。
+  const CAND_SHOWN = 4; // 最初はこの数だけ。残りは「ほかN件」で開く
+  function candListHtml(g, i) {
+    const cands = g.candidates || [];
+    if (!cands.length) return '';
+    const shown = g.candOpen ? cands : cands.slice(0, CAND_SHOWN);
+    const rows = shown.map((c) => {
+      const pick = c.placeId === g.aiPickId;
+      const sel = c.placeId === g.placeId;
+      const mark = sel ? '<span class="bulk-candmark">✓</span>'
+        : pick ? '<span class="bulk-candmark">✨</span>' : '';
+      return `<button class="bulk-cand${pick ? ' pick' : ''}${sel ? ' sel' : ''}" data-i="${i}" data-pid="${esc(c.placeId)}">`
+        + `<span class="bulk-candname">${esc(c.name)}</span>${mark}</button>`;
+    }).join('');
+    const rest = cands.length - shown.length;
+    const more = rest > 0
+      ? `<button class="bulk-candmore" data-i="${i}">ほか${rest}件</button>` : '';
+    return `<div class="bulk-cands">${rows}${more}</div>`;
+  }
+
+  // カードのAIエリア（名前欄の下）：判定中／候補リスト／手動ボタン
   function aiAreaHtml(g, i) {
     if (g.aiState === 'loading') {
       return `<div class="bulk-ai-loading"><span class="bulk-spin"></span>AI判定中…</div>`;
     }
-    const cands = (g.candidates || []).slice(0, 6);
-    const chips = cands.length
-      ? `<div class="bulk-cands">${cands.map((c) => {
-          const pick = c.placeId === g.aiPickId ? ' pick' : '';
-          const sel = c.placeId === g.placeId ? ' sel' : '';
-          return `<button class="bulk-cand${pick}${sel}" data-i="${i}" data-pid="${esc(c.placeId)}">`
-            + `${c.placeId === g.aiPickId ? '✨ ' : ''}${esc(c.name)}</button>`;
-        }).join('')}</div>`
-      : '';
+    const chips = candListHtml(g, i);
     // エラー時（Gemini呼び出し失敗・通信・枠オーバー）＝「失敗」と分かる表示＋再試行。候補チップは手動選択用に残す。
     if (g.aiState === 'error') {
       // 「時間をおくと回復します」は日あたりの枠には嘘。実際そう案内して待たせてしまった。
@@ -549,6 +580,9 @@ App.bulk = (function () {
         }
       };
     });
+    list.querySelectorAll('.bulk-candmore').forEach((b) => {
+      b.onclick = () => { const i = Number(b.dataset.i); groups[i].candOpen = true; applyAiUpdate(i); };
+    });
     list.querySelectorAll('.bulk-cardhead').forEach((h) => {
       h.onclick = () => { const i = Number(h.dataset.i); groups[i].collapsed = false; refreshCard(i); };
     });
@@ -594,8 +628,9 @@ App.bulk = (function () {
         document.querySelectorAll(`.bulk-ph[data-i="${i}"]`).forEach((x) => x.classList.remove('sel'));
         el.classList.add('sel');
         splitSel = { i, j };
+        // 押せないボタンを最初から見せない。写真を選んで初めて出す。
         const btn = document.querySelector(`.bulk-act[data-act="split"][data-i="${i}"]`);
-        if (btn) btn.disabled = false;
+        if (btn) { btn.hidden = false; btn.disabled = false; }
       };
     });
   }
@@ -846,7 +881,8 @@ App.bulk = (function () {
     if (btn) btn.onclick = open;
   }
 
-  return { init, open, close, _groups: () => groups };
+  // _cardHtml は見た目の確認用（card-preview で1枚だけ描く）。本編からは呼ばない。
+  return { init, open, close, _groups: () => groups, _cardHtml: cardHtml };
 })();
 document.addEventListener('DOMContentLoaded', () => { if (App.bulk) App.bulk.init(); });
 if (document.readyState !== 'loading' && App.bulk) App.bulk.init();
