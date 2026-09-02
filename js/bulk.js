@@ -384,10 +384,18 @@ App.bulk = (function () {
       dbg.gerr = (r && r.data && r.data.err) || '';  // Gemini呼び出しエラー
       dbg.gstatus = (r && r.data && r.data.status) || ''; // HTTPステータス（429/403/400…）
       dbg.gtries = (r && r.data && r.data.tries) || 0;    // 関数が実際にGeminiを撃った回数
+      dbg.model = (r && r.data && r.data.model) || '';    // 答えたモデル
+      dbg.spent = ((r && r.data && r.data.spent) || []).join(',') || ''; // 枠切れだったモデル
       dbg.imgs = (r && r.data && r.data.imgs) || 0;  // 送れた画像枚数
-      // 枠切れ(429/quota)なら、残りカードの無駄打ちを止める
-      if (dbg.gerr) errKind = /429|quota|exceeded|too many requests/i.test(dbg.gerr) ? 'quota' : 'error';
-      if (/429|quota|exceeded|too many requests/i.test(dbg.gerr)) quotaHit = true;
+      // 枠切れ(429)なら、残りカードの無駄打ちを止める。
+      // 判定はステータスを優先。文字列の当て推量は、ステータスが無い旧関数のときだけ。
+      if (dbg.gerr) {
+        const isQuota = dbg.gstatus
+          ? dbg.gstatus === 429
+          : /429|quota|exceeded|too many requests/i.test(dbg.gerr);
+        errKind = isQuota ? 'quota' : 'error';
+        if (isQuota) quotaHit = true;
+      }
       if (guess) {
         // 自由回答を実在店に裏取り。見つからなければ近くの候補名と一致すればそれを採用。
         const hit = await resolveName(guess, loc)
@@ -414,7 +422,9 @@ App.bulk = (function () {
       g.aiState = 'error'; g.aiErrKind = errKind;
       // Geminiが実際に返した文をカードに残す。ここを捨てていたせいで、
       // 「枠オーバー」としか分からず原因を当て推量するはめになっていた。
-      const head = dbg.gstatus ? `status ${dbg.gstatus} / Gemini ${dbg.gtries}回\n` : '';
+      const head = dbg.gstatus
+        ? `status ${dbg.gstatus} / Gemini ${dbg.gtries}回 / 枠切れ: ${dbg.spent || 'なし'}\n`
+        : '';
       g.aiErrMsg = head + (dbg.gerr || dbg.err || '(エラー文なし)') + '\n\n所要 ' + JSON.stringify(dbg.ms);
     } else {
       g.aiState = 'done'; g.aiErrKind = null; g.aiErrMsg = '';   // 成功（店が特定できない=UNKNOWNも含む）
@@ -481,9 +491,14 @@ App.bulk = (function () {
       : '';
     // エラー時（Gemini呼び出し失敗・通信・枠オーバー）＝「失敗」と分かる表示＋再試行。候補チップは手動選択用に残す。
     if (g.aiState === 'error') {
-      const msg = g.aiErrKind === 'quota'
-        ? 'AIの無料枠オーバー（時間をおくと回復します）'
-        : 'AI判定に失敗しました';
+      // 「時間をおくと回復します」は日あたりの枠には嘘。実際そう案内して待たせてしまった。
+      // quotaId に PerDay と書いてあるかで、待って直るのか明日なのかを出し分ける。
+      const perDay = /PerDay/i.test(g.aiErrMsg || '');
+      const msg = g.aiErrKind !== 'quota'
+        ? 'AI判定に失敗しました'
+        : perDay
+          ? '今日のAI無料枠を使い切りました（日本時間の夕方ごろ戻ります）'
+          : 'AIの無料枠オーバー（少し時間をおくと回復します）';
       // 生のエラー文は畳んでおく。普段は邪魔にならず、原因を見たいときだけ開ける。
       const detail = g.aiErrMsg
         ? `<details class="bulk-ai-detail"><summary>くわしく</summary><pre>${esc(g.aiErrMsg)}</pre></details>`

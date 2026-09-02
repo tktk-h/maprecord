@@ -4,6 +4,17 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const GEMINI_KEY = defineSecret('GEMINI_KEY');
 
+// 無料枠は「モデルごと」に別勘定。gemini-3.6-flash は1日20回しかなく、
+// カード1枚=1回なので一括追加ではすぐ底をつく（2026-09-03に実測）。
+// そこで枠切れ(429)なら次のモデルへ回す＝使える枠を足し合わせる。
+// どのモデルが答えたかは返り値の model に入るので、枠の残りは推測せず実測で分かる。
+// 並びは「枠が大きそうな軽いモデル」→「賢いモデル」。精度が要るなら順序を入れ替える。
+const MODELS = [
+  'gemini-2.5-flash-lite',
+  'gemini-3.5-flash-lite',
+  'gemini-3.6-flash',
+];
+
 // 写真（複数可）＋住所＋近くの店ヒントから、撮影された「お店の正式名称」を自由回答で推測する。
 // 返り値は { name: string|null }。フロント側で searchText により実在の placeId/座標に裏取りする。
 exports.suggestPlace = onCall(
@@ -22,7 +33,6 @@ exports.suggestPlace = onCall(
     if (!images.length) return { name: null };
 
     const genAI = new GoogleGenerativeAI(GEMINI_KEY.value());
-    const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
     const parts = images
       .slice(0, 3)
       .map((b) => ({ inlineData: { mimeType: 'image/jpeg', data: b } }));
@@ -40,37 +50,50 @@ exports.suggestPlace = onCall(
       + '本当に全く見当もつかない場合のみ UNKNOWN と書く。店名以外の説明・記号・引用符は書かない。';
 
     let text = '';
-    let tries = 0;      // 実際に何回Geminiを撃ったか（リトライが回っていないかの確認用）
-    try {
-      // サーバ側の一時混雑(500/503)だけ最大3回リトライ。
-      // 429(枠オーバー)はリトライしない＝無駄に枠を消費しない（再送しても通らない）。
+    let used = '';       // 実際に答えたモデル
+    let tries = 0;       // Geminiを撃った総回数
+    const spent = [];    // 枠を使い切っていたモデル
+    let lastErr = null;
+    outer:
+    for (const name of MODELS) {
+      const model = genAI.getGenerativeModel({ model: name });
+      // サーバ側の一時混雑(500/503)だけ、同じモデルで最大3回。
       for (let attempt = 0; ; attempt++) {
         try {
           tries++;
           const result = await model.generateContent([...parts, prompt]);
           text = (result.response.text() || '').trim();
-          break;
+          used = name;
+          break outer;
         } catch (e) {
-          const m = String((e && e.message) || e);
-          const serverBusy = /(503|500|high demand|unavailable|overloaded|internal error)/i.test(m);
-          if (!serverBusy || attempt >= 2) throw e; // 一時混雑でない(429等) or 3回目は諦める
+          lastErr = e;
+          // HTTPステータスはSDKが e.status に持っている。エラー文から数字を探さない。
+          // 429の本文には quotaValue や retryDelay が入るので、/500|503/ で拾うと
+          // 枠切れを「混雑」と読み違えて、無駄撃ちしながら待たせることになる。
+          const status = e && e.status;
+          if (status === 429) { spent.push(name); break; }   // このモデルは枠切れ＝次のモデルへ
+          if (status !== 500 && status !== 503) break outer;  // 直しようのない種類は即あきらめる
+          if (attempt >= 2) break outer;
           await new Promise((r) => setTimeout(r, 900 * (attempt + 1))); // 0.9s → 1.8s
         }
       }
-    } catch (e) {
+    }
+    if (!used) {
       // 1500字まで残す。300字だと定型文で埋まり、どの枠に当たったかを書いた
       // details（quotaId/quotaValue/retryDelay）が丸ごと切れて診断できなかった。
-      // status は SDK が持っているHTTPステータス。文字列から数字を探るより確か。
-      const err = String((e && e.message) || e).slice(0, 1500);
-      const status = (e && e.status) || '';
-      console.error('gemini error', status, 'tries=' + tries, err);
-      return { name: null, raw: '', err, status, tries, imgs: parts.length }; // 失敗は「不明」に落とす（保存は止めない）
+      const err = String((lastErr && lastErr.message) || lastErr).slice(0, 1500);
+      const status = (lastErr && lastErr.status) || '';
+      console.error('gemini error', status, 'tries=' + tries, 'spent=' + spent.join(','), err);
+      // 失敗は「不明」に落とす（保存は止めない）
+      return { name: null, raw: '', err, status, tries, spent, models: MODELS, imgs: parts.length };
     }
     const raw = text.slice(0, 200); // 診断：Geminiの生返答（先頭200字）
     // 1行目だけ採用し、前後の引用符を除去。UNKNOWN/空は null。
     const line = (text.split('\n')[0] || '').trim().replace(/^["'「『]+|["'」』]+$/g, '').trim();
-    if (!line || /^unknown$/i.test(line)) return { name: null, raw, err: '', imgs: parts.length };
-    return { name: line, raw, err: '', imgs: parts.length };
+    // model/spent も返す＝どのモデルが答え、どのモデルが枠切れだったかが実測で分かる
+    const meta = { raw, err: '', model: used, spent, tries, imgs: parts.length };
+    if (!line || /^unknown$/i.test(line)) return { name: null, ...meta };
+    return { name: line, ...meta };
   }
 );
 
