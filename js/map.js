@@ -281,7 +281,23 @@ App.map = (function () {
   }
 
   // 束ねをやめて個別ピンに戻すズーム。CLUSTER_MAX_ZOOM 以下で束ね、+1 から個別。
-  const CLUSTER_MAX_ZOOM = 14;
+  // ⚠️15 より上げないこと。flyTo() はズーム16ちょうどに着地するので、16 で個別ピンに
+  // なっていないと「検索結果をタップ→着地したらまだバッジ」が起きる。
+  const CLUSTER_MAX_ZOOM = 15;
+
+  // ズームを5段に区切り、段ごとに「これだけ近ければくっつく」距離(px)を変える。
+  // 引きでは大きくまとまり、寄るにつれて段を踏んでほどけ、16以上で必ず個別ピン。
+  // upTo = その段の上限ズーム。radius を小さくするほど、ほどけやすい。
+  // 見え方を変えたいときは、この表の数字だけ動かせばよい。
+  const CLUSTER_STEPS = [
+    { upTo: 9,  radius: 220 }, // 地方をまたぐ引き
+    { upTo: 11, radius: 180 },
+    { upTo: 13, radius: 140 }, // 2段階だった頃の値
+    { upTo: 14, radius: 100 },
+    { upTo: 15, radius: 70 },  // ほどける直前
+  ];
+  // 何件から束ねるか。5未満を束ねないのは「②が2つとバラバラ」を避けるため（実機で調整済み）。
+  const CLUSTER_MIN_POINTS = 5;
 
   // クラスタ（束ねたピン）。中の写真を数枚重ねたカードに見せ、右上に件数を出す。
   // 再訪ピン（写真1枚＋しっぽ＋濃いグレーの数字）と紛れないよう、
@@ -408,15 +424,39 @@ App.map = (function () {
     map.setZoom(Math.min(cur + 3, CLUSTER_MAX_ZOOM + 1)); // 寄り切ったら必ず個別ピン
   }
 
+  // 段ごとの算出器を1つずつ持ち、いまのズームに当たる段へ渡すだけの入れ物。
+  // ライブラリは algorithm の calculate() しか呼ばないので、これで差し替えられる。
+  // 束ね方そのものは各段の SuperClusterAlgorithm に任せる（自前で書き直さない）。
+  function makeSteppedAlgorithm() {
+    const Algo = markerClusterer.SuperClusterAlgorithm;
+    const steps = CLUSTER_STEPS.map((s) => ({
+      upTo: s.upTo,
+      algo: new Algo({ maxZoom: CLUSTER_MAX_ZOOM, radius: s.radius, minPoints: CLUSTER_MIN_POINTS }),
+    }));
+    let last = -1;
+    return {
+      calculate(input) {
+        const z = Math.round((input.map && input.map.getZoom()) || 0);
+        let idx = steps.findIndex((s) => z <= s.upTo);
+        if (idx === -1) idx = steps.length - 1; // 表より寄っていれば最後の段（16以上は個別になる）
+        const out = steps[idx].algo.calculate(input);
+        // 段をまたいだ回は必ず描き直させる。呼ばれた算出器から見れば「同じズームで
+        // 前と変わらない」でも、画面に出ているのは別の段が作った束だから。
+        if (idx !== last) { last = idx; return { clusters: out.clusters, changed: true }; }
+        return out;
+      },
+    };
+  }
+
   // markers をクラスタラに預けて束ねる。起動できたら true。CDN未読込などで無理なら false。
   function startClusterer() {
     if (!window.markerClusterer || clusterer || !map) return false;
     clusterer = new markerClusterer.MarkerClusterer({
       map, markers, renderer: clusterRenderer, onClusterClick,
-      // 既定(radius 60 / maxZoom 16)は段階が細かすぎて、少し寄るたびに
-      // 2〜3件の小さな束へバラバラに割れて煩わしい。広めに束ね、5件未満は
-      // 束ねず、14以下でだけ束ねることで「大づかみ→個別」の2段階にする。
-      algorithmOptions: { maxZoom: CLUSTER_MAX_ZOOM, radius: 140, minPoints: 5 },
+      // 既定(radius 60 / maxZoom 16)は段階が細かすぎて煩わしく、かつて radius 140 の
+      // 一律にして「大づかみ→個別」の2段階にした。それだと解けるときに一気に散るので、
+      // いまは CLUSTER_STEPS の5段を踏んで少しずつほどける。
+      algorithm: makeSteppedAlgorithm(),
     });
     // 束ね直しの直後に呼ばれる。ここでほどけたピンを散らす。
     clusterEndListener = clusterer.addListener('clusteringend', spreadUnbundled);
