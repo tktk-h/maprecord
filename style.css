@@ -1336,3 +1336,28 @@ body.editor-open #review-back { display: none !important; }
    これは画面を閉じる×(.x-btn)ではなくカードを畳むトグルなので、混ぜない。 */
 .bulk-collapsebtn.bottom { display: block; width: 100%; align-self: auto;
   margin-top: 12px; padding: 10px; border-radius: 10px; font-size: 12.5px; }
+
+/* ===== ふりかえり：答えが出るまで候補を回す（2026-09-03） =====
+   「いちばん通った場所／ジャンル／濃かった月」は答えが最初から出ていて、
+   めくるだけの画面だった。候補をパラパラ回してから止まるようにする。 */
+
+/* 回っている間。文字が入れ替わるので、幅が動いても行が跳ねないよう高さを固定する。
+   一段暗くして「まだ確定していない」ことを見せる。 */
+.rv-spin { min-height: 1.2em; transition: color .18s, opacity .18s; }
+.rv-spin.rv-spinning { opacity: .55; }
+/* 止まった瞬間だけ、軽く前に出る */
+.rv-spin.rv-landed { animation: rv-land .34s cubic-bezier(.2,1.4,.4,1) both; }
+@keyframes rv-land { from { transform: scale(.82); opacity: .4; } to { transform: scale(1); opacity: 1; } }
+
+/* 答えのあとに続くもの（回数・棒グラフ・「この月だけで N日」）。
+   回り終わるまでは場所だけ取って隠しておき、席が動かないようにする。 */
+.rv-after { opacity: 0; transition: opacity .3s ease .05s; }
+.rv-after.on { opacity: 1; }
+/* 棒は高さを --h に持たせ、出るときに下から伸ばす */
+.rv-bar { height: 0; transition: height .5s cubic-bezier(.32,.72,0,1); }
+.rv-after.on .rv-bar { height: var(--h); }
+
+@media (prefers-reduced-motion: reduce) {
+  .rv-spin.rv-landed { animation: none; }
+  .rv-after, .rv-bar { transition: none; }
+}

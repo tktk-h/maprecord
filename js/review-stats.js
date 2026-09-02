@@ -158,6 +158,9 @@ App.reviewStats = (function () {
     const topSpot = (spots[0] && spots[0].count >= 2)
       ? { name: spots[0].name, count: spots[0].count, key: spots[0].key } : null;
     const best3 = spots.slice(0, 3).map((s) => ({ name: s.name, count: s.count, key: s.key }));
+    // ふりかえりのスライドで、答えが出るまで名前を回して見せるための候補。
+    // 3件だと回っているように見えないので、多めに渡す（名前だけあればいい）。
+    const spotNames = spots.slice(0, 12).map((s) => s.name).filter(Boolean);
 
     // ジャンル
     const gCount = {};
@@ -182,7 +185,7 @@ App.reviewStats = (function () {
       period, count, outingDays,
       isEmpty: count === 0,
       isSparse: count > 0 && count < 3,
-      daysTogether, newPlaces, topSpot, best3,
+      daysTogether, newPlaces, topSpot, best3, spotNames,
       topGenre, genreBreakdown, buckets, busiest,
       photoCount, pins,
       firstOuting: inRecs[0] || null,

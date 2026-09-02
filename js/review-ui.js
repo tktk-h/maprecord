@@ -64,6 +64,54 @@ App.review = (function () {
   ];
 
   // 通常マーカー用の雫ピン（data URI）。tip を anchor に合わせて座標に立てる。
+  // 答えが出る前に候補をパラパラ回す（スロット）。だんだん遅くして最後に答えで止まる。
+  // countUp と同じ作法：止める関数を返し、動きを減らす設定なら即座に答えを出す。
+  // pool = 回す候補の文字列、final = 最後に必ず出るもの、done = 止まったあとにやること。
+  var SPIN_STEPS = 14, SPIN_FIRST = 45, SPIN_LAST = 210; // 合計 約1.4秒
+  function _spinGaps(n, first, last) {
+    var gaps = [];
+    for (var i = 0; i < n; i++) {
+      var t = n === 1 ? 1 : i / (n - 1);
+      gaps.push(Math.round(first + (last - first) * t * t)); // 後半ほど間が伸びる
+    }
+    return gaps;
+  }
+  function spinTo(node, pool, final, done) {
+    if (!node) { if (done) done(); return function () {}; }
+    // 候補が乏しければ回しても回っているように見えない。答えだけ出す。
+    var list = (pool || []).filter(function (s) { return s && s !== final; });
+    if (prefersReduced() || list.length < 2) {
+      node.textContent = final;
+      if (done) done();
+      return function () {};
+    }
+    var gaps = _spinGaps(SPIN_STEPS, SPIN_FIRST, SPIN_LAST);
+    var timers = [], at = 0, prev = null;
+    node.classList.add('rv-spinning');
+    gaps.forEach(function (g, i) {
+      at += g;
+      timers.push(setTimeout(function () {
+        if (i === gaps.length - 1) {
+          node.textContent = final;
+          node.classList.remove('rv-spinning');
+          node.classList.add('rv-landed');
+          if (done) done();
+          return;
+        }
+        // 同じ候補が2回続くと止まって見えるので、直前とは違うものを選ぶ
+        var pick = list[Math.floor(Math.random() * list.length)];
+        if (pick === prev && list.length > 1) pick = list[(list.indexOf(pick) + 1) % list.length];
+        prev = pick;
+        node.textContent = pick;
+      }, at));
+    });
+    return function () {
+      timers.forEach(clearTimeout);
+      node.classList.remove('rv-spinning');
+      node.textContent = final; // 途中で止めたら答えを残す（候補が出たままにしない）
+    };
+  }
+
   function pinIcon(color) {
     // viewBox に上下の余白を確保（頭の丸が切れないように）。tip=(12,31) を anchor に。
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32">' +
@@ -222,24 +270,25 @@ App.review = (function () {
     if (id === 'new') return '<div class="rv-cap">はじめての場所</div>' +
       '<div class="rv-big"><span class="rv-count" data-to="' + data.newPlaces + '">0</span><span class="rv-u">軒</span></div>' +
       '<div class="rv-cap">新しい世界を見つけた</div>';
+    // 以下3枚は答えが出るまで候補を回す（showSlides 側で spinTo が動く）。
+    // 中身は空にしておき、回し終わってから埋める。
     if (id === 'topspot') return '<div class="rv-cap">いちばん通ったのは</div>' +
-      '<div class="rv-mid">' + esc(data.topSpot.name || '(名称未設定)') + '</div>' +
-      '<div class="rv-big rv-accent">' + data.topSpot.count + '<span class="rv-u">回</span></div>';
+      '<div class="rv-mid rv-spin"></div>' +
+      '<div class="rv-big rv-accent rv-after"><span class="rv-count" data-to="' + data.topSpot.count + '">0</span><span class="rv-u">回</span></div>';
     if (id === 'genre') {
-      var g = data.topGenre;
       var bars = data.genreBreakdown.slice(0, 5).map(function (x) {
         var max = data.genreBreakdown[0].count || 1;
-        return '<span class="rv-bar" style="height:' + Math.round(100 * x.count / max) + '%;background:' + App.genres.color(x.key) + '"></span>';
+        return '<span class="rv-bar" style="--h:' + Math.round(100 * x.count / max) + '%;background:' + App.genres.color(x.key) + '"></span>';
       }).join('');
       return '<div class="rv-cap">いちばん多かったジャンル</div>' +
-        '<div class="rv-mid">' + esc(App.genres.label(g.key)) + '</div>' +
-        '<div class="rv-bars">' + bars + '</div>';
+        '<div class="rv-mid rv-spin"></div>' +
+        '<div class="rv-bars rv-after">' + bars + '</div>';
     }
     if (id === 'busiest') {
       var unit = data.buckets.unit === 'month' ? '月' : '年';
       return '<div class="rv-cap">いちばん濃かった' + unit + '</div>' +
-        '<div class="rv-big">' + data.busiest.label + '</div>' +
-        '<div class="rv-cap">この' + unit + 'だけで ' + data.busiest.count + '日</div>';
+        '<div class="rv-big rv-spin"></div>' +
+        '<div class="rv-cap rv-after">この' + unit + 'だけで <span class="rv-count" data-to="' + data.busiest.count + '">0</span>日</div>';
     }
     if (id === 'closing') return '<div class="rv-mid rv-closing">' +
       (kind === 'year' ? 'また来年も、<br>ふたりのあしあとを。' : 'これからも、<br>ふたりのあしあとを。') + '</div>' +
@@ -323,6 +372,47 @@ App.review = (function () {
     }
   }
 
+  // 回すもの（候補・答え）はスライドごとに違うので、ここで1か所にまとめる。
+  function spinPlan(id, data) {
+    if (id === 'topspot') {
+      return { pool: data.spotNames || [], final: data.topSpot.name || '(名称未設定)' };
+    }
+    if (id === 'genre') {
+      return {
+        pool: (data.genreBreakdown || []).map(function (x) { return App.genres.label(x.key); }),
+        final: App.genres.label(data.topGenre.key),
+      };
+    }
+    if (id === 'busiest') {
+      return {
+        pool: ((data.buckets && data.buckets.items) || []).map(function (b) { return b.label; }),
+        final: data.busiest.label,
+      };
+    }
+    return null;
+  }
+
+  // 候補を回し、止まってから下の数字や棒を出す。止める関数を返す（cleanup 用）。
+  function runSpin(stage, id, data) {
+    var plan = spinPlan(id, data);
+    var node = stage.querySelector('.rv-spin');
+    if (!plan || !node) return function () {};
+    var after = stage.querySelector('.rv-after');
+    var stopCount = null;
+    var stopSpin = spinTo(node, plan.pool, plan.final, function () {
+      if (after) after.classList.add('on'); // 答えが出てから、数字や棒が続く
+      var c = stage.querySelector('.rv-count[data-to]');
+      if (c) stopCount = countUp(c, Number(c.getAttribute('data-to')), 700);
+    });
+    return function () {
+      stopSpin();
+      if (stopCount) stopCount();
+      if (after) after.classList.add('on'); // 途中で止めても中身は見せる
+      var c2 = stage.querySelector('.rv-count[data-to]');
+      if (c2) c2.textContent = c2.getAttribute('data-to');
+    };
+  }
+
   function showSlides(data) {
     document.body.classList.add('reviewing'); // 地図画面用ボタンを隠す
     var ids = App.reviewStats.planSlides(data);
@@ -353,6 +443,8 @@ App.review = (function () {
         var mapEl = stage.querySelector('.rv-map');
         var num = stage.querySelector('.rv-places-num');
         stopAnim = renderMap(mapEl, data.pins, { animate: true, numNode: num });
+      } else if (stage.querySelector('.rv-spin')) {
+        stopAnim = runSpin(stage, id, data);
       } else {
         var c = stage.querySelector('.rv-count[data-to]');
         if (c) stopAnim = countUp(c, Number(c.getAttribute('data-to')), 900);
@@ -768,5 +860,8 @@ App.review = (function () {
   return { open: open, showPicker: showPicker, setAnniversary: setAnniversary,
     showSlides: showSlides, showPage: showPage,
     maybeShowYearEndCard: maybeShowYearEndCard,
-    _pinSchedule: _pinSchedule, _selfTestSchedule: _selfTestSchedule, _TEMPO: TEMPO };
+    _pinSchedule: _pinSchedule, _selfTestSchedule: _selfTestSchedule, _TEMPO: TEMPO,
+    // 見た目の確認・検査用（review-preview.html から使う）。本編からは呼ばない。
+    _slideHTML: slideHTML, _spinGaps: _spinGaps, _spinTo: spinTo, _spinPlan: spinPlan,
+    _SPIN: { steps: SPIN_STEPS, first: SPIN_FIRST, last: SPIN_LAST } };
 })();

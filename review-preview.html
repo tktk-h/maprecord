@@ -1,0 +1,60 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>review slide preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@300;400;500;700&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<script>document.write('<link rel="stylesheet" href="style.css?t='+Date.now()+'">')</script>
+<style>
+  html,body{position:static !important;overflow:visible !important;height:auto !important;display:block !important;inset:auto !important}
+  #wrap{max-width:420px;margin:0 auto;padding:16px}
+  h3{font-size:12px;color:#8c867d;font-weight:500;margin:20px 0 6px}
+  .box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px 18px;text-align:center}
+  #log{font:12px/1.6 monospace;white-space:pre-wrap;background:#eee;padding:10px;border-radius:8px;margin-top:16px}
+  button.again{margin-top:10px;padding:8px 14px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2)}
+</style>
+<div id="wrap"><div id="slots"></div><div id="log"></div></div>
+<script>
+window.App = { genres: {
+  list: [{key:'food',label:'ごはん'},{key:'cafe',label:'カフェ'},{key:'play',label:'あそび'},{key:'walk',label:'さんぽ'},{key:'shop',label:'かいもの'}],
+  label: (k)=>({food:'ごはん',cafe:'カフェ',play:'あそび',walk:'さんぽ',shop:'かいもの'}[k]||k),
+  color: (k)=>({food:'#b5675f',cafe:'#8f7a5e',play:'#7a8f6a',walk:'#6a7f9a',shop:'#8f6a8a'}[k]||'#999'),
+} };
+</script>
+<script>document.write('<scr'+'ipt src="js/review-ui.js?t='+Date.now()+'"><\/scr'+'ipt>')</script>
+<script>
+const data = {
+  period:{kind:'year'},
+  topSpot:{name:'まちがった。人生', count:7},
+  spotNames:['まちがった。人生','Kurasu Kyoto Stand','犬山丸の内緑地','スターバックス 京都三条店','中之島美術館','麦と麺助','ダイヤモンドビリヤニ','HEP FIVE'],
+  topGenre:{key:'food',count:23},
+  genreBreakdown:[{key:'food',count:23},{key:'cafe',count:14},{key:'play',count:9},{key:'walk',count:5},{key:'shop',count:3}],
+  buckets:{unit:'month', items:[{label:'1月',count:2},{label:'2月',count:3},{label:'3月',count:1},{label:'4月',count:5},{label:'5月',count:4},{label:'6月',count:2},{label:'7月',count:8},{label:'8月',count:6},{label:'9月',count:3},{label:'10月',count:4},{label:'11月',count:2},{label:'12月',count:5}]},
+  busiest:{label:'7月', count:8},
+};
+const ids = ['topspot','genre','busiest'];
+const slots = document.getElementById('slots');
+slots.innerHTML = ids.map((id)=>`<h3>${id}</h3><div class="box rv-slide rv-slide-${id}" data-id="${id}">${App.review._slideHTML(id,data)}</div><button class="again" data-id="${id}">もう一度回す</button>`).join('');
+
+function play(id){
+  const box = slots.querySelector(`.box[data-id="${id}"]`);
+  box.innerHTML = App.review._slideHTML(id, data);
+  const plan = App.review._spinPlan(id, data);
+  const node = box.querySelector('.rv-spin');
+  const after = box.querySelector('.rv-after');
+  App.review._spinTo(node, plan.pool, plan.final, ()=>{
+    if(after) after.classList.add('on');
+    const c = box.querySelector('.rv-count[data-to]');
+    if(c) c.textContent = c.getAttribute('data-to');
+  });
+}
+slots.querySelectorAll('button.again').forEach(b=>b.onclick=()=>play(b.dataset.id));
+ids.forEach(play);
+
+// 検査：間の伸び方と合計時間
+const g = App.review._spinGaps(App.review._SPIN.steps, App.review._SPIN.first, App.review._SPIN.last);
+const total = g.reduce((a,b)=>a+b,0);
+const mono = g.every((v,i)=>i===0||v>=g[i-1]);
+document.getElementById('log').textContent =
+  '間隔(ms): ' + g.join(', ') + '\n合計: ' + total + 'ms\n単調に伸びる: ' + mono +
+  '\n候補数 topspot/genre/busiest: ' + [ 'topspot','genre','busiest' ].map(id=>App.review._spinPlan(id,data).pool.length).join(' / ');
+window.__spin = { gaps: g, total, mono };
+</script>
