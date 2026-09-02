@@ -296,10 +296,10 @@ App.map = (function () {
   //
   // upTo = その段の上限ズーム。数字は「このズームでは何km以内を同じ場所とみなすか」。
   // 神戸〜梅田が約30km。それを超えないかぎり、街どうしがくっつくことはない。
+  // ここより引いた縮尺は下の画面ピクセルの下限が受け持つので、段を足しても効かない
+  // （km を何に書いてもピクセル側が勝つ＝効いているつもりの数字になる）。
   const CLUSTER_STEPS = [
-    { upTo: 8,  km: 25 },  // 地方をまたぐ引き
-    { upTo: 9,  km: 15 },
-    { upTo: 11, km: 6 },
+    { upTo: 11, km: 6 },   // 市をまたぐくらい
     { upTo: 12, km: 3 },
     { upTo: 13, km: 1.5 }, // ほどける直前。14以上は束ねない
   ];
@@ -310,9 +310,22 @@ App.map = (function () {
   // 代表値ひとつで足りる。
   const EARTH_M = 40075017;   // 赤道での世界一周
   const CLUSTER_LAT = 35;     // 日本のだいたいの緯度
+  // supercluster は幅512のタイルを基準に距離を測る。地図が実際に描くタイルは256なので、
+  // radius の 1 は画面の 0.5px にあたる。以下の換算はどちらもこの単位で返す。
+  const UNITS_PER_PX = 2;
   function radiusForKm(km, zoom) {
     const worldM = EARTH_M * Math.cos(CLUSTER_LAT * Math.PI / 180);
     return (km * 1000) * 512 * Math.pow(2, zoom) / worldM;
+  }
+
+  // 引き切ると、地面の距離で決めるやり方は用をなさなくなる。日本全体が画面に入る縮尺では
+  // 1.5km も 25km も数ピクセルの差でしかなく、バッジ同士が重なって読めなくなる。
+  // そこでは問いが変わる——「同じ場所か」ではなく「画面で重なっていないか」。単位も問いに
+  // 合わせる：寄っている側は km、引き切った側は画面のピクセル。
+  // 両方を出して大きい方を採るので、切り替わる縮尺は勝手に決まる（境目を決めなくていい）。
+  const CLUSTER_MIN_SCREEN_PX = 75; // バッジ(約60px)同士が重ならない最小の間隔
+  function clusterRadius(km, zoom) {
+    return Math.max(radiusForKm(km, zoom), CLUSTER_MIN_SCREEN_PX * UNITS_PER_PX);
   }
   // 何件から束ねるか。2件から束ねる。
   // 以前は5にしていた（radius 140 の一律だった頃、少し寄るだけで小さな束へ細かく
@@ -460,7 +473,7 @@ App.map = (function () {
           || CLUSTER_STEPS[CLUSTER_STEPS.length - 1]; // 表より寄っていれば最後の段
         byZoom.set(z, new Algo({
           maxZoom: CLUSTER_MAX_ZOOM,
-          radius: radiusForKm(step.km, z),
+          radius: clusterRadius(step.km, z),
           minPoints: CLUSTER_MIN_POINTS,
         }));
       }
