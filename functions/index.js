@@ -9,9 +9,11 @@ const GEMINI_KEY = defineSecret('GEMINI_KEY');
 // そこで枠切れ(429)なら次のモデルへ回す＝使える枠を足し合わせる。
 // どのモデルが答えたかは返り値の model に入るので、枠の残りは推測せず実測で分かる。
 // 並びは「枠が大きそうな軽いモデル」→「賢いモデル」。精度が要るなら順序を入れ替える。
+// gemini-2.5-flash-lite は外した。ドキュメントには Stable と載っているが、実際に叩くと
+// 404「新規ユーザーには提供終了。gemini-3.5-flash-lite を使え」が返る。ドキュメントより API。
 const MODELS = [
-  'gemini-2.5-flash-lite',
   'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
   'gemini-3.6-flash',
 ];
 
@@ -52,12 +54,11 @@ exports.suggestPlace = onCall(
     let text = '';
     let used = '';       // 実際に答えたモデル
     let tries = 0;       // Geminiを撃った総回数
-    const spent = [];    // 枠を使い切っていたモデル
+    const skipped = [];  // 見送ったモデルと、その理由
     let lastErr = null;
     outer:
     for (const name of MODELS) {
       const model = genAI.getGenerativeModel({ model: name });
-      // サーバ側の一時混雑(500/503)だけ、同じモデルで最大3回。
       for (let attempt = 0; ; attempt++) {
         try {
           tries++;
@@ -71,10 +72,17 @@ exports.suggestPlace = onCall(
           // 429の本文には quotaValue や retryDelay が入るので、/500|503/ で拾うと
           // 枠切れを「混雑」と読み違えて、無駄撃ちしながら待たせることになる。
           const status = e && e.status;
-          if (status === 429) { spent.push(name); break; }   // このモデルは枠切れ＝次のモデルへ
-          if (status !== 500 && status !== 503) break outer;  // 直しようのない種類は即あきらめる
-          if (attempt >= 2) break outer;
-          await new Promise((r) => setTimeout(r, 900 * (attempt + 1))); // 0.9s → 1.8s
+          // 「このモデルが今は使えない」だけの話は、どれも次のモデルへ回す。
+          // 枠切れ(429)も、提供終了・権限なし(404/403)も、こちらから見れば同じ。
+          // ここを429だけにしていたら、先頭が404だった瞬間に全部あきらめた。
+          if (status === 429) { skipped.push(name + ':枠切れ'); break; }
+          if (status === 404 || status === 403) { skipped.push(name + ':使えない'); break; }
+          if (status === 500 || status === 503) {   // 一時混雑は同じモデルで粘る
+            if (attempt < 2) { await new Promise((r) => setTimeout(r, 900 * (attempt + 1))); continue; }
+            skipped.push(name + ':混雑');
+            break;                                   // 粘ってもだめなら次のモデルへ
+          }
+          break outer; // 400 など、モデルを変えても直らない種類だけ、ここで終わる
         }
       }
     }
@@ -83,15 +91,15 @@ exports.suggestPlace = onCall(
       // details（quotaId/quotaValue/retryDelay）が丸ごと切れて診断できなかった。
       const err = String((lastErr && lastErr.message) || lastErr).slice(0, 1500);
       const status = (lastErr && lastErr.status) || '';
-      console.error('gemini error', status, 'tries=' + tries, 'spent=' + spent.join(','), err);
+      console.error('gemini error', status, 'tries=' + tries, 'skipped=' + skipped.join(','), err);
       // 失敗は「不明」に落とす（保存は止めない）
-      return { name: null, raw: '', err, status, tries, spent, models: MODELS, imgs: parts.length };
+      return { name: null, raw: '', err, status, tries, skipped, models: MODELS, imgs: parts.length };
     }
     const raw = text.slice(0, 200); // 診断：Geminiの生返答（先頭200字）
     // 1行目だけ採用し、前後の引用符を除去。UNKNOWN/空は null。
     const line = (text.split('\n')[0] || '').trim().replace(/^["'「『]+|["'」』]+$/g, '').trim();
-    // model/spent も返す＝どのモデルが答え、どのモデルが枠切れだったかが実測で分かる
-    const meta = { raw, err: '', model: used, spent, tries, imgs: parts.length };
+    // model/skipped も返す＝どれが答え、どれをなぜ見送ったかが実測で分かる
+    const meta = { raw, err: '', model: used, skipped, tries, imgs: parts.length };
     if (!line || /^unknown$/i.test(line)) return { name: null, ...meta };
     return { name: line, ...meta };
   }

@@ -385,7 +385,7 @@ App.bulk = (function () {
       dbg.gstatus = (r && r.data && r.data.status) || ''; // HTTPステータス（429/403/400…）
       dbg.gtries = (r && r.data && r.data.tries) || 0;    // 関数が実際にGeminiを撃った回数
       dbg.model = (r && r.data && r.data.model) || '';    // 答えたモデル
-      dbg.spent = ((r && r.data && r.data.spent) || []).join(',') || ''; // 枠切れだったモデル
+      dbg.skipped = ((r && r.data && r.data.skipped) || []).join(',') || ''; // 見送ったモデルと理由
       dbg.imgs = (r && r.data && r.data.imgs) || 0;  // 送れた画像枚数
       // 枠切れ(429)なら、残りカードの無駄打ちを止める。
       // 判定はステータスを優先。文字列の当て推量は、ステータスが無い旧関数のときだけ。
@@ -423,7 +423,7 @@ App.bulk = (function () {
       // Geminiが実際に返した文をカードに残す。ここを捨てていたせいで、
       // 「枠オーバー」としか分からず原因を当て推量するはめになっていた。
       const head = dbg.gstatus
-        ? `status ${dbg.gstatus} / Gemini ${dbg.gtries}回 / 枠切れ: ${dbg.spent || 'なし'}\n`
+        ? `status ${dbg.gstatus} / Gemini ${dbg.gtries}回 / 見送り: ${dbg.skipped || 'なし'}\n`
         : '';
       g.aiErrMsg = head + (dbg.gerr || dbg.err || '(エラー文なし)') + '\n\n所要 ' + JSON.stringify(dbg.ms);
     } else {
