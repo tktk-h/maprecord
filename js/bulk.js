@@ -91,6 +91,7 @@ App.bulk = (function () {
       aiPickId: null,  // Geminiが選んだ placeId（チップの✨用）
       collapsed: true, // 既定は畳んだ状態
       memo: '',        // メモ・感想
+      userPicked: false, // 自分で場所を決めた印。立ったカードは自動AI提案を飛ばす
     }));
     pending = pending.concat(groups); // 表示中の未保存カードは退避（消さない）
     groups = added;                    // 今回追加したぶんだけを表示
@@ -240,6 +241,9 @@ App.bulk = (function () {
   function countPhotos() { return groups.reduce((n, g) => n + g.photos.length, 0); }
   // 保存座標：手動ピン優先 → GPS中心 → 検索店。無ければ null。
   function groupLatLng(g) { return g.manualLoc || (g.hasGps ? g.center : g.place) || null; }
+  // 自分で場所を決めた（検索・候補チップ・地図ピン・POI/記録タップ）カードに印をつける。
+  // 印のついたカードは、順番待ちのAI提案が黙って飛ばす（✨ボタンの手押しは今まで通り効く）。
+  function markPicked(g) { if (g) g.userPicked = true; }
   // 保存できるのは「名前あり かつ 位置あり」のグループだけ（名無しピンを作らない）
   function isSaveable(g) { return !!(g.name && g.name.trim()) && !!groupLatLng(g); }
 
@@ -314,6 +318,14 @@ App.bulk = (function () {
     refreshSaveButton();
   }
 
+  // カードそのものを渡して表示を更新する。AIを待っている間に削除・結合・保存で
+  // 並びが詰まっても、番号ではなくカードを探し直すので、隣のカードを書き換えない。
+  // 消えたカードなら何もしない。
+  function touch(g) {
+    const i = groups.indexOf(g);
+    if (i !== -1) applyAiUpdate(i);
+  }
+
   // 座標→住所（逆ジオコーディング）。Geocoding API 未有効などで失敗したら空文字。
   async function addressOf(lat, lng) {
     try {
@@ -335,11 +347,10 @@ App.bulk = (function () {
     } catch (e) { return null; }
   }
 
-  // グループiにAI提案（ハイブリッド：写真＋住所でGeminiが店名を自由回答→searchTextで裏取り）。
+  // グループgにAI提案（ハイブリッド：写真＋住所でGeminiが店名を自由回答→searchTextで裏取り）。
   // loc=保存座標。候補チップ（手動選択用）は従来通り近くの店から用意。失敗は静かに「不明」。
-  async function aiSuggest(i, loc) {
-    const g = groups[i];
-    g.aiState = 'loading'; applyAiUpdate(i);
+  async function aiSuggest(g, loc) {
+    g.aiState = 'loading'; touch(g);
     const dbg = { n: 0, addr: '', guess: '', hit: '', err: '', raw: '', gerr: '', imgs: 0 }; // ← 診断用（各段の中身）
     let errKind = null; // 'quota'(429/枠オーバー) | 'error'(その他エラー) | null。エラー時のみ「失敗」表示を出す
     try {
@@ -385,45 +396,57 @@ App.bulk = (function () {
           }
         }
       }
-      console.log('[aiSuggest]', i, JSON.stringify(dbg));
+      console.log('[aiSuggest]', groups.indexOf(g), JSON.stringify(dbg));
     } catch (e) {
       dbg.err = String((e && e.message) || e); console.warn('ai suggest failed', e && e.message);
       errKind = /429|quota|exceeded|too many requests/i.test(dbg.err) ? 'quota' : 'error';
     }
     if (errKind) { g.aiState = 'error'; g.aiErrKind = errKind; } // エラー時のみ「失敗」表示
     else { g.aiState = 'done'; g.aiErrKind = null; }             // 成功（店が特定できない=UNKNOWNも含む）
-    applyAiUpdate(i);
+    touch(g);
   }
 
   // 手動ボタン：そのグループに位置があればAI提案。無ければ促す。
+  // 自分で場所を決めたあとでも、押されたら走る（明示的に呼ばれているので飛ばさない）。
   async function runAiFor(i) {
-    const loc = groupLatLng(groups[i]);
+    const g = groups[i];
+    const loc = groupLatLng(g);
     if (!loc) { alert('先に位置（GPS/検索/地図ピン）を決めてください'); return; }
-    await aiSuggest(i, loc);
+    await aiSuggest(g, loc);
   }
 
   // 開いた直後：位置があり・未提案・名前空 のグループをAI提案。
   // 無料枠の分間リクエスト上限(429)を避けるため直列(1件ずつ)。※他の高速化は維持。
+  //
+  // 順番待ちは長い。待っている間に自分で場所を決めることがあるので、リストは
+  // 番号ではなくカードそのもので持ち、撃つ直前にもう一度いまの状態を見る。
   async function autoSuggestAll() {
     const CONCURRENCY = 1;
     quotaHit = false; // この回のためにリセット
-    const targets = [];
-    for (let i = 0; i < groups.length; i++) {
-      const g = groups[i];
-      const loc = groupLatLng(g);
-      if (loc && g.aiState === 'idle' && !(g.name && g.name.trim())) targets.push({ i, loc });
-    }
+    const targets = groups.filter((g) => shouldAutoSuggest(g));
     let cursor = 0;
     async function worker() {
       while (cursor < targets.length) {
         if (quotaHit) break; // 枠切れを検知したら残りは打たない
-        const t = targets[cursor++]; // 空いたワーカーが次の1件を取る
-        await aiSuggest(t.i, t.loc);
+        const g = targets[cursor++]; // 空いたワーカーが次の1件を取る
+        // 順番待ちの間に事情が変わっていないか、撃つ直前にもう一度見る
+        if (groups.indexOf(g) === -1) continue; // 消えた（削除・結合・保存済み）
+        if (!shouldAutoSuggest(g)) continue;    // 自分で決めた／もう提案した
+        await aiSuggest(g, groupLatLng(g));
       }
     }
     const workers = [];
     for (let k = 0; k < Math.min(CONCURRENCY, targets.length); k++) workers.push(worker());
     await Promise.all(workers);
+  }
+
+  // 自動でAIを撃っていいカードか。自分で場所を決めたカードは黙って飛ばす
+  // （aiState は idle のまま残すので、気が変わったら✨ボタンで呼べる）。
+  function shouldAutoSuggest(g) {
+    if (g.userPicked) return false;
+    if (g.aiState !== 'idle') return false;
+    if (g.name && g.name.trim()) return false;
+    return !!groupLatLng(g);
   }
 
   // カードのAIエリア（名前欄の下）：判定中／候補チップ／手動ボタン
@@ -486,6 +509,7 @@ App.bulk = (function () {
         if (c) {
           g.name = c.name; g.placeId = c.placeId; g.place = { lat: c.lat, lng: c.lng };
           if (c.genre) g.genre = c.genre;
+          markPicked(g);
           refreshCard(i);
         }
       };
@@ -513,8 +537,12 @@ App.bulk = (function () {
     const prev = groups[i - 1], g = groups[i];
     prev.photos = prev.photos.concat(g.photos).sort((a, b) => a.time - b.time);
     if (!prev.hasGps && g.hasGps) { prev.hasGps = true; prev.center = g.center; }
-    if (!prev.manualLoc && g.manualLoc) prev.manualLoc = g.manualLoc;
-    if (!prev.placeId && g.placeId) { prev.placeId = g.placeId; prev.place = g.place; prev.name = g.name; }
+    // 場所を結合元から引き継いだなら、「自分で決めた」印も一緒に引き継ぐ
+    if (!prev.manualLoc && g.manualLoc) { prev.manualLoc = g.manualLoc; if (g.userPicked) markPicked(prev); }
+    if (!prev.placeId && g.placeId) {
+      prev.placeId = g.placeId; prev.place = g.place; prev.name = g.name;
+      if (g.userPicked) markPicked(prev);
+    }
     prev.date = App.grouping.dateOf(prev.photos[0].time); // 最早写真の日
     groups.splice(i, 1);
     renderReview();
@@ -545,7 +573,7 @@ App.bulk = (function () {
     const newG = {
       photos: tail, date: App.grouping.dateOf(tail[0].time),
       center: null, hasGps: false, placeId: null, place: null, manualLoc: null, name: '', genre: g.genre,
-      candidates: [], aiState: 'idle', aiPickId: null, collapsed: true, memo: '',
+      candidates: [], aiState: 'idle', aiPickId: null, collapsed: true, memo: '', userPicked: false,
     };
     // 新グループのGPS再計算（tailにGPSがあれば）
     const pts = tail.filter((p) => p.gps).map((p) => p.gps);
@@ -586,6 +614,7 @@ App.bulk = (function () {
             g.placeId = p.placeId; g.place = { lat: p.lat, lng: p.lng }; g.name = p.name;
             g.manualLoc = null; // 検索で選んだらその店の位置を優先
             if (p.genre) g.genre = p.genre;
+            markPicked(g);
             renderReview();
           };
         });
@@ -623,6 +652,7 @@ App.bulk = (function () {
     groups[i].place = { lat: r.lat, lng: r.lng };
     groups[i].placeId = r.placeId || null;
     if (r.genre) groups[i].genre = r.genre;
+    markPicked(groups[i]);
     App.map.startPickLocation(r.lat, r.lng); // ピンをその場所へ移動（ドラッグ微調整可）
     const q = document.getElementById('bulk-pick-q'); if (q) q.value = groups[i].name || '';
     const bar = document.getElementById('bulk-pickbar');
@@ -640,6 +670,7 @@ App.bulk = (function () {
       if (p.lat == null || p.lng == null) throw new Error('no location');
       groups[i].name = p.name; groups[i].placeId = placeId; groups[i].place = { lat: p.lat, lng: p.lng };
       if (p.genre) groups[i].genre = p.genre;
+      markPicked(groups[i]);
       App.map.startPickLocation(p.lat, p.lng); // ピンをその店へ移動（さらにドラッグで微調整可）
       const results = document.getElementById('bulk-pick-results'); if (results) results.innerHTML = '';
       const q = document.getElementById('bulk-pick-q'); if (q) q.value = p.name;
@@ -679,6 +710,7 @@ App.bulk = (function () {
             const p = places[Number(b.dataset.k)];
             groups[i].name = p.name; groups[i].placeId = p.placeId; groups[i].place = { lat: p.lat, lng: p.lng };
             if (p.genre) groups[i].genre = p.genre;
+            markPicked(groups[i]);
             App.map.startPickLocation(p.lat, p.lng); // ピンをその店へ移動（さらにドラッグで微調整可）
             results.innerHTML = '';
             const msg = bar.querySelector('.bulk-pickmsg');
@@ -693,7 +725,7 @@ App.bulk = (function () {
     document.getElementById('bulk-pick-cancel').onclick = () => finishPick(i, false);
   }
   function finishPick(i, ok) {
-    if (ok) { const p = App.map.getPickedLatLng(); if (p) groups[i].manualLoc = p; }
+    if (ok) { const p = App.map.getPickedLatLng(); if (p) { groups[i].manualLoc = p; markPicked(groups[i]); } }
     App.map.stopPickLocation();
     App.map.setPlaceClickHandler(prevPlaceClick); // 通常時のPOIタップ（店カード表示）へ復元
     App.map.setRecordPickHandler(null);           // 記録ピンタップを通常（詳細表示）へ復元
