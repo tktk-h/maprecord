@@ -210,6 +210,7 @@ App.bulk = (function () {
           ${i > 0 ? `<button class="bulk-act quiet" data-act="merge" data-i="${i}">前と結合</button>` : ''}
           <button class="bulk-act quiet warn" data-act="del" data-i="${i}">削除</button>
         </div>
+        <button class="bulk-collapsebtn bottom" data-act="collapse" data-i="${i}">▲ 閉じる</button>
       </div>`;
   }
 

@@ -1330,3 +1330,9 @@ body.editor-open #review-back { display: none !important; }
 .bulk-collapsed-acts { gap: 14px; align-items: center; margin-top: 10px; }
 .bulk-collapsed-acts .bulk-act.quiet { flex: none; }
 .bulk-collapsed-acts .bulk-savecard { flex: none; margin-left: auto; padding: 7px 18px; font-weight: 600; }
+
+/* カードの末尾にも「閉じる」。長いカードを畳むのに上まで戻らなくていい。
+   上のボタンは縦3pxで指には小さいので、下のものは押しやすい高さにする。
+   これは画面を閉じる×(.x-btn)ではなくカードを畳むトグルなので、混ぜない。 */
+.bulk-collapsebtn.bottom { display: block; width: 100%; align-self: auto;
+  margin-top: 12px; padding: 10px; border-radius: 10px; font-size: 12.5px; }
