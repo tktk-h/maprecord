@@ -40,11 +40,13 @@ exports.suggestPlace = onCall(
       + '本当に全く見当もつかない場合のみ UNKNOWN と書く。店名以外の説明・記号・引用符は書かない。';
 
     let text = '';
+    let tries = 0;      // 実際に何回Geminiを撃ったか（リトライが回っていないかの確認用）
     try {
       // サーバ側の一時混雑(500/503)だけ最大3回リトライ。
       // 429(枠オーバー)はリトライしない＝無駄に枠を消費しない（再送しても通らない）。
       for (let attempt = 0; ; attempt++) {
         try {
+          tries++;
           const result = await model.generateContent([...parts, prompt]);
           text = (result.response.text() || '').trim();
           break;
@@ -56,9 +58,13 @@ exports.suggestPlace = onCall(
         }
       }
     } catch (e) {
-      const err = String((e && e.message) || e).slice(0, 300);
-      console.error('gemini error', err);
-      return { name: null, raw: '', err, imgs: parts.length }; // 失敗は「不明」に落とす（保存は止めない）
+      // 1500字まで残す。300字だと定型文で埋まり、どの枠に当たったかを書いた
+      // details（quotaId/quotaValue/retryDelay）が丸ごと切れて診断できなかった。
+      // status は SDK が持っているHTTPステータス。文字列から数字を探るより確か。
+      const err = String((e && e.message) || e).slice(0, 1500);
+      const status = (e && e.status) || '';
+      console.error('gemini error', status, 'tries=' + tries, err);
+      return { name: null, raw: '', err, status, tries, imgs: parts.length }; // 失敗は「不明」に落とす（保存は止めない）
     }
     const raw = text.slice(0, 200); // 診断：Geminiの生返答（先頭200字）
     // 1行目だけ採用し、前後の引用符を除去。UNKNOWN/空は null。

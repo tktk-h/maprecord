@@ -1254,3 +1254,10 @@ body.editor-open #review-back { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .ov-slide, .ov-fade, .ov-fade > .ov-card { transition: none; }
 }
+
+/* AI失敗の生のエラー文。普段は畳んであり、原因を見たいときだけ開く。 */
+.bulk-ai-detail { margin-top: 6px; font-size: 12px; font-weight: 500; }
+.bulk-ai-detail summary { cursor: pointer; color: var(--muted); }
+.bulk-ai-detail pre { margin: 6px 0 0; padding: 8px; border-radius: 8px; white-space: pre-wrap;
+  word-break: break-all; background: rgba(127,127,127,.1); font-size: 11px; line-height: 1.5;
+  max-height: 220px; overflow: auto; -webkit-user-select: text; user-select: text; }

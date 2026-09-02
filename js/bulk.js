@@ -351,7 +351,8 @@ App.bulk = (function () {
   // loc=保存座標。候補チップ（手動選択用）は従来通り近くの店から用意。失敗は静かに「不明」。
   async function aiSuggest(g, loc) {
     g.aiState = 'loading'; touch(g);
-    const dbg = { n: 0, addr: '', guess: '', hit: '', err: '', raw: '', gerr: '', imgs: 0 }; // ← 診断用（各段の中身）
+    const t0 = Date.now();
+    const dbg = { n: 0, addr: '', guess: '', hit: '', err: '', raw: '', gerr: '', imgs: 0, ms: {} }; // ← 診断用（各段の中身と所要時間）
     let errKind = null; // 'quota'(429/枠オーバー) | 'error'(その他エラー) | null。エラー時のみ「失敗」表示を出す
     try {
       // 速度優先：写真圧縮（代表1枚）と近くの店取得を並行実行
@@ -361,21 +362,28 @@ App.bulk = (function () {
       })();
       // 候補チップ（手動で選べるように）＋Gemini用の付近ヒント
       const cands = await App.places.nearbyPlaces(loc.lat, loc.lng, { radius: 250, max: 20 });
+      dbg.ms.nearby = Date.now() - t0;   // 近くの店を引くのにかかった時間
       g.candidates = cands || [];
       dbg.n = g.candidates.length; // (A) 近くの店 何件取れたか
       const imagesBase64 = await imgPromise;
+      dbg.ms.img = Date.now() - t0;      // 写真の圧縮まで済んだ時点
       // 住所：近くの店データから流用（Geocoding API不要）。無ければ逆ジオコーディングを試す。
       let address = (g.candidates.find((c) => c.addr) || {}).addr || '';
       if (!address) address = await addressOf(loc.lat, loc.lng);
       dbg.addr = address; // (B) 住所が取れているか
+      dbg.ms.addr = Date.now() - t0;     // 住所が揃った時点
+      const tCall = Date.now();
       const r = await App.fb.suggestPlace({
         imagesBase64, address,
         candidates: g.candidates.map((c) => ({ name: c.name, genre: c.genre })),
       });
+      dbg.ms.call = Date.now() - tCall;  // ← 関数＋Geminiだけにかかった時間
       const guess = r && r.data && r.data.name;
       dbg.guess = guess || ''; // (D) Geminiの自由回答
       dbg.raw = (r && r.data && r.data.raw) || '';   // Geminiの生返答
       dbg.gerr = (r && r.data && r.data.err) || '';  // Gemini呼び出しエラー
+      dbg.gstatus = (r && r.data && r.data.status) || ''; // HTTPステータス（429/403/400…）
+      dbg.gtries = (r && r.data && r.data.tries) || 0;    // 関数が実際にGeminiを撃った回数
       dbg.imgs = (r && r.data && r.data.imgs) || 0;  // 送れた画像枚数
       // 枠切れ(429/quota)なら、残りカードの無駄打ちを止める
       if (dbg.gerr) errKind = /429|quota|exceeded|too many requests/i.test(dbg.gerr) ? 'quota' : 'error';
@@ -401,8 +409,16 @@ App.bulk = (function () {
       dbg.err = String((e && e.message) || e); console.warn('ai suggest failed', e && e.message);
       errKind = /429|quota|exceeded|too many requests/i.test(dbg.err) ? 'quota' : 'error';
     }
-    if (errKind) { g.aiState = 'error'; g.aiErrKind = errKind; } // エラー時のみ「失敗」表示
-    else { g.aiState = 'done'; g.aiErrKind = null; }             // 成功（店が特定できない=UNKNOWNも含む）
+    dbg.ms.total = Date.now() - t0;
+    if (errKind) {
+      g.aiState = 'error'; g.aiErrKind = errKind;
+      // Geminiが実際に返した文をカードに残す。ここを捨てていたせいで、
+      // 「枠オーバー」としか分からず原因を当て推量するはめになっていた。
+      const head = dbg.gstatus ? `status ${dbg.gstatus} / Gemini ${dbg.gtries}回\n` : '';
+      g.aiErrMsg = head + (dbg.gerr || dbg.err || '(エラー文なし)') + '\n\n所要 ' + JSON.stringify(dbg.ms);
+    } else {
+      g.aiState = 'done'; g.aiErrKind = null; g.aiErrMsg = '';   // 成功（店が特定できない=UNKNOWNも含む）
+    }
     touch(g);
   }
 
@@ -468,8 +484,12 @@ App.bulk = (function () {
       const msg = g.aiErrKind === 'quota'
         ? 'AIの無料枠オーバー（時間をおくと回復します）'
         : 'AI判定に失敗しました';
+      // 生のエラー文は畳んでおく。普段は邪魔にならず、原因を見たいときだけ開ける。
+      const detail = g.aiErrMsg
+        ? `<details class="bulk-ai-detail"><summary>くわしく</summary><pre>${esc(g.aiErrMsg)}</pre></details>`
+        : '';
       return `<div class="bulk-ai-error"><span class="bulk-ai-errmsg">⚠️ ${msg}</span>`
-        + `<button class="bulk-locbtn ai retry" data-act="ai" data-i="${i}">🔄 再試行</button></div>${chips}`;
+        + `<button class="bulk-locbtn ai retry" data-act="ai" data-i="${i}">🔄 再試行</button></div>${detail}${chips}`;
     }
     return `<button class="bulk-locbtn ai" data-act="ai" data-i="${i}">✨ AIで店名を提案</button>${chips}`;
   }
